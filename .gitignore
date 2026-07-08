@@ -6,3 +6,8 @@ __pycache__/
 *.pyc
 .env
 .DS_Store
+.venv/
+venv/
+analysis/*_cache/
+analysis/*_files/
+analysis/*.html

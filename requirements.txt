@@ -1,0 +1,15 @@
+# Panel member pipeline dependencies
+# Install in a conda environment: pip install -r requirements.txt
+#
+# vLLM is NOT listed here — it requires its own environment due to CUDA/torch version
+# conflicts with other packages. Install separately:
+#   conda create -n vllm python=3.11
+#   pip install vllm
+#
+# For fine-tuning (Condition 4), also install in a separate env:
+#   pip install transformers peft bitsandbytes trl accelerate
+
+openai>=1.30.0
+pycountry>=23.12.11
+PyYAML>=6.0
+PyPDF2>=3.0.0

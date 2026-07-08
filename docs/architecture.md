@@ -1,345 +1,242 @@
 # Panel Member: Pipeline Architecture
 
+*Updated July 2026. IRT runner removed. Four prompt conditions (codebook-only, evidence
+packets, anonymized summaries, fine-tuning). Anonymization agent added as Stage 2b.
+Raw panel means replace calibration-weighted means throughout.*
+
 ## Overview
 
-The pipeline has four stages: ingest, retrieve, code, analyze. The IRT runner (Stage 2+)
-is a fifth stage that takes coded output and tests it against the V-Dem measurement model.
-
 ```
-PDFs (State Dept + Freedom House)
+PDFs (State Dept) + plain text (Freedom House)
     │
     ▼
-[1] Ingestion: PDF extraction → plain text (per country-year)
+[1] Ingestion: PDF → plain text
+    │           shared with bridge-coder pipeline
+    ▼
+[2a] Section extraction: regex → indicator-relevant text (free, deterministic)
+    │           config/indicator_sections.yaml (expanded to 12 indicators)
+    │
+    ├──────────────────────────────────────────────────────┐
+    │                                                      │
+    ▼                                                      ▼
+[2b] (Conditions 3 & 4 only)                    (Conditions 1 & 2)
+    Anonymization agent: LLM rewrites              Pass through
+    extracted text, strips country identity
     │
     ▼
-[2] Retrieval: ChromaDB per-country index → fixed-budget evidence packets
-    │
+[3] Coding: prompt assembly → LLM → 0–4 ratings (JSONL)
+    │   Condition 1: codebook-only (no source text)
+    │   Condition 2: raw section text
+    │   Condition 3: anonymized section text (few-shot)
+    │   Condition 4: anonymized section text → fine-tuned Llama 70B
     ▼
-[3] Coding: factorial design matrix → persona config → prompt assembly → LLM API → output
-    │
+[4] Calibration check: MAD from raw panel mean (primary calibration metric)
     ▼
-[4] Analysis: regression of deviation on attribute indicators (Stage 1 results)
-    │
-    ▼
-[5] IRT runner: simplified Stan model → θ_aug vs. θ_full trajectory (Stage 2)
+[5] Replacement experiment: compare AI-augmented panel mean to full-panel mean
 ```
 
 ---
 
 ## Stage 1: Ingestion
 
-**Reuse from existing pipeline**: `extract_reports_for_graphrag.py` in
-`initial-exploration/V-Dem-agentic-pipeline/`. Copy to `pipeline/ingest.py`.
+**Shared with bridge-coder**. `pipeline/ingest.py` (symlink or copy from bridge-coder).
 
-The extraction step is identical between this repo and `bridge-coder`. If you maintain both
-repos, keep the extraction scripts in sync or extract to a shared utility.
-
-**Output structure**:
+State Dept PDFs → plain text via PyPDF2. Freedom House plain text copied directly.
+Output:
 ```
 data/raw/
   state-dept/{year}/{country_code}.pdf
-  freedom-house/{year}/{country_code}.pdf
+  freedom-house/{year}/{country_code}.txt
 
-data/processed/
-  text/
-    state-dept/{year}/{country_code}.txt
-    freedom-house/{year}/{country_code}.txt
+data/processed-text/
+  state-dept/{year}/{country_code}.txt
+  freedom-house/{year}/{country_code}.txt
 ```
 
-**Priority years**: 2010–2022 for Stage 1 (factorial experiment pool). 1977–2009 for
-Stage 3 historical deployment.
+If bridge-coder has already downloaded and processed a year, do not re-download.
 
 ---
 
-## Stage 2: Retrieval (ChromaDB vector RAG, per-country)
+## Stage 2a: Section Extraction
 
-### Why vector RAG, not GraphRAG
+**Shared with bridge-coder**. `pipeline/extract_sections.py` + `config/indicator_sections.yaml`.
 
-The panel member simulates a country expert reasoning from a country-specific information
-environment. Standard vector RAG — retrieving the most relevant chunks from the target
-country's own documents — directly instantiates this local information frame.
+Regex parsing of document structure, pulling indicator-relevant sections. The YAML config
+must be expanded from the 4-indicator bridge-coder version to cover all 12 indicators.
+Confirmed section mappings (to be locked in `config/indicator_sections.yaml` before running):
 
-GraphRAG's cross-country reasoning would confound the Panel Member experiment: if the model
-is reasoning laterally across countries, it is approximating a bridge coder, not a local
-expert. Paper 1's Stage 1 is testing what attributes make the AI behave like a local
-expert; cross-national retrieval would contaminate that measurement.
+```yaml
+# High observability
+v2clkill:    {state-dept: ["1a", "1b"], freedom-house: ["F"]}
+v2cltort:    {state-dept: ["1c"],       freedom-house: ["F"]}
+v2mecenefm:  {state-dept: ["2a"],       freedom-house: ["D"]}
+v2csreprss:  {state-dept: ["2b", "5"],  freedom-house: ["E"]}
+v2jupoatck:  {state-dept: ["1e"],       freedom-house: ["F"]}
 
-(The bridge-coder repo uses GraphRAG with global query mode for the opposite reason.)
+# Medium observability
+v2mecenefi:  {state-dept: ["2a"],       freedom-house: ["D"]}
+v2juhcind:   {state-dept: ["1e"],       freedom-house: ["F"]}
+v2clacfree:  {state-dept: ["2b"],       freedom-house: ["D"]}
+v2clslavef:  {state-dept: ["7b"],       freedom-house: ["F"]}
+v2psoppaut:  {state-dept: ["3"],        freedom-house: ["B"]}
+v2excrptps:  {state-dept: ["4"],        freedom-house: ["C"]}
 
-### Index construction
-
-Build **one ChromaDB collection per country**, containing all years' chunks for that
-country. Query by year at retrieval time via metadata filter.
-
-```python
-import chromadb
-from chromadb.utils import embedding_functions
-
-client = chromadb.PersistentClient(path="data/chromadb/")
-embed_fn = embedding_functions.SentenceTransformerEmbeddingFunction(
-    model_name="BAAI/bge-large-en-v1.5"
-)
-
-# Index one country
-collection = client.get_or_create_collection(
-    name=f"vdem_{country_code}",
-    embedding_function=embed_fn
-)
-
-# Chunk and add documents
-for chunk, metadata in chunks_with_metadata:
-    collection.add(
-        documents=[chunk],
-        metadatas=[{"country": country_code, "year": year, "source": source}],
-        ids=[f"{country_code}_{year}_{source}_{chunk_idx}"]
-    )
+# Low observability
+v2pepwrsoc:  {freedom-house: ["B"]}
 ```
 
-**Chunking**: fixed-length chunks of 400–500 tokens with ~50-token overlap. This chunk
-size is small enough to be topically coherent and large enough to carry meaningful context.
-Use the same chunker for State Dept and Freedom House so chunks are comparable across
-sources.
-
-### Query construction
-
-Indicator-specific queries from codebook text:
-
-```python
-def build_retrieval_query(indicator_code, codebook_question, key_terms):
-    return f"{codebook_question} {' '.join(key_terms)}"
-
-# Example for v2csreprss:
-# "Does the government attempt to repress civil society organizations?
-#  repression harassment arrests NGO restrictions"
-```
-
-### Packet assembly and standardization
-
-```python
-def retrieve_packet(country_code, year, query, n_chunks=3):
-    collection = client.get_collection(f"vdem_{country_code}")
-    results = collection.query(
-        query_texts=[query],
-        n_results=n_chunks,
-        where={"year": {"$eq": year}}
-    )
-    return "\n\n".join(results["documents"][0])
-```
-
-**Packet richness levels** (Stage 1 attribute):
-
-| Level | n_chunks | Sources |
-|---|---|---|
-| Full | 5 (3 State Dept + 2 Freedom House) | Both |
-| Partial | 3 (State Dept only) | State Dept |
-| Minimal | 1 (State Dept only) | State Dept |
-
-Chunk count is fixed per level so token budget is approximately constant. Do not use a
-token budget truncation here (unlike the bridge-coder pipeline) — varying chunk count IS
-the packet richness manipulation; truncation would collapse the levels.
+Section mappings derived from `02-indicator-selection.html` (Section 8). Confirm against
+the source map before locking.
 
 ---
 
-## Stage 3: Coding (Factorial Experiment)
+## Stage 2b: Anonymization Agent
 
-### Design matrix generation
+**New for panel-member**. `pipeline/anonymize_section.py`.
 
-Generate the fractional factorial design matrix in R before running any LLM calls.
+Used only for Conditions 3 and 4. Makes one LLM call that rewrites the extracted section
+text to:
+- Replace the country name with `[COUNTRY]`
+- Replace named political parties, government bodies, and leaders with generic descriptions
+  (e.g., "the ruling party", "the opposition", "senior officials")
+- Paraphrase datable named events that would identify the country-year
 
-```r
-library(AlgDesign)
+Motivation: bridge-coder preliminary results show compression bias (AI ratings of
+autocracies are systematically too high; democracies too low) even with few-shot
+calibration examples. The hypothesis is that models are using country identity as a
+regime-type anchor rather than reasoning from described conditions. Anonymization tests
+this directly by comparing Conditions 2 and 3 on the same extracted text.
 
-# Define attribute levels
-factors <- list(
-  threshold    = c("strict", "neutral", "lenient"),
-  reliability  = c("high", "medium", "low"),
-  conception   = c("liberal", "majoritarian", "participatory", "deliberative"),
-  domestic     = c("yes", "no"),
-  diligence    = c("high", "standard"),
-  packet       = c("full", "partial", "minimal"),
-  source       = c("state_dept", "state_and_fh")
-)
-
-# Generate D-optimal fractional factorial, main effects only
-design <- optFederov(
-  ~ threshold + reliability + conception + domestic + diligence + packet + source,
-  data    = expand.grid(factors),
-  nTrials = 48,
-  criterion = "D"
-)
-
-# If pre-specifying source × domestic interaction:
-# nTrials = 64, add the interaction term to the formula
+The anonymized text is saved separately so Conditions 2 and 3 can be compared on equal
+footing:
+```
+data/processed-text/anonymized/{year}/{country_code}/{indicator}.txt
 ```
 
-Save the design matrix to `data/processed/design_matrix.csv` before running. This is
-the pre-registration artifact — lock it before touching the LLM.
+The few-shot examples used in Condition 3 should also be anonymized to keep the prompt
+format consistent between training and evaluation.
 
-### Configuration → prompt mapping
+---
 
-Each row in the design matrix is one configuration. The coding runner iterates over
-configurations × country-years:
+## Stage 3: Coding
 
-```python
-for config_id, config in design_matrix.iterrows():
-    for country, year in country_year_pool:
-        persona_block     = build_persona_block(config)
-        calibration_block = build_calibration_block(config)
-        evidence          = retrieve_packet(country, year, query,
-                                            n_chunks=PACKET_LEVELS[config["packet"]])
-        prompt = assemble_prompt(
-            persona_block, calibration_block,
-            codebook_text, evidence
-        )
-        rating = call_llm(prompt)
-        save_output(config_id, country, year, rating)
-```
-
-### Prompt assembly
-
-See `prompts/panel-member-prompt-v1.md` for the full template. Components in order:
-
-1. **Persona block**: threshold tendency + reliability instruction (from config)
-2. **Calibration block**: synthetic vignette example if applicable (from config)
-3. **Democracy conception block**: framing sentence (from config)
-4. **Domestic/foreign framing**: (from config)
-5. **Coding instruction**: indicator name, codebook question, ordinal descriptions verbatim
-6. **Evidence block**: ChromaDB packet at the configured richness level
-7. **Output instruction**: integer 0–4 + one-sentence justification
-
-**No temporal context injection**: do not provide the previous year's V-Dem estimate.
-Within Stage 1, each call should be independent of prior year ratings to avoid anchoring
-effects that would confound the attribute estimates.
-
-### LLM API layer
-
-Same OpenAI-compatible abstraction as bridge-coder:
-
-```python
-LLM_CONFIG = {
-    "base_url": "https://api.anthropic.com/v1",
-    "model":    "claude-sonnet-4-6",
-    "api_key":  os.environ["ANTHROPIC_API_KEY"],
-}
-```
-
-Swap base URL and model name for Together.ai (Llama 3.3 70B) or Pegasus vLLM replication.
-
-### Output schema
+### Output schema (all conditions)
 
 ```json
 {
-  "config_id":    12,
-  "country":      "HTI",
-  "year":         2015,
-  "indicator":    "v2csreprss",
-  "model":        "claude-sonnet-4-6",
-  "threshold":    "strict",
-  "reliability":  "high",
-  "conception":   "liberal",
-  "domestic":     "yes",
-  "diligence":    "high",
-  "packet":       "full",
-  "source":       "state_dept",
-  "rating":       1,
+  "country":       "HTI",
+  "year":          2018,
+  "indicator":     "v2csreprss",
+  "model":         "claude-sonnet-4-6",
+  "model_key":     "claude-sonnet",
+  "condition":     "evidence",
+  "rating":        1,
   "justification": "...",
-  "human_panel_mean": 1.8,
-  "signed_deviation": -0.8,
-  "abs_deviation": 0.8
+  "raw_mean":      1.6,
+  "signed_dev":   -0.6,
+  "abs_dev":        0.6,
+  "sources":       ["state-dept", "freedom-house"],
+  "section_keys":  {"state-dept": ["2b", "5"], "freedom-house": ["E"]}
 }
 ```
 
-Store as JSONL. Human panel means are joined from `data/processed/vdem_panel_means.csv`
-(precomputed from v15 coder-level data).
+`condition` values: `"codebook"` | `"evidence"` | `"anonymized"` | `"finetuned"`
 
----
+### Condition 1 — Codebook-only
 
-## Stage 4: Analysis (Stage 1 results)
+Prompt: global comparative framing + codebook question text + response scale + output
+instruction. No source text. Identical prompt across all four models. Measures the
+latent calibration signal in pretraining data.
 
-### Script: `pipeline/analyze_stage1.R`
+Output path: `data/output/{model_key}_codebook_{indicator}_{year}.jsonl`
 
-```r
-library(tidyverse)
-library(fixest)  # or lm_robust from estimatr
+### Condition 2 — Evidence packets
 
-results <- read_jsonl("data/processed/stage1_ratings.jsonl")
+Prompt: global framing + codebook text + few-shot examples (one per ordinal level,
+globally distributed) + raw section text + output instruction. Identical to
+bridge-coder Stage 1 prompt. See `bridge-coder/docs/architecture.md` Stage 3.
 
-# Signed deviation model (directional attributes)
-signed_model <- feols(
-  signed_deviation ~ threshold + domestic + conception | country_year,
-  data    = results,
-  cluster = ~country_year
-)
+Output path: `data/output/{model_key}_evidence_{indicator}_{year}.jsonl`
 
-# Absolute deviation model (precision attributes)
-abs_model <- feols(
-  abs_deviation ~ reliability + diligence + packet | country_year,
-  data    = results,
-  cluster = ~country_year
-)
+### Condition 3 — Anonymized summaries
+
+Same structure as Condition 2 but with anonymized section text in place of raw section
+text. Few-shot examples are also anonymized (same format throughout). The only difference
+from Condition 2 is the input text.
+
+Output path: `data/output/{model_key}_anonymized_{indicator}_{year}.jsonl`
+
+### Condition 4 — Fine-tuning
+
+**Training data** (`pipeline/prepare_finetune_data.py`):
+```python
+{
+    "messages": [
+        {"role": "system", "content": GLOBAL_FRAMING},
+        {"role": "user",   "content": anonymized_section_text},
+        {"role": "assistant", "content": str(round(raw_panel_mean))}
+    ]
+}
 ```
 
-Country-year fixed effects are included at no power cost since the same N_cy pool is
-used across all 48 configurations (complete matrix design).
+Training set: 200–500 pairs per indicator from 2010–2015, held out of all evaluation
+pools. Anonymization is applied to training text so the fine-tuned model's inference
+distribution matches its training distribution — at test time, the same anonymized
+pipeline produces the input.
 
-**Preregistration**: the regression specification, directional predictions, and
-progression rule must be locked in `docs/preregistration.md` before running any LLM calls.
+**Fine-tuning** (`pipeline/finetune_llama.py`):
+- Base: `meta-llama/Llama-3.3-70B-Instruct`
+- Method: QLoRA (4-bit, rank 16, alpha 32)
+- Platform: GW A100 80GB (1 GPU, ~40GB at 4-bit + activations)
+- Batch: 4; gradient accumulation: 4 (effective 16); epochs: 3
+- Learning rate: 2e-4 with cosine decay
+- Estimated time: 2–4 hours per indicator
+
+At inference: anonymized section text only — no few-shot examples. Calibration is in
+the weights.
+
+Output path: `data/output/llama70b_finetuned_{indicator}_{year}.jsonl`
 
 ---
 
-## Stage 5: IRT Runner (Stages 2–3)
+## Stage 4: Calibration Check
 
-### Architecture
+`pipeline/calibration_check.py`
 
-Same three-script Stan chain as the bridge-coder repo. The data contract and Stan model
-(`quasilda4.stan`) are identical. The difference is in how AI coder rows are appended:
+Computes MAD from raw panel mean per condition × model × indicator. Reports:
+- MAD table: rows = condition × model combinations, columns = indicators
+- Signed deviation by democracy quintile (compression diagnostic)
+- Best condition × model for each indicator and overall
 
-- **Bridge-coder**: AI rows add a single globally-calibrated coder appearing in every
-  country's panel
-- **Panel-member**: AI rows add k persona-specified coders to selected thin panels,
-  replacing k removed human coders
+Identifies the best-performing combination to carry forward to Stage 5.
 
-### Sequential replacement script: `pipeline/irt/sequential_replacement.R`
+---
 
-```r
-# For each replacement step k = 1, 2, ..., K:
-#   1. Remove k human coders from the target panel
-#   2. Load AI ratings for the same country-years (from Stage 3 coding output)
-#   3. Append AI rows with synthetic coder IDs
-#   4. Build mm input and run Stan
-#   5. Record ||θ_aug_k − θ_full||
+## Stage 5: Replacement Experiment
 
-replacement_curve <- map_dfr(1:K, function(k) {
-  panel_k <- drop_k_coders(full_panel, k)
-  ai_rows  <- load_ai_ratings(country, years, best_config_id)
-  augmented <- bind_rows(panel_k, ai_rows)
-  theta_aug <- run_mm(augmented, variable)
-  tibble(k = k, divergence = norm(theta_aug - theta_full))
-})
+`pipeline/replacement_experiment.py`
+
+```python
+for cy in eval_pool:
+    full_mean = raw_panel_mean(cy)          # from v15 coder-level data
+    ai_ratings = best_condition_output[cy]  # list of AI ratings, one per model
+
+    for k in [1, 2, 3]:
+        divergences = []
+        for b in range(B):
+            removed = sample(human_coders[cy], k)
+            human_subset = [r for r in human_ratings[cy] if r.coder_id not in removed]
+            ai_subset = ai_ratings[:k]      # k models, one rating each
+            aug_mean = mean(human_subset + ai_subset)
+            divergences.append(abs(aug_mean - full_mean))
+        record(cy, k, divergences)
 ```
 
-### Persona matching for Stage 2
+For k > 1, AI ratings come from k distinct models (e.g., k=2: Claude + Llama 70B;
+k=3: Claude + Llama 405B + Llama 70B). The assignment rule is pre-registered before
+running.
 
-Use Stage 1 results to select the best-performing configuration (lowest absolute deviation,
-correct sign in signed deviation). Draw β_r and γ_{r,k} from V-Dem CurateND posteriors
-to match the AI persona profile to the profile of the human coder being replaced.
-
-CurateND posteriors: download from the V-Dem CurateND archive (linked in Pemstein et al.,
-WP21, 2025). Link to coder IDs via `coder_id` in the v15 coder-level dataset.
-
----
-
-## What to import from `initial-exploration`
-
-| Component | Source | Action |
-|---|---|---|
-| PDF extraction | `V-Dem-agentic-pipeline/extract_reports_for_graphrag.py` | Copy to `pipeline/ingest.py` |
-| Data loader | Magid-Branch `vdem_data_loader.py` | `git show origin/Magid-Branch:"V-Dem agentic pipeline/vdem_data_loader.py"` |
-| IRT sandbox | Magid-Branch `stage2_irt_sandbox.py` | Reference only; rebuild properly in R using Stan plan |
-| LangGraph pipeline | Magid-Branch `langgraph_coding_pipeline.py` | Defer — needed for Stage 3 multi-agent but not Stage 1 |
-| Stage 1 experimental design | Magid-Branch `stage1_experimental_design.py` | Do not import; implements ablation, not factorial |
-| Ablation runner | Magid-Branch `run_ablation_experiments.py` | Do not import; wrong design |
-| Stage 0 model comparison | Main branch `stage0_vdem_expert_assignment.py` | Do not import; wrong criterion |
+Output: divergence curve by k (mean ± 95% CI), stratified by democracy quintile.
 
 ---
 
@@ -347,25 +244,37 @@ WP21, 2025). Link to coder IDs via `coder_id` in the v15 coder-level dataset.
 
 ```
 panel-member/
+  config/
+    indicator_sections.yaml    # expanded to 12 indicators; confirm section mappings
   pipeline/
-    ingest.py                    # PDF → text (from existing pipeline)
-    build_chromadb_index.py      # Per-country ChromaDB index builder
-    retrieve.py                  # ChromaDB query + packet assembly
-    assemble_prompt.py           # Persona + calibration + codebook + evidence
-    code_country_year.py         # Single LLM call + output schema
-    run_stage1_experiment.py     # Full factorial loop with retry/backoff
-    analyze_stage1.R             # Regression analysis of Stage 1 results
-    generate_design_matrix.R     # AlgDesign fractional factorial matrix
-    irt/
-      build_mm_input.R
-      sequential_replacement.R
-      run_mm.R
-      eval_mm.R
-      quasilda4.stan              # Copied from V-Dem public repo
-    vdem_config.py               # Model config, paths, constants
-    vdem_data_loader.py          # From Magid-Branch
+    ingest.py                  # symlink → bridge-coder/pipeline/ingest.py
+    extract_sections.py        # symlink → bridge-coder/pipeline/extract_sections.py
+    anonymize_section.py       # new: LLM call to strip country identity
+    assemble_prompt.py         # condition-aware prompt assembly
+    code_country_year.py       # single LLM coding call + output schema
+    run_coding_batch.py        # batch runner for conditions 1–3
+    prepare_finetune_data.py   # generate anonymized training JSONL for condition 4
+    finetune_llama.py          # QLoRA training
+    run_finetuned_batch.py     # inference with fine-tuned weights
+    calibration_check.py       # MAD from raw panel mean
+    replacement_experiment.py  # panel mean divergence by k
+    vdem_config.py             # model configs, paths, constants
   data/
-    raw/                         # PDFs (gitignored)
-    processed/                   # Text, ChromaDB index, outputs (gitignored)
-    chromadb/                    # Vector store (gitignored)
+    raw/                          # source documents (gitignored)
+    processed-text/
+      state-dept/{year}/
+      freedom-house/{year}/
+      anonymized/{year}/{iso}/    # per-indicator anonymized text
+    processed/
+      cy_pool.csv                 # locked replacement experiment pool
+      training_set.csv            # fine-tuning pairs (held out)
+      panel_means.csv             # raw panel means from v15 coder-level data
+    output/                       # coded JSONL files (gitignored)
+  notes/
+    persona-prompting-design-archive.md
 ```
+
+**Shared files**: bridge-coder is the authoritative copy of source documents, ingest.py,
+extract_sections.py, and any years already downloaded. Symlink rather than copy where
+possible. The indicator_sections.yaml for panel-member is a superset of the bridge-coder
+version and should be kept in sync.

@@ -1,0 +1,415 @@
+# config/indicator_sections.yaml
+#
+# Per-indicator codebook text and source document section mappings for the panel-member
+# pipeline. Loaded by pipeline/assemble_prompt.py to fill the coding prompt template.
+#
+# Fields per indicator:
+#   description:        Short display name used as {INDICATOR_NAME} in the prompt.
+#   codebook_question:  Verbatim V-Dem codebook question text.
+#   clarification:      Verbatim clarification note from the codebook (null if none).
+#   categories:         List of 5 verbatim ordinal category descriptions (index 0–4).
+#   state-dept:         Section keys to extract from State Dept reports.
+#   freedom-house:      Section keys to extract from Freedom House reports.
+#
+# State Dept section keys: "N" for whole Section N; "Na" for subsection a of Section N.
+# Freedom House section keys: "A" through "G".
+#
+# State Dept structure (consistent across all countries and years):
+#   Section 1: Respect for the Integrity of the Person
+#     1a: Arbitrary/unlawful deprivation of life
+#     1b: Disappearance
+#     1c: Torture and cruel, inhuman, or degrading treatment
+#     1d: Arbitrary arrest or detention
+#     1e: Denial of fair public trial
+#     1f: Arbitrary interference with privacy
+#   Section 2: Respect for Civil Liberties
+#     2a: Freedom of expression, including for the press and internet
+#     2b: Freedoms of peaceful assembly and association
+#     2c: Freedom of religion
+#     2d: Freedom of movement
+#   Section 3: Freedom to Participate in the Political Process
+#   Section 4: Corruption and Lack of Transparency in Government
+#   Section 5: Governmental Attitude toward International and NGO Scrutiny
+#   Section 6: Discrimination, Societal Abuses, and Trafficking in Persons
+#   Section 7: Worker Rights (subsections 7a–7e)
+#
+# Freedom House structure:
+#   A: Electoral Process
+#   B: Political Pluralism and Participation
+#   C: Functioning of Government
+#   D: Freedom of Expression and Belief
+#   E: Associational and Organizational Rights
+#   F: Rule of Law
+#   G: Personal Autonomy and Individual Rights
+#
+# Section mappings derived from 02-indicator-source-map.html. Verify before running.
+#
+# TODO items are marked with "# TODO: verify". Do not run coding until all codebook
+# text is verified against the V-Dem codebook (vdemdata::codebook or PDF codebook).
+
+# ══════════════════════════════════════════════════════════════════════════════
+# HIGH OBSERVABILITY — discrete, named events; well-anchored in annual reports
+# ══════════════════════════════════════════════════════════════════════════════
+
+v2clkill:
+  description: "Freedom from political killings"
+  codebook_question: "Is there freedom from political killings?"
+  clarification: >-
+    Political killings are killings by the state or its agents without due process of
+    law for the purpose of eliminating political opponents. These killings are the result
+    of deliberate use of lethal force by the police, security forces, prison officials,
+    or other agents of the state (including paramilitary groups).
+  categories:
+    - >-
+      Not respected by public authorities. Political killings are practiced
+      systematically and they are typically incited and approved by the leaders of
+      government.
+    - >-
+      Weakly respected by public authorities. Political killings are practiced
+      frequently and top leaders of government are not actively working to prevent them.
+    - >-
+      Somewhat respected by public authorities. Political killings are practiced
+      occasionally but they are typically not incited and approved by top leaders of
+      government.
+    - >-
+      Mostly respected by public authorities. Political killings are practiced in a few
+      isolated cases but they are not incited or approved by top leaders of government.
+    - "Fully respected by public authorities. Political killings are non-existent."
+  state-dept: ["1a", "1b"]
+  freedom-house: ["F"]
+
+v2cltort:
+  # TODO: verify exact codebook text against V-Dem codebook
+  description: "Freedom from torture"
+  codebook_question: "Is there freedom from torture?"
+  clarification: >-
+    Torture is here understood as the deliberate infliction of severe physical or mental
+    pain or suffering by state agents or persons acting under state authority, for
+    purposes of obtaining information, punishment, intimidation, discrimination, or
+    coercion. Does not include isolated acts by rogue officials where top leaders actively
+    investigate and punish perpetrators.
+  categories:
+    - >-
+      Not respected by public authorities. Torture is practiced systematically and is
+      typically incited and approved by the leaders of government.
+    - >-
+      Weakly respected by public authorities. Torture is practiced frequently and top
+      leaders of government are not actively working to prevent it.
+    - >-
+      Somewhat respected by public authorities. Torture is practiced occasionally but
+      is typically not incited and approved by top leaders of government.
+    - >-
+      Mostly respected by public authorities. Torture is practiced in a few isolated
+      cases but is not incited or approved by top leaders of government.
+    - "Fully respected by public authorities. Torture is non-existent."
+  state-dept: ["1c"]
+  freedom-house: ["F"]
+
+v2mecenefm:
+  description: "Government censorship effort — media"
+  codebook_question: >-
+    Does the government directly or indirectly attempt to censor the print or broadcast
+    media?
+  clarification: >-
+    Indirect forms of censorship might include politically motivated awarding of
+    broadcast frequencies, withdrawal of financial support, influence over printing
+    facilities and distribution networks, selected distribution of advertising,
+    overstated consideration requirements, prohibitive tariffs, and bribery. We are not
+    concerned with censorship of non-political topics such as child pornography,
+    statements offensive to a particular religion, or defamatory speech unless this sort
+    of censorship is used as a pretext for censoring political speech.
+  categories:
+    - "Attempts to censor are direct and routine."
+    - "Attempts to censor are indirect but nevertheless routine."
+    - "Attempts to censor are direct but limited to especially sensitive issues."
+    - "Attempts to censor are indirect and limited to especially sensitive issues."
+    - >-
+      The government rarely attempts to censor major media in any way, and when such
+      exceptional attempts are discovered, the responsible officials are usually
+      punished.
+  state-dept: ["2a"]
+  freedom-house: ["D"]
+
+v2csreprss:
+  description: "Civil society organization repression"
+  codebook_question: >-
+    Does the government attempt to repress civil society organizations (CSOs)?
+  clarification: null
+  categories:
+    - >-
+      Severely. The government violently and actively pursues all real and even some
+      imagined members of CSOs. They seek not only to deter the activity of such groups
+      but to effectively liquidate them. Examples include Stalinist Russia, Nazi Germany,
+      and Maoist China.
+    - >-
+      Substantially. In addition to the kinds of harassment outlined in responses 2 and
+      3 below, the government also arrests, tries, and imprisons leaders of and
+      participants in oppositional CSOs who have acted lawfully. Other sanctions include
+      disruption of public gatherings and violent sanctions of activists (beatings,
+      threats to families, destruction of valuable property). Examples include Mugabe's
+      Zimbabwe, Poland under Martial Law, Serbia under Milosevic.
+    - >-
+      Moderately. In addition to material sanctions outlined in response 3 below, the
+      government also engages in minor legal harassment (detentions, short-term
+      incarceration) to dissuade CSOs from acting or expressing themselves. The
+      government may also restrict the scope of their activities through measures that
+      restrict association of civil society organizations with each other or political
+      parties, bar civil society organizations from taking certain actions, or block
+      international contacts. Examples include post-Martial Law Poland, Brazil in the
+      early 1980s, the late Franco period in Spain.
+    - >-
+      Weakly. The government uses material sanctions (fines, firings, denial of social
+      services) to deter oppositional CSOs from acting or expressing themselves. They
+      may also use burdensome registration or incorporation procedures to slow the
+      formation of new civil society organizations and sidetrack them from engagement.
+      The government may also organize Government Movements or NGOs (GONGOs) to crowd
+      out independent organizations. Examples include Singapore or Putin's Russia.
+    - >-
+      No. Civil society organizations are free to organize, associate, strike, express
+      themselves, and to criticize the government without fear of government sanctions
+      or harassment.
+  state-dept: ["2b", "5"]
+  freedom-house: ["E"]
+
+v2jupoatck:
+  # TODO: verify exact codebook text against V-Dem codebook
+  description: "Government attacks on the judiciary"
+  codebook_question: "How often does the government attack the judiciary?"
+  clarification: >-
+    Attacks on the judiciary include: removing judges or court members, restructuring
+    courts to change their composition, packing courts with loyalists, cutting judicial
+    budgets for political rather than fiscal reasons, publicly denouncing or threatening
+    judges for their decisions, or passing constitutional or legislative changes that
+    undermine judicial independence or powers. The question concerns intentional actions
+    to reduce judicial autonomy, not procedural reforms undertaken in good faith.
+  categories:
+    - >-
+      Attacks are direct and routine. The government frequently removes, threatens, or
+      restructures the judiciary to ensure favorable decisions. Judicial independence is
+      effectively non-existent.
+    - >-
+      Attacks are fairly common. The government regularly undermines the judiciary but
+      does not fully control it; some judicial resistance occurs.
+    - >-
+      Attacks occur but are limited to especially sensitive issues or occasional
+      confrontations. The judiciary retains meaningful independence in most areas.
+    - >-
+      Attacks are rare and largely unsuccessful. The government may occasionally
+      pressure or criticize the judiciary but does not systematically undermine it.
+    - >-
+      No attacks. The government consistently respects judicial independence and does
+      not attempt to undermine it.
+  state-dept: ["1e"]
+  freedom-house: ["F"]
+
+# ══════════════════════════════════════════════════════════════════════════════
+# MEDIUM OBSERVABILITY — requires synthesis across passages; section coverage variable
+# ══════════════════════════════════════════════════════════════════════════════
+
+v2mecenefi:
+  # TODO: verify exact codebook text — v2mecenefi is Internet censorship, not general
+  # informal censorship. Confirm question wording in V-Dem codebook.
+  description: "Government censorship effort — Internet"
+  codebook_question: >-
+    Does the government attempt to censor Internet-based media?
+  clarification: >-
+    Internet-based media includes online news outlets, social media platforms, blogs,
+    messaging applications, and other digital communication channels. Censorship includes
+    website blocking and filtering, throttling of platforms, legally or extra-legally
+    pressuring platforms to remove content, and criminalizing online speech. We are not
+    concerned with censorship of non-political content unless it is used as a pretext for
+    censoring political speech.
+  categories:
+    - "Attempts to censor are direct and routine."
+    - "Attempts to censor are indirect but nevertheless routine."
+    - "Attempts to censor are direct but limited to especially sensitive issues."
+    - "Attempts to censor are indirect and limited to especially sensitive issues."
+    - >-
+      The government rarely attempts to censor major internet media in any way, and when
+      such exceptional attempts are discovered, the responsible officials are usually
+      punished.
+  state-dept: ["2a"]
+  freedom-house: ["D"]
+
+v2juhcind:
+  # Note: bridge-coder/config uses v2juncind for this same indicator description.
+  # V-Dem v15 uses v2juhcind. Verify the correct code before running.
+  description: "High court independence"
+  codebook_question: >-
+    When the high court in the judicial system is ruling in cases that are salient to
+    the government, how often would you say that it makes decisions that merely reflect
+    government wishes regardless of its sincere view of the legal record?
+  clarification: >-
+    We are seeking to identify autonomous judicial decision-making and its absence.
+    Decisions certainly can reflect government wishes without "merely reflecting" those
+    wishes, i.e. a court can be autonomous when its decisions support the government's
+    position. This is because a court can be fairly persuaded that the government's
+    position is meritorious. By "merely reflect the wishes of the government" we mean
+    that the court's own view of the record, its sincere evaluation of the record, is
+    irrelevant to the outcome. The court simply adopts the government's position
+    regardless of its sincere view of the record.
+  categories:
+    - "Always."
+    - "Usually."
+    - "About half of the time."
+    - "Seldom."
+    - "Never."
+  state-dept: ["1e"]
+  freedom-house: ["F"]
+
+v2clacfree:
+  # TODO: verify exact codebook text against V-Dem codebook
+  description: "Academic and cultural expression freedom"
+  codebook_question: >-
+    Is there academic freedom and freedom of cultural expression?
+  clarification: >-
+    Academic freedom refers to the freedom of scholars and researchers to pursue their
+    work, publish results, and engage in public debate without government interference or
+    the threat of retaliation. Cultural expression includes arts, literature, music, and
+    public discourse. This question asks about de facto conditions — formal guarantees that
+    are not respected in practice count as restrictions.
+  categories:
+    - >-
+      Not at all free. Scholars and artists are severely restricted; academic and
+      cultural expression is controlled by the state. Scholars or artists face
+      imprisonment, violence, or forced exile for their work.
+    - >-
+      Very limited. Only state-approved academic and cultural expression is permitted;
+      widespread self-censorship exists and politically sensitive work routinely leads to
+      professional sanctions or harassment.
+    - >-
+      Somewhat free. Academic and cultural expression is restricted for politically
+      sensitive topics; scholars and artists face professional consequences but not
+      typically imprisonment for their work.
+    - >-
+      Mostly free. Minor restrictions or occasional harassment occur, but the general
+      environment allows free expression in most academic and cultural domains.
+    - >-
+      Completely free. Scholars and artists pursue their work and express themselves
+      without government restriction or interference.
+  state-dept: ["2b"]
+  freedom-house: ["D"]
+
+v2clslavef:
+  # TODO: verify exact codebook text against V-Dem codebook
+  description: "Freedom from forced labor"
+  codebook_question: "Is there freedom from forced labor?"
+  clarification: >-
+    Forced or compulsory labor refers to work or services extracted from a person under
+    the threat of violence or other penalty and for which that person has not offered
+    himself or herself voluntarily. Mandatory military service and normal civic
+    obligations are excluded. Prison labor under conditions consistent with international
+    standards is excluded.
+  categories:
+    - >-
+      Not respected. Forced labor is practiced systematically and is incited or approved
+      by the leaders of government.
+    - >-
+      Weakly respected. Forced labor is practiced frequently and top leaders of
+      government are not actively working to prevent it.
+    - >-
+      Somewhat respected. Forced labor is practiced occasionally but is typically not
+      incited or approved by top leaders of government.
+    - >-
+      Mostly respected. Isolated cases of forced labor occur but are not incited or
+      approved by top leaders of government.
+    - "Fully respected. Forced labor is non-existent."
+  state-dept: ["7b"]
+  freedom-house: ["G"]
+
+v2psoppaut:
+  # TODO: verify exact codebook text against V-Dem codebook
+  description: "Opposition parties autonomy"
+  codebook_question: >-
+    Are there significant opposition parties that are able to operate?
+  clarification: >-
+    This question concerns whether opposition parties can organize, campaign, and
+    express themselves without excessive government interference. Interference includes
+    harassment of leaders and members, arbitrary legal restrictions, denial of media
+    access, manipulation of campaign finance rules, and detention of opposition figures.
+    Focus on the de facto ability of the most significant opposition parties to function
+    as political organizations.
+  categories:
+    - >-
+      No. There are no significant opposition parties, or opposition parties exist only
+      in name and are fully controlled or co-opted by the ruling party.
+    - >-
+      Very limited autonomy. Nominally legal opposition parties exist but face severe
+      and routine government interference; opposition activity is dangerous for
+      participants.
+    - >-
+      Moderate autonomy. Opposition parties exist and can operate but face significant
+      government interference, including periodic harassment, legal obstacles, or unequal
+      access to media and campaign finance.
+    - >-
+      Mostly autonomous. Opposition parties operate fairly freely with only occasional
+      and minor government interference.
+    - >-
+      Fully autonomous. Opposition parties operate freely without government
+      interference.
+  state-dept: ["3"]
+  freedom-house: ["B"]
+
+v2excrptps:
+  # TODO: verify exact codebook text against V-Dem codebook
+  description: "Public sector corrupt exchanges"
+  codebook_question: >-
+    Is the public sector free from corrupt exchanges?
+  clarification: >-
+    This question concerns the extent to which public employees (including bureaucrats
+    and managers in state-owned enterprises) engage in corrupt exchanges — accepting or
+    demanding bribes, kickbacks, or other payments in exchange for government services,
+    contracts, or decisions. This is distinct from embezzlement (theft of public funds)
+    and grand corruption (state capture). Focus on routine transactional corruption in
+    public-sector service delivery and procurement.
+  categories:
+    - >-
+      Not at all free. Corrupt exchanges are pervasive throughout the public sector and
+      are routinely practiced and facilitated at all levels of government.
+    - >-
+      Rarely free. Corrupt exchanges are common; officials at high levels facilitate or
+      tolerate them and face few consequences.
+    - >-
+      Somewhat free. Corrupt exchanges exist but are less common than in lower
+      categories; some enforcement occurs though selectively.
+    - >-
+      Mostly free. Corrupt exchanges are rare; officials who engage in them typically
+      face consequences.
+    - >-
+      Completely free. The public sector is free from corrupt exchanges.
+  state-dept: ["4"]
+  freedom-house: ["C"]
+
+# ══════════════════════════════════════════════════════════════════════════════
+# LOW OBSERVABILITY — diffuse evaluative judgments; no single passage anchors the rating
+# ══════════════════════════════════════════════════════════════════════════════
+
+v2pepwrsoc:
+  # TODO: verify exact codebook text against V-Dem codebook
+  # Note: this indicator has no State Dept section mapping — FH only.
+  description: "Political power distributed by social group"
+  codebook_question: >-
+    Is political power distributed according to socioeconomic position?
+  clarification: >-
+    This question asks whether political power is roughly equally distributed across
+    social groups defined by ethnicity, religion, race, gender, or other ascriptive
+    characteristics, or whether some groups are systematically excluded from political
+    power. Focus on de facto power rather than formal representation. A group that holds
+    formal representation but wields no real influence should be rated as excluded.
+  categories:
+    - >-
+      Political power is monopolized by one social group. All other groups are
+      effectively excluded from meaningful political power.
+    - >-
+      A dominant group holds substantially more political power than all others.
+      Other groups have minimal influence over political decisions.
+    - >-
+      A few social groups share political power but one or more significant groups
+      are substantially excluded.
+    - >-
+      Most social groups have some degree of political power but one or more groups
+      are somewhat marginalized.
+    - >-
+      Political power is roughly equally distributed across all main social groups in
+      society.
+  freedom-house: ["B"]

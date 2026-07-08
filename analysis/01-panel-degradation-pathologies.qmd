@@ -1,0 +1,843 @@
+---
+title: "Panel Degradation Pathologies: Volatility, Level Bias, and Composition Effects"
+format:
+  html:
+    toc: true
+    toc-depth: 3
+    embed-resources: true
+    code-fold: true
+execute:
+  warning: false
+  message: false
+---
+
+Four analyses examine what V-Dem panel degradation does to measurement quality,
+motivating the panel-member paper's augmentation experiment. Analyses 1–3 test for
+bias in published point estimates using volatility, TWFE levels, and first differences
+respectively; they find small, regime-conditional effects but no systematic crisis in
+the raw scores. Analysis 4 is the primary result: using V-Dem's own published posterior
+standard deviations, it shows that panel size directly and robustly predicts IRT
+uncertainty, and that post-2013 attrition has raised average posterior SD by
+approximately 12% relative to the 2008–2010 peak. The case for augmentation rests on
+uncertainty, not bias.
+
+Indicator selection follows bridge-coder QMD 07: all 0–4 ordinal indicators in 2020 with
+at least 50 ratings, direction-coded from their correlation with v2x_polyarchy, with
+ambiguous indicators (|r| ≤ 0.10) dropped. The period is 1990–2024. Starting at 1990
+avoids the retrospective-coding artefact: pre-1990 coders assigned values to historical
+years all at once, so year-over-year "changes" reflect a single expert's interpolation
+rather than responses to real conditions.
+
+---
+
+## 1. Setup
+
+```{r setup}
+library(tidyverse)
+library(fixest)
+library(modelsummary)
+library(gt)
+library(vdemdata)
+library(here)
+
+anchor_vars <- c(
+  "v2zzdemswe", "v2zzdemus",  "v2zzdemru",  "v2zzdemnk",
+  "v2zzdemuk",  "v2zzdemin",  "v2zzdemcr",  "v2zzdemcu",
+  "v2zzdemni",  "v2zzdemsar", "v2zzdemsaf", "v2zzdemswz", "v2zzdemvz"
+)
+
+global_anchor_means <- c(
+  v2zzdemswe = 91.07, v2zzdemus  = 78.74, v2zzdemru  = 26.59,
+  v2zzdemnk  =  6.92, v2zzdemuk  = 84.38, v2zzdemin  = 63.78,
+  v2zzdemcr  = 69.11, v2zzdemcu  = 24.38, v2zzdemni  = 42.75,
+  v2zzdemsar = 14.14, v2zzdemsaf = 67.36, v2zzdemswz = 90.39,
+  v2zzdemvz  = 27.78
+)
+
+region_labels <- c(
+  "1" = "E. Europe & C. Asia",
+  "2" = "Latin America",
+  "3" = "MENA",
+  "4" = "Sub-Saharan Africa",
+  "5" = "W. Europe & N. America",
+  "6" = "Asia & Pacific"
+)
+
+coder_path <- file.path(
+  here::here(".."),
+  "initial-exploration/V-Dem-Coder-Level-v15_rds/Coder-Level-Dataset-v15.rds"
+)
+```
+
+---
+
+## 2. Data loading and preparation
+
+```{r load-full}
+#| cache: true
+#| cache.lazy: false
+d <- readRDS(coder_path)
+d$year <- as.integer(format(as.Date(d[["historical_date"]], origin = "1970-01-01"), "%Y"))
+
+cat("Full dataset rows:", nrow(d), "\n")
+cat("Year range:", min(d$year), "–", max(d$year), "\n")
+```
+
+```{r coder-mad}
+#| cache: true
+#| cache.lazy: false
+
+# Anchor ratings and coder-level MAD — computed from full dataset so that
+# coders who are active only in early years still get an anchor MAD estimate
+coder_anchors_raw <- d |>
+  group_by(coder_id) |>
+  summarise(across(all_of(anchor_vars), ~ first(na.omit(.))), .groups = "drop")
+
+coder_mad <- coder_anchors_raw |>
+  rowwise() |>
+  mutate(
+    n_anchors  = sum(!is.na(c_across(all_of(anchor_vars)))),
+    anchor_mad = mean(abs(c_across(all_of(anchor_vars)) - global_anchor_means), na.rm = TRUE)
+  ) |>
+  ungroup() |>
+  filter(n_anchors >= 5) |>
+  select(coder_id, anchor_mad)
+
+cat("Coders with anchor MAD (≥ 5 anchors):", nrow(coder_mad), "\n")
+```
+
+```{r indicator-selection}
+#| cache: true
+#| cache.lazy: false
+
+# Direction-code from the 2020 cross-section — consistent with bridge-coder QMD 07
+d2020 <- d[d$year == 2020, ]
+
+vdem_2020 <- vdem |>
+  filter(year == 2020) |>
+  select(country_text_id, v2x_polyarchy)
+
+v2_cols <- grep("^v2[a-z]", names(d2020), value = TRUE)
+v2_cols <- v2_cols[!grepl(
+  "_conf$|_codelow|_codehigh|_mean|_nr|_ord|_osp|_rec|_sd|_vote|_ccp|casoe|3C|4C|5C|6C|7C|8C",
+  v2_cols
+)]
+v2_cols <- v2_cols[sapply(v2_cols, \(col) is.numeric(d2020[[col]]))]
+
+full_scale_cols <- Filter(function(col) {
+  x <- na.omit(d2020[[col]])
+  length(x) >= 50 &&
+    all(x == floor(x)) &&
+    max(x) == 4 &&
+    min(x) <= 1 &&
+    length(unique(x)) >= 4
+}, v2_cols)
+
+cat("Candidate 0–4 indicators:", length(full_scale_cols), "\n")
+
+direction_df <- lapply(full_scale_cols, function(col) {
+  means <- d2020 |>
+    group_by(country_text_id) |>
+    summarise(m = mean(.data[[col]], na.rm = TRUE), .groups = "drop")
+  joined <- left_join(means, vdem_2020, by = "country_text_id") |>
+    filter(!is.na(v2x_polyarchy), !is.na(m))
+  if (nrow(joined) < 10) return(NULL)
+  data.frame(
+    indicator = col,
+    r = cor(joined$m, joined$v2x_polyarchy, use = "complete.obs"),
+    n = nrow(joined)
+  )
+}) |> Filter(Negate(is.null), x = _) |> bind_rows()
+
+indicators_keep     <- filter(direction_df, r >  0.10) |> pull(indicator)
+indicators_flip     <- filter(direction_df, r < -0.10) |> pull(indicator)
+working_indicators  <- c(indicators_keep, indicators_flip)
+
+cat("Keep (positive direction):", length(indicators_keep), "\n")
+cat("Flip (negative direction):", length(indicators_flip), "\n")
+cat("Working set:", length(working_indicators), "\n")
+
+rm(d2020, v2_cols, full_scale_cols, direction_df)
+```
+
+```{r bridge-coders}
+#| cache: true
+#| cache.lazy: false
+
+# Bridge coder status: year-specific. A coder is a bridge coder in year t if they
+# provided at least one rating on any working indicator for more than one country
+# in that year. Uses a rowSums check on the wide data to avoid a full pivot.
+bridge_by_year <- d |>
+  filter(year >= 1990, year <= 2024) |>
+  mutate(has_rating = rowSums(!is.na(across(any_of(working_indicators)))) > 0) |>
+  filter(has_rating) |>
+  group_by(coder_id, year) |>
+  summarise(n_countries = n_distinct(country_text_id), .groups = "drop") |>
+  mutate(is_bridge = n_countries > 1) |>
+  select(coder_id, year, is_bridge)
+
+cat("Coder-year rows with bridge status:", nrow(bridge_by_year), "\n")
+cat("Bridge coder-years:",
+    sum(bridge_by_year$is_bridge), "/", nrow(bridge_by_year), "\n")
+```
+
+```{r panel-metrics}
+#| cache: true
+#| cache.lazy: false
+
+# Long-format ratings: 1990–2024, working indicators only, direction-corrected
+d_long <- d |>
+  filter(year >= 1990, year <= 2024) |>
+  select(coder_id, country_text_id, year, all_of(working_indicators)) |>
+  pivot_longer(all_of(working_indicators),
+               names_to = "indicator", values_to = "rating") |>
+  filter(!is.na(rating)) |>
+  mutate(
+    rating = if_else(indicator %in% indicators_flip, 4 - rating, rating)
+  )
+
+rm(d)
+
+# Aggregate to country × indicator × year with composition metrics
+panel_metrics <- d_long |>
+  left_join(coder_mad,     by = "coder_id") |>
+  left_join(bridge_by_year, by = c("coder_id", "year")) |>
+  mutate(is_bridge = replace_na(is_bridge, FALSE)) |>
+  group_by(country_text_id, indicator, year) |>
+  summarise(
+    raw_mean        = mean(rating, na.rm = TRUE),
+    n_coders        = n_distinct(coder_id),
+    bridge_frac     = mean(is_bridge),
+    mean_anchor_mad = mean(anchor_mad, na.rm = TRUE),
+    n_with_mad      = sum(!is.na(anchor_mad)),
+    .groups         = "drop"
+  )
+
+rm(d_long, bridge_by_year)
+
+cat("Panel metrics rows:", nrow(panel_metrics), "\n")
+```
+
+```{r country-covariates}
+#| cache: true
+
+vdem_cov <- vdem |>
+  filter(year >= 1990, year <= 2024) |>
+  select(country_text_id, year, v2x_polyarchy, v2x_regime, e_regionpol_6C)
+
+poly_global_mean <- mean(vdem_cov$v2x_polyarchy, na.rm = TRUE)
+
+country_summary <- vdem_cov |>
+  group_by(country_text_id) |>
+  summarise(
+    mean_polyarchy_c = mean(v2x_polyarchy, na.rm = TRUE) - poly_global_mean,
+    region_modal     = as.integer(names(sort(table(e_regionpol_6C), decreasing = TRUE)[1])),
+    .groups          = "drop"
+  )
+
+panel_full <- panel_metrics |>
+  left_join(vdem_cov, by = c("country_text_id", "year")) |>
+  left_join(country_summary, by = "country_text_id") |>
+  filter(!is.na(v2x_polyarchy)) |>
+  mutate(
+    post2013    = as.integer(year > 2013),
+    poly_c      = v2x_polyarchy - poly_global_mean,
+    region      = factor(e_regionpol_6C, levels = 1:6, labels = region_labels),
+    region_modal = factor(region_modal, levels = 1:6, labels = region_labels)
+  )
+
+cat("Analysis dataset rows:", nrow(panel_full), "\n")
+cat("Countries:", n_distinct(panel_full$country_text_id), "\n")
+cat("Indicators:", n_distinct(panel_full$indicator), "\n")
+cat("Years:", range(panel_full$year), "\n")
+```
+
+---
+
+## 3. Context: Panel size by year and regime type
+
+Before the regressions, two descriptive figures establish the structural problem.
+
+```{r context-pyramid, fig.width = 9, fig.height = 4.5}
+panel_full |>
+  group_by(year) |>
+  summarise(
+    mean_n   = mean(n_coders),
+    median_n = median(n_coders),
+    .groups  = "drop"
+  ) |>
+  ggplot(aes(x = year)) +
+  geom_line(aes(y = mean_n),   colour = "steelblue", linewidth = 1,   linetype = "solid") +
+  geom_line(aes(y = median_n), colour = "tomato",    linewidth = 0.8, linetype = "dashed") +
+  geom_vline(xintercept = 2005, linetype = "dotted", colour = "grey40") +
+  geom_vline(xintercept = 2013, linetype = "dotted", colour = "grey40") +
+  annotate("text", x = 2005, y = Inf, label = "2005\n(post-2013 recruit floor)",
+           hjust = -0.1, vjust = 1.5, size = 3, colour = "grey40") +
+  annotate("text", x = 2013, y = Inf, label = "2013\n(attrition begins)",
+           hjust = -0.1, vjust = 1.5, size = 3, colour = "grey40") +
+  labs(
+    title    = "Mean panel size by year, pooled across all country-indicator pairs (1990–2024)",
+    subtitle = "Blue = mean, red dashed = median. Pooled across all working indicators.",
+    x = "Year", y = "Coders per country-year"
+  ) +
+  theme_minimal(base_size = 12)
+```
+
+```{r context-regime, fig.width = 8, fig.height = 4.5}
+panel_full |>
+  filter(!is.na(v2x_regime)) |>
+  mutate(
+    regime_label = factor(v2x_regime, 0:3,
+                          labels = c("Closed\nautocracy", "Electoral\nautocracy",
+                                     "Electoral\ndemocracy", "Liberal\ndemocracy"))
+  ) |>
+  group_by(year, regime_label) |>
+  summarise(mean_n = mean(n_coders), .groups = "drop") |>
+  ggplot(aes(x = year, y = mean_n, colour = regime_label)) +
+  geom_line(linewidth = 0.8) +
+  geom_vline(xintercept = 2013, linetype = "dotted", colour = "grey40") +
+  scale_colour_brewer(palette = "Set1", name = NULL) +
+  labs(
+    title    = "Mean panel size by year and regime type (1990–2024)",
+    subtitle = "Autocracies have persistently thinner panels; all regime types show post-2013 attrition.",
+    x = "Year", y = "Mean coders per country-year"
+  ) +
+  theme_minimal(base_size = 12) +
+  theme(legend.position = "bottom")
+```
+
+---
+
+## 4. Analysis 1: Score Volatility
+
+Country-indicator pairs with chronically thin panels produce more variable scores over
+time. This is the most direct illustration of measurement unreliability: even if a thin
+panel is unbiased on average, its scores jump around more from year to year as a function
+of small-sample noise rather than real political change.
+
+**Design**: one row per country × indicator. Outcome = SD of the annual raw panel mean
+across 1990–2024 (minimum 5 years required). Indicator FEs absorb indicator-specific
+baseline variance; region FEs absorb regional patterns in political volatility.
+M3 adds an interaction with the country's mean polyarchy (time-invariant, not absorbed
+by country FEs in a cross-sectional model) to test whether the volatility effect is
+concentrated in autocracies. M4 splits the panel-size predictor pre/post 2013 to ask
+whether the attrition era specifically drives the result.
+
+```{r vol-data}
+#| cache: true
+
+volatility_data <- panel_full |>
+  group_by(country_text_id, indicator) |>
+  summarise(
+    sd_raw_mean      = sd(raw_mean, na.rm = TRUE),
+    mean_n_coders    = mean(n_coders, na.rm = TRUE),
+    mean_n_pre2013   = mean(n_coders[year <= 2013], na.rm = TRUE),
+    mean_n_post2013  = mean(n_coders[year >  2013], na.rm = TRUE),
+    mean_polyarchy_c = first(mean_polyarchy_c),
+    region_modal     = first(region_modal),
+    n_years          = n_distinct(year),
+    .groups          = "drop"
+  ) |>
+  filter(n_years >= 5, !is.na(sd_raw_mean))
+
+cat("Country-indicator pairs:", nrow(volatility_data), "\n")
+cat("Median years per pair:", median(volatility_data$n_years), "\n")
+```
+
+```{r vol-regressions}
+#| cache: true
+
+m1_vol <- feols(sd_raw_mean ~ mean_n_coders,
+                data = volatility_data, cluster = ~country_text_id)
+
+m2_vol <- feols(sd_raw_mean ~ mean_n_coders + n_years | indicator + region_modal,
+                data = volatility_data, cluster = ~country_text_id)
+
+m3_vol <- feols(sd_raw_mean ~ mean_n_coders * mean_polyarchy_c + n_years |
+                  indicator + region_modal,
+                data = volatility_data, cluster = ~country_text_id)
+
+m4_vol <- feols(sd_raw_mean ~ mean_n_pre2013 + mean_n_post2013 + n_years |
+                  indicator + region_modal,
+                data = volatility_data, cluster = ~country_text_id)
+```
+
+```{r vol-table}
+coef_map_vol <- c(
+  "mean_n_coders"              = "Mean panel size",
+  "mean_n_pre2013"             = "Mean panel size (1990–2013)",
+  "mean_n_post2013"            = "Mean panel size (2014–2024)",
+  "mean_polyarchy_c"           = "Mean polyarchy (centered)",
+  "mean_n_coders:mean_polyarchy_c" = "Panel size × Mean polyarchy",
+  "n_years"                    = "Years of coverage"
+)
+
+modelsummary(
+  list(M1 = m1_vol, M2 = m2_vol, M3 = m3_vol, M4 = m4_vol),
+  coef_map  = coef_map_vol,
+  statistic = "({std.error})",
+  stars     = c("*" = 0.05, "**" = 0.01, "***" = 0.001),
+  gof_map   = list(
+    list(raw = "nobs",      clean = "N",  fmt = 0),
+    list(raw = "r.squared", clean = "R²", fmt = 3)
+  ),
+  notes  = "OLS. M2–M4 absorb indicator and region FEs. SEs clustered by country.",
+  title  = "Score volatility (SD of annual raw panel mean, 1990–2024) ~ panel size",
+  output = "gt"
+)
+```
+
+```{r vol-scatter, fig.width = 9, fig.height = 5}
+volatility_data |>
+  mutate(
+    regime_group = case_when(
+      mean_polyarchy_c < -0.15 ~ "Autocracy",
+      mean_polyarchy_c <  0.15 ~ "Hybrid",
+      TRUE                     ~ "Democracy"
+    ),
+    regime_group = factor(regime_group, levels = c("Autocracy", "Hybrid", "Democracy"))
+  ) |>
+  ggplot(aes(x = mean_n_coders, y = sd_raw_mean, colour = regime_group)) +
+  geom_point(alpha = 0.15, size = 0.7) +
+  geom_smooth(method = "lm", se = TRUE, linewidth = 0.9) +
+  scale_colour_manual(
+    values = c(Autocracy = "firebrick", Hybrid = "goldenrod", Democracy = "steelblue"),
+    name   = NULL
+  ) +
+  labs(
+    x        = "Mean panel size (distinct coders per year, 1990–2024)",
+    y        = "SD of annual raw panel mean",
+    title    = "Larger panels produce more stable scores",
+    subtitle = "Each point = one country × indicator. Effect strongest in autocratic contexts."
+  ) +
+  theme_minimal(base_size = 12) +
+  theme(legend.position = "bottom")
+```
+
+---
+
+## 5. Analysis 2: Level Bias (TWFE)
+
+If thin panels produce biased scores, the mechanism is regional reference frame
+compression: panels dominated by coders from authoritarian contexts inflate raw means.
+This produces a systematic level shift — thin-panel autocracies score higher than
+same-level peers — distinct from the variance increase in Analysis 1.
+
+**Design**: standard TWFE, one row per country × indicator × year. Country FEs absorb
+time-invariant country characteristics. Year FEs absorb global annual shocks (real
+democratic backsliding, V-Dem methodology changes). Indicator FEs absorb
+indicator-level baselines. Identification comes from within-country variation in panel
+size over time — primarily the post-2013 attrition.
+
+`mean_polyarchy_c` is time-invariant (country mean over 1990–2024), so its main effect
+is absorbed by the country FE; only its interaction with `n_coders` is estimated. This
+interaction tests whether the within-country panel-size effect depends on a country's
+typical democracy level. The `n_coders:post2013` interaction tests whether the panel-size
+effect strengthened after attrition began, without dropping year FEs (the interaction
+varies cross-sectionally within years and is not collinear with year FEs).
+
+```{r lev-regressions}
+#| cache: true
+
+m1_lev <- feols(
+  raw_mean ~ n_coders | country_text_id + indicator + year,
+  data = panel_full, cluster = ~country_text_id
+)
+
+m2_lev <- feols(
+  raw_mean ~ n_coders + n_coders:mean_polyarchy_c | country_text_id + indicator + year,
+  data = panel_full, cluster = ~country_text_id
+)
+
+m3_lev <- feols(
+  raw_mean ~ n_coders + n_coders:post2013 | country_text_id + indicator + year,
+  data = panel_full, cluster = ~country_text_id
+)
+
+m4_lev <- feols(
+  raw_mean ~ n_coders + n_coders:mean_polyarchy_c + n_coders:post2013 |
+    country_text_id + indicator + year,
+  data = panel_full, cluster = ~country_text_id
+)
+```
+
+```{r lev-table}
+coef_map_lev <- c(
+  "n_coders"                = "Panel size",
+  "n_coders:mean_polyarchy_c" = "Panel size × Mean polyarchy",
+  "n_coders:post2013"       = "Panel size × Post-2013"
+)
+
+modelsummary(
+  list(M1 = m1_lev, M2 = m2_lev, M3 = m3_lev, M4 = m4_lev),
+  coef_map  = coef_map_lev,
+  statistic = "({std.error})",
+  stars     = c("*" = 0.05, "**" = 0.01, "***" = 0.001),
+  gof_map   = list(
+    list(raw = "nobs",       clean = "N",        fmt = 0),
+    list(raw = "r.squared",  clean = "R²",        fmt = 3),
+    list(raw = "r2.within",  clean = "Within R²", fmt = 3)
+  ),
+  notes  = "TWFE: country + indicator + year FEs absorbed. SEs clustered by country.",
+  title  = "Level bias: raw_mean ~ panel size, 1990–2024",
+  output = "gt"
+)
+```
+
+```{r lev-interaction-plot, fig.width = 8, fig.height = 5}
+# Effective slope of n_coders as a function of country mean polyarchy (from M2)
+poly_seq   <- seq(-0.5, 0.5, by = 0.01)
+slope_seq  <- coef(m2_lev)["n_coders"] +
+              coef(m2_lev)["n_coders:mean_polyarchy_c"] * poly_seq
+slope_lo   <- (coef(m2_lev)["n_coders"] - 1.96 * se(m2_lev)["n_coders"]) +
+              (coef(m2_lev)["n_coders:mean_polyarchy_c"] -
+               1.96 * se(m2_lev)["n_coders:mean_polyarchy_c"]) * poly_seq
+slope_hi   <- (coef(m2_lev)["n_coders"] + 1.96 * se(m2_lev)["n_coders"]) +
+              (coef(m2_lev)["n_coders:mean_polyarchy_c"] +
+               1.96 * se(m2_lev)["n_coders:mean_polyarchy_c"]) * poly_seq
+
+ggplot(
+  data.frame(poly = poly_seq + poly_global_mean, slope = slope_seq,
+             lo = slope_lo, hi = slope_hi),
+  aes(x = poly, y = slope)
+) +
+  geom_hline(yintercept = 0, linetype = "dashed", colour = "grey60") +
+  geom_ribbon(aes(ymin = lo, ymax = hi), alpha = 0.15, fill = "firebrick") +
+  geom_line(colour = "firebrick", linewidth = 1.2) +
+  labs(
+    x = "Country mean polyarchy (v2x_polyarchy, 1990–2024 average)",
+    y = "Within-country effect of one additional coder on raw_mean",
+    title = "Thin panels push autocratic scores toward the floor",
+    subtitle = paste0(
+      "More coders raise raw means in autocracies and lower them in democracies, ",
+      "compressing scores toward the global center. Attrition has the opposite effect."
+    )
+  ) +
+  theme_minimal(base_size = 12)
+```
+
+---
+
+## 6. Analysis 3: Generalized Afghanistan (First Differences)
+
+The level-bias result is consistent with a compositional confound: autocratic countries
+may systematically attract less-calibrated coders regardless of panel size, producing an
+omitted-variables bias even within TWFE. The first-difference design eliminates this by
+identifying from *changes* in composition within the same country-indicator over time.
+
+The direct claim: year-over-year changes in panel calibration quality (`Δ mean anchor MAD`)
+and bridge coder fraction (`Δ bridge_frac`) predict year-over-year score changes, net of
+indicator-level change rates (indicator FEs) and global annual shocks (year FEs). Country
+FEs drop out through differencing. Only consecutive year pairs are used.
+
+The regime interaction in M3 tests whether the composition effect is concentrated in
+autocracies — the direct generalisation of the Afghanistan mechanism.
+
+```{r fd-data}
+#| cache: true
+
+fd_data <- panel_full |>
+  filter(!is.na(mean_anchor_mad)) |>
+  arrange(country_text_id, indicator, year) |>
+  group_by(country_text_id, indicator) |>
+  mutate(
+    d_raw_mean    = raw_mean        - lag(raw_mean),
+    d_n_coders    = n_coders        - lag(n_coders),
+    d_anchor_mad  = mean_anchor_mad - lag(mean_anchor_mad),
+    d_bridge_frac = bridge_frac     - lag(bridge_frac),
+    regime_lag    = lag(v2x_regime),
+    consec        = (year - lag(year)) == 1L
+  ) |>
+  ungroup() |>
+  filter(!is.na(d_raw_mean), consec)
+
+cat("First-difference observations:", nrow(fd_data), "\n")
+cat("Countries:", n_distinct(fd_data$country_text_id), "\n")
+cat("Years covered:", range(fd_data$year), "\n")
+```
+
+```{r fd-regressions}
+#| cache: true
+
+m1_fd <- feols(
+  d_raw_mean ~ d_n_coders | indicator + year,
+  data = fd_data, cluster = ~country_text_id
+)
+
+m2_fd <- feols(
+  d_raw_mean ~ d_n_coders + d_anchor_mad + d_bridge_frac | indicator + year,
+  data = fd_data, cluster = ~country_text_id
+)
+
+m3_fd <- feols(
+  d_raw_mean ~ d_n_coders   * regime_lag +
+               d_anchor_mad  * regime_lag +
+               d_bridge_frac * regime_lag | indicator + year,
+  data = fd_data, cluster = ~country_text_id
+)
+```
+
+```{r fd-table}
+coef_map_fd <- c(
+  "d_n_coders"                   = "Δ Panel size",
+  "d_anchor_mad"                 = "Δ Mean anchor MAD",
+  "d_bridge_frac"                = "Δ Bridge coder fraction",
+  "regime_lag"                   = "Regime type t−1 (0–3)",
+  "d_n_coders:regime_lag"        = "Δ Panel size × Regime",
+  "d_anchor_mad:regime_lag"      = "Δ Anchor MAD × Regime",
+  "d_bridge_frac:regime_lag"     = "Δ Bridge frac × Regime"
+)
+
+modelsummary(
+  list(M1 = m1_fd, M2 = m2_fd, M3 = m3_fd),
+  coef_map  = coef_map_fd,
+  statistic = "({std.error})",
+  stars     = c("*" = 0.05, "**" = 0.01, "***" = 0.001),
+  gof_map   = list(
+    list(raw = "nobs",       clean = "N",        fmt = 0),
+    list(raw = "r.squared",  clean = "R²",        fmt = 3),
+    list(raw = "r2.within",  clean = "Within R²", fmt = 3)
+  ),
+  notes  = paste0(
+    "First differences. Country FEs removed by differencing. ",
+    "Indicator + year FEs absorbed. Consecutive year pairs only. ",
+    "SEs clustered by country."
+  ),
+  title  = "Generalized Afghanistan: composition changes predict score changes (1990–2024)",
+  output = "gt"
+)
+```
+
+```{r fd-coef-plot, fig.width = 9, fig.height = 5.5}
+bind_rows(
+  broom::tidy(m2_fd, conf.int = TRUE) |> mutate(model = "M2: Composition"),
+  broom::tidy(m3_fd, conf.int = TRUE) |> mutate(model = "M3: × Regime")
+) |>
+  filter(term %in% names(coef_map_fd)) |>
+  mutate(term = coef_map_fd[term],
+         term = factor(term, levels = rev(coef_map_fd))) |>
+  ggplot(aes(x = estimate, y = term, colour = model)) +
+  geom_vline(xintercept = 0, linetype = "dashed", colour = "grey50") +
+  geom_errorbarh(aes(xmin = conf.low, xmax = conf.high),
+                 height = 0.25, linewidth = 0.6,
+                 position = position_dodge(0.5)) +
+  geom_point(size = 2.5, position = position_dodge(0.5)) +
+  scale_colour_manual(
+    values = c("M2: Composition" = "steelblue", "M3: × Regime" = "firebrick"),
+    name   = NULL
+  ) +
+  labs(
+    x        = "Coefficient (95% CI, SEs clustered by country)",
+    y        = NULL,
+    title    = "Composition changes drive score changes — concentrated in autocracies",
+    subtitle = "First-difference estimates. Indicator + year FEs. Consecutive year pairs only."
+  ) +
+  theme_minimal(base_size = 12) +
+  theme(legend.position = "bottom")
+```
+
+```{r fd-country-scan}
+#| cache: true
+
+# For each country: R² from regressing d_raw_mean on d_anchor_mad,
+# pooled across indicators and years. Countries where R² is highest are
+# those where composition changes most reliably predict score changes —
+# generalisations of the Afghanistan pattern.
+country_r2 <- fd_data |>
+  filter(!is.na(d_anchor_mad)) |>
+  group_by(country_text_id) |>
+  filter(n() >= 20) |>
+  group_modify(~ {
+    m <- lm(d_raw_mean ~ d_anchor_mad, data = .x)
+    tibble(
+      r2          = summary(m)$r.squared,
+      coef_mad    = coef(m)["d_anchor_mad"],
+      n_obs       = nrow(.x),
+      mean_n      = round(mean(.x$n_coders, na.rm = TRUE), 1),
+      mean_regime = round(mean(.x$regime_lag, na.rm = TRUE), 2)
+    )
+  }) |>
+  ungroup() |>
+  arrange(desc(r2))
+
+cat("Countries with ≥ 20 FD observations:", nrow(country_r2), "\n")
+cat("Median R²:", round(median(country_r2$r2), 3), "\n")
+cat("Share with positive coefficient:", round(mean(country_r2$coef_mad > 0), 2), "\n")
+```
+
+```{r fd-country-table}
+country_r2 |>
+  slice_head(n = 20) |>
+  mutate(across(c(r2, coef_mad), ~ round(., 3))) |>
+  select(country_text_id, r2, coef_mad, n_obs, mean_n, mean_regime) |>
+  rename(
+    Country             = country_text_id,
+    `R²`                = r2,
+    `Coef (Δ MAD)`      = coef_mad,
+    `N obs`             = n_obs,
+    `Mean panel size`   = mean_n,
+    `Mean regime (0–3)` = mean_regime
+  ) |>
+  knitr::kable(
+    caption = paste0(
+      "Top 20 countries where Δ mean anchor MAD explains Δ raw_mean. ",
+      "R² from bivariate regression of Δraw_mean ~ Δanchor_MAD, pooled across ",
+      "all indicators and consecutive year pairs. ",
+      "Positive coefficient = less-calibrated panel → higher scores (floor inflation). ",
+      "Mean regime: 0 = closed autocracy, 3 = liberal democracy."
+    )
+  )
+```
+
+---
+
+## 7. Analysis 4: Panel Size and IRT Posterior Uncertainty
+
+The V-Dem codebook documents a `_nr` suffix (number of coders per country-variable-year)
+and a `_sd` suffix (posterior standard deviation from the measurement model) for every
+C-type indicator. These are available directly via `vdemdata::vdem`, so no coder-level
+data is needed here. The codebook notes explicitly: *"We strongly advise against using
+observations based on three or fewer coders."*
+
+```{r uncertainty-data}
+nr_cols <- paste0(working_indicators, "_nr")
+sd_cols <- paste0(working_indicators, "_sd")
+
+vdem_raw <- vdemdata::vdem |>
+  select(country_text_id, year, any_of(c(nr_cols, sd_cols))) |>
+  filter(year >= 1990, year <= 2024)
+
+unc_long <- vdem_raw |>
+  pivot_longer(
+    cols          = -c(country_text_id, year),
+    names_to      = c("indicator", ".value"),
+    names_pattern = "^(.+)_(nr|sd)$"
+  ) |>
+  rename(n_coders = nr, posterior_sd = sd) |>
+  filter(!is.na(n_coders), !is.na(posterior_sd), n_coders >= 1,
+         indicator %in% working_indicators)
+
+cat("Country-indicator-years:", nrow(unc_long), "\n")
+cat("Panel size range:", paste(range(unc_long$n_coders), collapse = "–"), "\n")
+cat("Posterior SD range:", paste(round(range(unc_long$posterior_sd), 3), collapse = "–"), "\n")
+```
+
+```{r uncertainty-binned-plot}
+unc_binned <- unc_long |>
+  mutate(n_bin = case_when(
+    n_coders <= 3  ~ "1–3\n(V-Dem\nwarns)",
+    n_coders <= 5  ~ "4–5",
+    n_coders <= 8  ~ "6–8",
+    n_coders <= 12 ~ "9–12",
+    TRUE           ~ "13+"
+  ),
+  n_bin = factor(n_bin, levels = c("1–3\n(V-Dem\nwarns)", "4–5", "6–8", "9–12", "13+"))) |>
+  group_by(n_bin) |>
+  summarise(
+    median_sd = median(posterior_sd),
+    q25_sd    = quantile(posterior_sd, 0.25),
+    q75_sd    = quantile(posterior_sd, 0.75),
+    n         = n(),
+    .groups   = "drop"
+  )
+
+ggplot(unc_binned, aes(x = n_bin, y = median_sd)) +
+  geom_col(fill = "steelblue", alpha = 0.75, width = 0.6) +
+  geom_errorbar(aes(ymin = q25_sd, ymax = q75_sd), width = 0.25) +
+  labs(
+    title    = "Fewer coders → wider IRT posterior intervals",
+    subtitle = "Median posterior SD by panel size bin. Error bars = IQR. Pooled across ~150 working indicators, 1990–2024.",
+    x        = "Panel size (number of coders)",
+    y        = "Posterior SD (V-Dem measurement model)"
+  ) +
+  theme_minimal(base_size = 12)
+```
+
+```{r uncertainty-time-plot}
+unc_year <- unc_long |>
+  group_by(year) |>
+  summarise(
+    mean_sd  = mean(posterior_sd, na.rm = TRUE),
+    mean_nr  = mean(n_coders,     na.rm = TRUE),
+    .groups  = "drop"
+  )
+
+ggplot(unc_year, aes(x = year, y = mean_sd)) +
+  geom_line(colour = "steelblue", linewidth = 0.9) +
+  geom_smooth(method = "loess", span = 0.35, colour = "darkred", se = FALSE) +
+  geom_vline(xintercept = 2013, linetype = "dashed", colour = "grey50") +
+  annotate("text", x = 2014, y = max(unc_year$mean_sd) * 0.98,
+           label = "Post-2013 attrition", hjust = 0, size = 3.5, colour = "grey30") +
+  labs(
+    title    = "IRT uncertainty has risen with post-2013 panel attrition",
+    subtitle = "Mean posterior SD across all country-indicator-years, 1990–2024.",
+    x        = NULL,
+    y        = "Mean posterior SD"
+  ) +
+  theme_minimal(base_size = 12)
+```
+
+```{r uncertainty-regression}
+m_unc1 <- feols(posterior_sd ~ n_coders,
+                data = unc_long, cluster = ~country_text_id)
+m_unc2 <- feols(posterior_sd ~ n_coders | indicator,
+                data = unc_long, cluster = ~country_text_id)
+m_unc3 <- feols(posterior_sd ~ n_coders | indicator + country_text_id,
+                data = unc_long, cluster = ~country_text_id)
+m_unc4 <- feols(posterior_sd ~ n_coders | indicator + country_text_id + year,
+                data = unc_long, cluster = ~country_text_id)
+
+modelsummary(
+  list(M1 = m_unc1, M2 = m_unc2, M3 = m_unc3, M4 = m_unc4),
+  stars      = TRUE,
+  coef_rename = c(n_coders = "Panel size"),
+  gof_map    = c("nobs", "r.squared", "r2.within"),
+  notes      = "OLS. M2 absorbs indicator FE. M3 adds country FE. M4 adds year FE. SEs clustered by country.",
+  output     = "gt",
+  title      = "Panel size and IRT posterior uncertainty (posterior SD ~ panel size)"
+)
+```
+
+---
+
+## 8. Conclusion
+
+The four analyses tell a consistent but hierarchically ordered story about what panel
+degradation does to V-Dem measurement.
+
+**Analyses 1–3 are honest nulls.** Score volatility (Analysis 1) is driven almost
+entirely by indicator-level differences — which indicators are inherently noisier — not
+by panel size. The TWFE level-bias analysis (Analysis 2) finds a statistically
+significant but small interaction: additional coders compress raw means toward the
+global center, raising scores in autocracies and lowering them in democracies, with an
+effect that is regime-conditional and robust but tiny in explained variance (within
+R² = 0.002). The first-difference analysis (Analysis 3) is broadly null until regime
+type is conditioned on, at which point composition changes — particularly bridge coder
+entry — produce marginally significant score shifts in autocracies. None of these
+results constitutes a crisis. Panel degradation does not produce dramatic or consistent
+bias in V-Dem's published point estimates.
+
+**Analysis 4 is where the consequence is measurable and direct.** V-Dem's own
+posterior standard deviations — the uncertainty the measurement model places around
+each country-indicator-year estimate — are strongly and robustly predicted by panel
+size. Each additional coder reduces posterior SD by 0.012–0.013 units (p < 0.001),
+and this effect survives indicator, country, and year fixed effects (within R² = 0.046
+in the most saturated specification). The effect is structural: more observations give
+the IRT model more information, producing tighter posteriors. This is not a finding
+that could go the other way.
+
+The time series makes the practical consequence visible. Mean posterior SD fell
+continuously from 1990 to a minimum around 2008–2010 — the peak of the panel-size
+pyramid — then reversed sharply after 2013 as the initial coder cohort began to
+attrite. By 2024, average IRT uncertainty has risen by approximately 0.05 SD units,
+roughly 12% above the 2008–2010 minimum. The regression coefficient almost exactly
+predicts this observed rise: the ~4–5 coder reduction in mean panel size since 2013
+implies a +0.05–0.06 increase in posterior SD at the estimated −0.012 per coder.
+
+The argument for panel augmentation therefore rests on uncertainty, not bias. V-Dem
+expert panels were built to provide the IRT model with sufficient information to
+estimate latent democracy scores with reasonable precision. Post-2013 attrition has
+eroded that precision in a way that is measurable, monotone, and ongoing. The
+replacement experiment tests whether AI coders can rebuild effective panel size and
+reverse the uncertainty trend — using V-Dem's own posterior SD as the direct measure
+of whether the augmentation is working.

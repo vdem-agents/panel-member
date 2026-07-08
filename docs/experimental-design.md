@@ -1,393 +1,242 @@
 # Panel Member: Experimental Design
 
-## Framing: What kind of experiment is Stage 1?
-
-Stage 1 is a **randomized factorial experiment on measurement instrument properties** —
-specifically, which rater calibration choices produce LLM outputs that most closely
-approximate the human expert panel.
-
-This is not a conjoint experiment. In standard conjoint (HHY), randomized attributes
-describe the *stimulus* — the candidate or product being evaluated. Here, randomized
-attributes describe the *rater* — the LLM's persona. The object being evaluated
-(the country-year's democratic conditions) does not change across configurations. The
-AMCE is therefore not the estimand. The estimand is the **average causal effect of each
-persona attribute level on coding deviation**, identified by randomization (Rubin 1974;
-Holland 1986), not by HHY's AMCE machinery.
-
-The fractional factorial design tools from the conjoint literature (D-efficiency,
-orthogonality, interaction detection) apply directly. The identification logic and
-the interpretation of coefficients do not require the conjoint framing.
+*Updated July 2026. IRT replaced by panel-mean deviation test. Four prompt conditions,
+four model scales. Replacement experiment (primary), attrited-panel augmentation
+(secondary), persona and temperature variation (exploratory/sensitivity). Raw panel means
+throughout. See `notes/persona-prompting-design-archive.md` for archived persona design.*
 
 ---
 
-## Design
+## Design overview
 
-### Attribute set and levels
+The experiment addresses two questions in sequence:
 
-| Attribute | Levels | Outcome | Predicted direction |
-|---|---|---|---|
-| `threshold` | strict / neutral / lenient | signed | strict → negative; lenient → positive |
-| `reliability` | high / standard | absolute | high → lower |
-| `conception` | liberal / majoritarian / participatory / deliberative | signed | indicator-specific (see below) |
-| `domestic` | domestic expert / international observer | signed | domestic → negative |
-| `diligence` | careful / standard | absolute | careful → lower |
-| `packet` | full / partial / minimal | absolute | full → lower |
-| `source` | state_dept / state_and_fh | TBD | to be determined |
-| `examples` | none / neutral synthetic / calibration-matched | both | see below |
+**Question 1 (calibration)**: Which prompt condition and model scale produces AI ratings
+closest to the human expert panel's raw mean across 12 V-Dem indicators?
 
-**Total levels**: 3 × 2 × 4 × 2 × 2 × 3 × 2 × 3 = 1,296 (full factorial — do not run all)
+**Question 2 (replacement)**: Using the best-calibrated condition, how many human coders
+can AI replace before the raw panel mean shifts detectably?
 
-### Design matrix generation
-
-Use R `AlgDesign` or `DoE.base` to generate a D-optimal fractional factorial.
-
-**Recommended approach (Option 2 from identification memo)**: generate randomly and
-verify orthogonality, redrawing until all pairwise attribute correlations |r| < 0.2.
-This is equivalent to Option 1 in practice but easier to explain to political science
-reviewers familiar with HHY-style randomization.
-
-```r
-library(AlgDesign)
-
-factors <- expand.grid(
-  threshold   = c("strict", "neutral", "lenient"),
-  reliability = c("high", "standard"),
-  conception  = c("liberal", "majoritarian", "participatory", "deliberative"),
-  domestic    = c("domestic", "international"),
-  diligence   = c("careful", "standard"),
-  packet      = c("full", "partial", "minimal"),
-  source      = c("state_dept", "state_and_fh"),
-  examples    = c("none", "neutral", "calibration_matched")
-)
-
-# D-optimal fractional factorial: 48 runs for main effects only
-design <- optFederov(
-  ~ threshold + reliability + conception + domestic +
-    diligence + packet + source + examples,
-  data = factors, nTrials = 48, criterion = "D"
-)
-
-# If pre-specifying source × domestic interaction: nTrials = 64, add interaction term
-# design <- optFederov(
-#   ~ threshold + reliability + conception + domestic +
-#     diligence + packet + source + examples + source:domestic,
-#   data = factors, nTrials = 64, criterion = "D"
-# )
-```
-
-Save `design$design` to `data/processed/design_matrix.csv` — this is the
-pre-registration artifact. Do not modify after running any LLM calls.
-
-### Country-year pool
-
-N_cy = 30–50 country-years with ≥ 8 distinct coders, drawn from 2010–2019
-(~130–175 eligible per year; subsampling is trivial). The **same pool** runs across
-all configurations — this is the complete-matrix design that enables country-year
-fixed effects in the regression at no additional cost.
-
-**Sampling**: stratify by country's latent democracy level (quintiles from v15 θ_ct)
-to ensure the pool spans the full ordinal range. This ensures Tier 1b compression
-diagnostics are interpretable.
-
-Lock the pool before generating the design matrix. Total LLM calls: 48 configs × 40
-CYs = 1,920 calls (~$20–40 frontier API).
+The design is a **4 × 4 calibration experiment** (4 prompt conditions × 4 model scales)
+followed by a **sequential replacement experiment** using the best-performing condition(s).
 
 ---
 
-## Outcome Variables
+## Part 1: Calibration experiment
 
-Use two outcomes in parallel — do not combine. Each attribute should be evaluated
-against its theoretically appropriate outcome.
+### Conditions
 
-### Outcome 1: Signed deviation (directional attributes)
-
-```
-signed_deviation = AI_rating − human_panel_mean
-```
-
-Range: −4 to +4 for a 0–4 ordinal scale. Positive = lenient relative to panel;
-negative = strict.
-
-**Pre-registered directional predictions** (lock before running):
-
-| Attribute level | Predicted sign | Rationale |
+| Label | Prompt content | New element |
 |---|---|---|
-| `threshold = strict` | negative | Strict coder rates below panel mean |
-| `threshold = lenient` | positive | Lenient coder rates above panel mean |
-| `domestic = domestic` | negative | Domestic framing → harsher ratings (V-Dem empirical finding) |
-| `examples = calibration_matched strict` | negative | Anchors toward lower end of scale |
-| `examples = calibration_matched lenient` | positive | Anchors toward upper end of scale |
-| `conception = liberal` (on `v2csreprss`) | negative | Liberal conception emphasizes constraints → stricter on repression |
+| Codebook-only | Global framing + codebook text | — |
+| Evidence | + raw section text | Structured source evidence |
+| Anonymized | + anonymized section text | Country-identity stripped |
+| Fine-tuned | Anonymized text → fine-tuned 70B | Calibration in weights |
 
-Directional predictions for `conception` are indicator-specific and must be worked out
-theoretically before pre-registration. Liberal conception on civil society repression
-(v2csreprss): predicts negative (stricter). Majoritarian: unclear — resolve before locking.
+Each condition is additive: Condition 2 adds evidence to Condition 1; Condition 3 adds
+anonymization to Condition 2; Condition 4 replaces few-shot with fine-tuned weights.
 
-### Outcome 2: Absolute deviation (precision attributes)
+### Models
 
-```
-abs_deviation = |AI_rating − human_panel_mean|
-```
+Claude Sonnet 4.6, Llama 405B Instruct, Llama 3.3 70B Instruct, Llama 3.2 9B Instruct.
+Conditions 1–3 run on all four models. Condition 4 runs on Llama 70B (primary) and
+optionally Llama 9B (lower bound on scale × fine-tuning interaction).
 
-Range: 0 to 4. Lower = closer to the panel aggregate.
+### Country-year pool (calibration)
 
-**Attributes evaluated on absolute deviation**:
-- `reliability`: high → lower absolute deviation
-- `diligence`: careful → lower absolute deviation  
-- `packet`: full → lower absolute deviation
+Primary: 2020 (~150–170 country-year-indicator cells per indicator with v15 raw panel
+means). Expand to 2018–2020 if per-condition MAD estimates are unstable at N=150.
 
-**Note on `examples`**: the calibration-matched example condition has both a directional
-prediction (signed deviation) and a precision prediction (the example anchoring should
-also reduce absolute deviation in the matched direction). Report both.
+### Outcome
 
----
+**MAD**: `mean(|AI_rating − raw_panel_mean|)` across pool, per condition × model ×
+indicator. Report as a table: rows = condition × model, columns = indicators (+ mean
+across indicators). Secondary: signed deviation by democracy quintile.
 
-## Attribute Operationalization
+### What each comparison tells you
 
-The exact prompt text for each attribute level. These are the strings injected into
-the prompt; lock them before pre-registration.
-
-### `threshold`
-
-**`strict`**:
-```
-Apply a strict standard. Require clear, consistent evidence before assigning higher
-categories. When evidence is mixed or ambiguous, assign the lower category.
-```
-
-**`neutral`**: [omit threshold instruction — baseline condition]
-
-**`lenient`**:
-```
-Give countries the benefit of the doubt. When evidence is mixed or ambiguous, assign
-the higher category. Consider formal institutional arrangements alongside documented
-violations.
-```
-
-### `reliability`
-
-**`high`**:
-```
-Rate each indicator independently. Read the evidence carefully before responding.
-Do not anchor your rating on your response to a previous indicator.
-```
-
-**`standard`**: [omit reliability instruction]
-
-### `conception`
-
-**`liberal`**:
-```
-Understand democracy as a system protecting individual rights and civil liberties
-against state encroachment. Free and fair elections are necessary but not sufficient;
-individual freedoms and rule of law matter equally.
-```
-
-**`majoritarian`**:
-```
-Understand democracy as popular sovereignty expressed through elections. Elected
-governments with strong mandates have democratic legitimacy to act decisively.
-```
-
-**`participatory`**:
-```
-Understand democracy as requiring active citizen engagement beyond elections —
-through civil society organizations, local governance, and direct participation.
-```
-
-**`deliberative`**:
-```
-Understand democracy as requiring that political decisions emerge from reasoned public
-debate, not just from vote counts. The quality of deliberation matters as much as
-its outcome.
-```
-
-### `domestic`
-
-**`domestic`**:
-```
-You are a country specialist who has worked extensively in {COUNTRY} or its immediate
-region. You are deeply familiar with local political dynamics, informal institutions,
-and the gap between formal rules and actual practice on the ground.
-```
-
-**`international`**:
-```
-You are an international observer assessing {COUNTRY} from outside. You rely on
-documented evidence and compare {COUNTRY} against international standards.
-```
-
-### `diligence`
-
-**`careful`**:
-```
-Before assigning a score, read all the evidence provided carefully. Consider
-each piece of evidence on its own terms before reaching a conclusion.
-```
-
-**`standard`**: [omit diligence instruction]
-
-### `packet` (controlled at retrieval, not prompt)
-
-| Level | ChromaDB call |
+| Comparison | What it isolates |
 |---|---|
-| `full` | n_chunks=5 (3 State Dept + 2 Freedom House if available) |
-| `partial` | n_chunks=3 (State Dept only) |
-| `minimal` | n_chunks=1 (State Dept only) |
-
-Chunk size fixed at 400–500 tokens each. The model sees different evidence quantities;
-the prompt instruction text is identical across packet levels.
-
-### `source`
-
-**`state_dept`**: retrieve from State Dept collection only
-
-**`state_and_fh`**: retrieve from both State Dept and Freedom House collections;
-interleave in the evidence block (State Dept first, then Freedom House)
-
-### `examples`
-
-**`none`**: [omit examples block — zero-shot baseline]
-
-**`neutral_synthetic`**: 2–3 examples constructed from codebook ordinal descriptions,
-no real country names. Format:
-```
-Example: In a country where the government targets specific civil society organizations
-(particularly those advocating for political reform) while leaving others untouched,
-the appropriate score is 2 because [codebook category 2 description].
-```
-
-**`calibration_matched`**: same examples but selected to anchor toward the threshold
-tendency of the configuration — strict configurations get examples scored at the lower
-end; lenient configurations get examples scored at the upper end. The matched examples
-must be pre-constructed and locked in `data/processed/examples_by_threshold.yaml`
-before running.
+| Condition 1 vs. 2 (same model) | Marginal value of source evidence |
+| Condition 2 vs. 3 (same model) | Marginal value of anonymization |
+| Condition 3 vs. 4 (70B) | Marginal value of fine-tuning over few-shot |
+| Models (same condition) | Scale effects on calibration |
+| Quintile signed deviation | Regime-type anchoring bias |
 
 ---
 
-## Regression Specification
+## Part 2: Replacement experiment
 
-```r
-library(fixest)
+### Design
 
-# Signed deviation model
-signed_model <- feols(
-  signed_deviation ~
-    i(threshold, ref = "neutral") +
-    i(conception, ref = "liberal") +
-    i(domestic, ref = "international") +
-    i(examples, ref = "none"),
-  data    = results,
-  fixef   = "country_year",   # country-year FEs included free (same pool all configs)
-  cluster = "country_year"
-)
+Pool: well-formed panels (≥8 distinct coders) from 2018–2022. Stratify by democracy
+quintile (10 country-years per quintile = 50 total). Lock to `data/processed/cy_pool.csv`
+before running any LLM calls.
 
-# Absolute deviation model
-abs_model <- feols(
-  abs_deviation ~
-    i(reliability, ref = "standard") +
-    i(diligence, ref = "standard") +
-    i(packet, ref = "minimal"),
-  data    = results,
-  fixef   = "country_year",
-  cluster = "country_year"
-)
-```
+For each country-year (cy), k ∈ {1, 2, 3}, and bootstrap draw b ∈ {1,...,500}:
 
-**Estimand**: average causal effect of each attribute level on coding deviation for
-this model. Not an AMCE; not an IMCE. A standard factorial treatment effect.
+1. Randomly draw k human coders to remove from the panel
+2. Substitute k AI ratings from the best Stage 1 condition (one rating per model)
+3. Compute `mean_aug_k = mean(remaining_human_ratings + k_AI_ratings)`
+4. Record `divergence_k = |mean_aug_k − mean_full|`
 
-**Country-year fixed effects**: included at no power cost because the same N_cy pool
-runs across all configurations. FEs absorb all country-year heterogeneity (panel-level
-baseline repressiveness, evidence quality, etc.), isolating the attribute effects.
+Report divergence curve: mean divergence by k with 2.5–97.5% bootstrap CI, averaged
+across the 50 country-years and stratified by democracy quintile.
 
----
+**Replacement tolerance** (primary finding): the k at which the lower bound of the 95%
+CI on divergence_k first exceeds the pre-registered threshold. Pre-register the
+threshold value and its justification before running.
 
-## Identification
+### AI panel member assignment
 
-Causal identification rests on random assignment (Rubin 1974; Holland 1986), not on
-HHY's AMCE machinery. Three HHY identification assumptions are satisfied by design:
+For k > 1, AI ratings come from k distinct models. Pre-register the assignment rule:
 
-1. **No carryover effects**: each (config × country-year) cell is a fresh API call with
-   a new context window. No prior task output is passed to any subsequent call.
+| k | AI panel members used |
+|---|---|
+| 1 | Best Stage 1 model |
+| 2 | Best + 2nd-best Stage 1 models |
+| 3 | Best + 2nd-best + 3rd-best Stage 1 models |
 
-2. **No profile-order effects**: no shared context across calls; no ordering within any
-   single configuration run.
+"Best" defined by lowest overall MAD in Stage 1. If a model performs poorly in Stage 1,
+it is excluded from the replacement experiment — this is one motivation for running Stage
+1 first and locking the Stage 2 pool only after Stage 1 results are in hand.
 
-3. **Independent randomization**: the fractional factorial assigns attribute levels
-   orthogonally across configurations. Verify the correlation matrix of `design_matrix.csv`
-   before running: all pairwise |r| should be < 0.15.
+### Coder removal strategy
 
-**On temperature**: at temperature = 0, each (config × country-year) cell is
-deterministic — one output. There is nothing to average within a cell. Apparent
-"variance" across cells is true treatment variance plus country-year variation, both
-of which are handled by the regression model. Do not run multiple calls per cell;
-that would only replicate identical outputs.
+**Primary**: random removal (uniform draw). Expected-case effect under realistic
+deployment where the researcher does not know individual coder quality.
+
+**Bounds** (secondary):
+- Worst-first: remove k coders with highest individual deviation from panel mean
+- Best-first: remove k coders with lowest individual deviation from panel mean
+
+Report bounds as supplementary; the random-removal curve is the main result.
 
 ---
 
-## Interaction Pre-specification
+## Part 3: Augmentation of attrited panels (secondary)
 
-The source type × domestic framing interaction must be declared before generating the
-design matrix. This is the most theoretically motivated interaction: V-Dem documents
-that domestic coders are harsher, and the mechanism may depend on which sources they
-access. If pre-specified, bump to 64 configurations and include `source:domestic` in
-the `optFederov` formula.
+**Target**: countries with well-formed panels in 2015 (≥8 coders) and thin panels by
+2022 (≤5 coders) due to post-2013 attrition.
 
-**Decision**: pre-specify source × domestic, or not?
+**Setup**:
+- `mean_ref` = 2015 thick-panel raw mean (treated as reference)
+- `mean_thin` = 2022 thin-panel raw mean (baseline)
+- `mean_aug_k` = 2022 thin panel + k AI ratings, k ∈ {1, 2}
 
-Arguments for: theoretically motivated; required to guarantee estimability; not
-recoverable post-hoc if aliased. Arguments against: adds 16 configs (~33%); dilutes
-power for main effects; the theory (why would source type modulate domestic framing
-in LLM prompts?) is less direct than in human coders.
+**Metric**: `|mean_aug_k − mean_ref| vs. |mean_thin − mean_ref|`. Does AI augmentation
+move the current thin-panel mean toward the historical thick-panel reference?
 
-**Recommendation**: pre-specify if the interaction is a primary hypothesis (it goes in
-the abstract); leave as exploratory if it is secondary. Lock this decision before
-generating the design matrix.
+**Limitation**: this conflates panel size with temporal democratic change. A country may
+have genuinely different democracy levels in 2015 and 2022. Frame as an application
+illustration, not causal identification. Report the limitation explicitly in the paper.
 
 ---
 
-## Progression Rule to Stage 2
+## Exploratory and sensitivity analyses
 
-An attribute advances from Stage 1 to Stage 2 if it meets **both**:
+### Persona variation (exploratory)
 
-1. Estimated effect in the theoretically predicted direction
-2. p < 0.10 (one-sided test in the predicted direction)
+Add 2 persona conditions (strict framing / lenient framing) to the best-performing
+model. Run on a subset of indicators (suggest: 4 high-observability indicators to
+maximize sensitivity).
 
-For precision attributes (no directional prediction): advances if estimated effect
-is negative (reduces |deviation|) and p < 0.10 (two-sided).
+**Pre-registered as exploratory.** Expected: null or weak effects per archived evidence
+(Morocho et al. 2026; anchor-to-indicator null result in our own data). If persona
+conditions produce systematic, reliable shifts in the direction of their framing, they
+provide a cheap additional source of distinct AI panel members. If not, the test
+contributes to the growing evidence that persona prompting does not reliably shift
+ordinal ratings in structured coding tasks.
 
-An attribute that reduces absolute deviation but has the wrong sign in signed deviation
-is flagged for Stage 2 investigation with a note — it should not be silently dropped.
-The wrong sign may indicate the manipulation is working on a different parameter than
-expected (e.g., a "strict" framing that reduces variance rather than shifting the mean).
+Report: signed deviation (strict condition − neutral) and (lenient − neutral), by
+indicator and democracy quintile.
 
-Pre-register the progression rule before running. Do not adjust after seeing results.
+### Temperature variation (sensitivity)
+
+Re-run the best model at temperature 0.7 on the calibration pool. Compare the
+distribution of ratings across draws to the temperature=0 result. This is a measure of
+model uncertainty — the spread of the distribution indicates how much variance the model
+has around its modal answer.
+
+Not used as a source of distinct panel members in the main replacement experiment.
+Report as a diagnostic in the supplementary materials.
 
 ---
 
-## Pre-registration Checklist
+## Outcome variables
 
-Lock all of the following before generating the design matrix or running any LLM calls:
+| Variable | Definition | Stage |
+|---|---|---|
+| MAD | `mean(\|AI_rating − raw_mean\|)` across pool | Calibration primary |
+| Signed deviation | `mean(AI_rating − raw_mean)` | Calibration diagnostic |
+| Quintile signed dev | Signed dev by democracy quintile | Compression diagnostic |
+| divergence_k | `\|mean_aug_k − mean_full\|` | Replacement primary |
+| Replacement tolerance | k at which 95% CI lower bound > threshold | Replacement finding |
+| Augmentation gain | `\|mean_aug_k − mean_ref\| < \|mean_thin − mean_ref\|`? | Augmentation |
 
-**Design**
-- [ ] Final attribute set and levels (confirm `examples` attribute is included)
-- [ ] N configurations: 48 (main effects) or 64 (with pre-specified interaction)
-- [ ] Decision: pre-specify source × domestic interaction?
-- [ ] Design matrix generated and saved to `data/processed/design_matrix.csv`
-- [ ] Country-year pool: N_cy, sampling strategy (quintile-stratified), locked list
-- [ ] Target indicator(s): `v2csreprss` first; others specified before running
+---
 
-**Outcomes**
-- [ ] Directional prediction for each attribute level (sign of coefficient in signed deviation)
-- [ ] Which attributes are evaluated on signed deviation vs. absolute deviation vs. both
-- [ ] Regression specification (formula, FE structure, clustering)
+## Indicators
 
-**Progression**
-- [ ] Progression rule: direction + p < 0.10 threshold
-- [ ] What happens to wrong-sign attributes (flag, don't drop)
+All 12 selected indicators (selection rationale: `02-indicator-selection.html`):
 
-**Codebook text**
-- [ ] Exact question text for each target indicator in `data/processed/codebook_text.yaml`
-- [ ] All ordinal category descriptions (0–4) locked
-- [ ] Examples text for `examples` attribute levels locked in `data/processed/examples_by_threshold.yaml`
+| Tag | Indicator | Observability |
+|---|---|---|
+| v2clkill | Political killings | High |
+| v2cltort | Torture | High |
+| v2mecenefm | Media censorship (formal) | High |
+| v2csreprss | Civil society repression | High |
+| v2jupoatck | Government attacks on judiciary | High |
+| v2mecenefi | Media censorship (informal) | Medium |
+| v2juhcind | High court independence | Medium |
+| v2clacfree | Academic freedom | Medium |
+| v2clslavef | Freedom from forced labor | Medium |
+| v2psoppaut | Opposition party autonomy | Medium |
+| v2excrptps | Public sector corruption | Medium |
+| v2pepwrsoc | Political power by social group | Low |
+
+Expect MAD to vary systematically by observability tier across all conditions. Report
+calibration results by tier as well as by indicator.
+
+---
+
+## Pre-registration checklist
+
+Lock all of the following before running any LLM calls or accessing v15 coder-level data
+for the replacement pool:
+
+**Calibration pool**
+- [ ] Year(s): 2020 primary; specify if expanding to 2018–2020
+- [ ] Minimum ratings per country-indicator for inclusion
+- [ ] Final N per condition (confirm before running)
+
+**Replacement pool**
+- [ ] Eligibility: ≥8 distinct coders, year range 2018–2022
+- [ ] Stratification: 10 country-years per quintile; confirm quintile cutoffs from v15 θ
+- [ ] Pool saved to `data/processed/cy_pool.csv`
+- [ ] AI panel member assignment rule for k = 2, 3 (model priority order)
+
+**Fine-tuning**
+- [ ] Training window: 2010–2015 (confirm no country-year overlap with calibration/replacement pools)
+- [ ] Training set saved to `data/processed/training_set.csv`
+- [ ] Hyperparameters: LoRA rank, alpha, learning rate, batch size, epochs, base model commit hash
+
+**Models**
+- [ ] Claude Sonnet 4.6 API version pinned
+- [ ] Llama 405B commit hash (HuggingFace)
+- [ ] Llama 3.3 70B commit hash
+- [ ] Llama 3.2 9B commit hash
+
+**Replacement experiment**
+- [ ] Divergence threshold value and justification (in rating points on 0–4 scale)
+- [ ] Bootstrap B = 500; CI = 2.5–97.5%
+- [ ] Coder removal: random primary; worst/best-first as bounds
+- [ ] k values: 1, 2, 3
+
+**Persona exploratory**
+- [ ] Strict and lenient framing text locked
+- [ ] Indicator subset for persona test specified
+
+**Anonymization**
+- [ ] Anonymization agent system prompt locked
+- [ ] Anonymization applied consistently to both few-shot examples and evaluation text

@@ -1,0 +1,72 @@
+# Panel Member Coding Prompt
+
+*Template for Conditions 2 (evidence) and 3 (anonymized). Placeholders in `{UPPER_CASE}`
+are filled by `pipeline/assemble_prompt.py`. Codebook text loaded from
+`config/indicator_sections.yaml`. Few-shot examples loaded from
+`data/fewshot_examples.json` (Condition 2) or `data/fewshot_examples_anonymized.json`
+(Condition 3).*
+
+---
+
+<!-- SYSTEM -->
+
+You are a comparative politics researcher rating political conditions on V-Dem indicators
+using globally calibrated standards. Compare every country to the full worldwide
+distribution from the most repressive autocracies to the most open democracies. Never
+apply a regional reference frame. A country that seems "moderately free" by regional
+standards may be "highly repressive" by global standards. Always apply the global
+comparison frame.
+
+<!-- USER -->
+
+## Coding task
+
+You will rate **{FOCAL_COUNTRY}** in **{FOCAL_YEAR}** on the following V-Dem indicator.
+
+**Indicator**: {INDICATOR_NAME} (`{INDICATOR_CODE}`)
+
+**Question**: {CODEBOOK_QUESTION}
+
+**Response categories**:
+
+- **0**: {CATEGORY_0}
+- **1**: {CATEGORY_1}
+- **2**: {CATEGORY_2}
+- **3**: {CATEGORY_3}
+- **4**: {CATEGORY_4}
+
+{CLARIFICATION_BLOCK}
+
+---
+
+## Calibration examples
+
+The following examples show mean expert panel ratings from V-Dem's global coder pool,
+reflecting globally anchored thresholds rather than regional standards. Panel means are
+continuous; your task is to assign a single integer on the same 0–4 scale.
+
+{FEWSHOT_EXAMPLES}
+
+---
+
+## Evidence for {FOCAL_COUNTRY}, {FOCAL_YEAR}
+
+**State Department Human Rights Report**
+
+{STATE_DEPT_EVIDENCE}
+
+---
+
+**Freedom House Freedom in the World**
+
+{FH_EVIDENCE}
+
+---
+
+## Output
+
+Rate {FOCAL_COUNTRY} in {FOCAL_YEAR} on {INDICATOR_CODE}.
+
+Respond with JSON only — no preamble, no code fences:
+
+{"rating": <integer 0–4>, "justification": "<one sentence citing specific evidence above>"}
