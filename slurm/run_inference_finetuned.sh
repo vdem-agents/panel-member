@@ -1,43 +1,48 @@
 #!/bin/bash
-# SLURM job: code one year × one condition using Llama 70B on a single A100 80GB.
+# SLURM job: inference with the fine-tuned Llama 70B adapter (Condition 4).
 #
-# Starts vLLM on the allocated node, waits for it to be ready, runs the batch,
-# then shuts vLLM down. The JSONL output is checkpointed so the job can be
-# resubmitted safely if it times out.
+# Starts vLLM with the LoRA adapter loaded via --lora-modules, runs the batch,
+# then shuts vLLM down. The adapter name "llama-70b-vdem-ft" must match the
+# model name in vdem_config.py.
 #
-# Adjust MODEL_PATH to your scratch directory before submitting.
-# Submit: sbatch slurm/run_coding_llama70b.sh
+# The base model weights (~140GB) and adapter (~500MB) must both be available
+# on scratch before submitting. Run setup_models.sh for the base model and
+# rsync the adapter from ~/panel-member-archive/adapters/ after fine-tuning.
 #
-#SBATCH --job-name=pm-llama70b
+# Submit: sbatch slurm/run_inference_finetuned.sh
+#
+#SBATCH --job-name=pm-ft-infer
 #SBATCH --partition=gpu
 #SBATCH --gres=gpu:a100:1
 #SBATCH --cpus-per-gpu=16
 #SBATCH --mem-per-gpu=64G
 #SBATCH --time=12:00:00
-#SBATCH --output=logs/llama70b_%j.out
-#SBATCH --error=logs/llama70b_%j.err
+#SBATCH --output=logs/ft_infer_%j.out
+#SBATCH --error=logs/ft_infer_%j.err
 
 set -euo pipefail
 mkdir -p logs
 
 # ── Configuration ──────────────────────────────────────────────────────────────
-YEAR=2020
-CONDITION=evidence           # codebook | evidence | anonymized
-MODEL_KEY=llama-70b-local
-MODEL_PATH=/scratch/$USER/models/llama-3.3-70b-instruct   # pre-downloaded weights
+YEAR=2019
+MODEL_PATH=/scratch/$USER/models/llama-3.3-70b-instruct
+ADAPTER_PATH=/scratch/$USER/panel-member/data/output/adapters/llama-70b-vdem-ft
+ADAPTER_NAME=llama-70b-vdem-ft        # must match vdem_config.py model name
 VLLM_PORT=8000
-OUTPUT=data/output/runs/${CONDITION}_${YEAR}_llama70b.jsonl
+OUTPUT=data/output/runs/finetuned_${YEAR}.jsonl
 
 # ── Environment ────────────────────────────────────────────────────────────────
-source .env                          # loads ANTHROPIC_API_KEY etc. if present
-conda activate panel-member          # adjust to your conda env name
+source .env
+conda activate panel-member
 
 export VLLM_BASE_URL="http://localhost:${VLLM_PORT}/v1"
 export VLLM_API_KEY="local"
 
-# ── Start vLLM ─────────────────────────────────────────────────────────────────
+# ── Start vLLM with LoRA adapter ───────────────────────────────────────────────
 conda activate vllm
 vllm serve "$MODEL_PATH" \
+    --enable-lora \
+    --lora-modules "${ADAPTER_NAME}=${ADAPTER_PATH}" \
     --dtype bfloat16 \
     --quantization bitsandbytes \
     --load-format bitsandbytes \
@@ -47,17 +52,15 @@ vllm serve "$MODEL_PATH" \
 VLLM_PID=$!
 conda activate panel-member
 
-echo "Waiting for vLLM to be ready..."
+echo "Waiting for vLLM (with LoRA adapter)..."
 until curl -sf "http://localhost:${VLLM_PORT}/health" > /dev/null 2>&1; do
     sleep 15
 done
 echo "vLLM ready (pid $VLLM_PID)"
 
-# ── Run coding batch ───────────────────────────────────────────────────────────
-python3 -m pipeline.run_coding_batch \
+# ── Run inference batch ────────────────────────────────────────────────────────
+python3 -m pipeline.run_finetuned_batch \
     --year "$YEAR" \
-    --condition "$CONDITION" \
-    --models "$MODEL_KEY" \
     --output "$OUTPUT"
 
 # ── Cleanup ────────────────────────────────────────────────────────────────────

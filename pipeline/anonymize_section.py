@@ -108,6 +108,7 @@ def anonymize_country_year_indicator(
     year: int,
     indicator: str,
     force: bool = False,
+    model_key: str = ANONYMIZER_MODEL,
 ) -> str | None:
     """
     Anonymize extracted sections for one (country, year, indicator) triple.
@@ -138,7 +139,7 @@ def anonymize_country_year_indicator(
         return None
 
     combined = "\n\n---\n\n".join(chunks)
-    anonymized = anonymize_text(combined, country_name)
+    anonymized = anonymize_text(combined, country_name, model_key=model_key)
 
     out_path.parent.mkdir(parents=True, exist_ok=True)
     out_path.write_text(anonymized, encoding="utf-8")
@@ -165,12 +166,17 @@ if __name__ == "__main__":
     )
     parser.add_argument("--force", action="store_true",
                         help="Re-anonymize even if cached output exists")
+    parser.add_argument(
+        "--model", default=ANONYMIZER_MODEL, choices=list(LLM_CONFIGS),
+        help=f"Model to use for anonymization (default: {ANONYMIZER_MODEL})"
+    )
     args = parser.parse_args()
 
     indicators = args.indicators or list(_load_config().keys())
     for ind in indicators:
         result = anonymize_country_year_indicator(
-            args.iso, args.slug, args.name, args.year, ind, force=args.force
+            args.iso, args.slug, args.name, args.year, ind,
+            force=args.force, model_key=args.model,
         )
         if result:
             print(f"  {args.iso} {args.year} {ind}: {len(result):,} chars")

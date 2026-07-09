@@ -413,3 +413,123 @@ v2pepwrsoc:
       Political power is roughly equally distributed across all main social groups in
       society.
   freedom-house: ["B"]
+
+# ══════════════════════════════════════════════════════════════════════════════
+# HELD-OUT INDICATORS — used for generalization test only; excluded from
+# fine-tuning training data. Codebook text marked TODO: verify before locking.
+# ══════════════════════════════════════════════════════════════════════════════
+
+v2clrelig:
+  held_out: true
+  # TODO: verify exact codebook text against V-Dem codebook
+  description: "Freedom of religion"
+  codebook_question: "Is there freedom of religion?"
+  clarification: >-
+    Freedom of religion refers to the right to practice, change, or abstain from any
+    religion without interference from the state or other actors. This includes the
+    freedom to worship privately and publicly, to proselytize, and to organize religious
+    communities. Focus on de facto conditions — formal guarantees not respected in
+    practice count as restrictions.
+  categories:
+    - >-
+      Not respected. Religious practice is systematically repressed by the state.
+      Members of disfavored religions face violence, imprisonment, or forced conversion.
+    - >-
+      Weakly respected. Significant restrictions on religious practice exist; members of
+      some religions face systematic harassment or legal penalties.
+    - >-
+      Somewhat respected. Some restrictions on religious practice exist but are limited
+      to particular groups or contexts; harassment occurs but is not systematic.
+    - >-
+      Mostly respected. Minor restrictions or occasional incidents occur but the general
+      environment allows free religious practice.
+    - "Fully respected. All individuals may practice religion freely without restriction."
+  state-dept: ["2c"]
+  freedom-house: ["D"]
+
+v2meharjrn:
+  held_out: true
+  # TODO: verify exact codebook text against V-Dem codebook
+  description: "Harassment of journalists"
+  codebook_question: "Are journalists harassed?"
+  clarification: >-
+    Harassment of journalists includes physical attacks, detention, legal harassment,
+    threats, surveillance, and other forms of intimidation directed at journalists or
+    media workers by state or non-state actors. Focus on patterns of harassment rather
+    than isolated incidents; consider whether journalists practice self-censorship as a
+    result of the threat environment.
+  categories:
+    - >-
+      Journalists are routinely harassed, attacked, or killed. The environment is
+      effectively hostile to independent journalism.
+    - >-
+      Journalists are frequently harassed or face serious legal threats. Independent
+      reporting on sensitive topics carries significant personal risk.
+    - >-
+      Journalists are occasionally harassed, particularly those covering sensitive
+      political topics. Some self-censorship results.
+    - >-
+      Harassment of journalists is rare and typically not sanctioned by authorities.
+      The environment is generally safe for journalism.
+    - "Journalists operate freely without harassment."
+  state-dept: ["2a"]
+  freedom-house: ["D"]
+
+v2cseeorgs:
+  held_out: true
+  # TODO: verify exact codebook text against V-Dem codebook
+  description: "CSO entry and exit"
+  codebook_question: >-
+    Are civil society organizations able to form and dissolve freely?
+  clarification: >-
+    This question concerns the legal and practical ease with which civil society
+    organizations (CSOs) can be established and dissolved. Restrictions include
+    burdensome registration requirements, mandatory government approval, prohibition
+    of certain organization types, and forced dissolution of existing organizations.
+    Focus on de facto conditions including administrative obstruction.
+  categories:
+    - >-
+      CSOs cannot form freely. The state actively prohibits or controls the formation
+      of independent organizations; most CSOs are state-controlled or banned.
+    - >-
+      CSO formation is severely restricted. Registration requirements are prohibitive
+      or selectively enforced to block independent organizations.
+    - >-
+      CSO formation faces moderate restrictions. Registration is possible but
+      burdensome; some organization types are prohibited or face administrative delays.
+    - >-
+      CSO formation is mostly free. Minor registration requirements exist but do not
+      substantially impede the formation of new organizations.
+    - "CSOs form and dissolve freely with minimal administrative requirements."
+  state-dept: ["2b"]
+  freedom-house: ["E"]
+
+v2jucorrdc:
+  held_out: true
+  # TODO: verify exact codebook text against V-Dem codebook
+  description: "Judicial corruption decisions"
+  codebook_question: >-
+    Do judges or magistrates accept bribes or financial incentives in exchange for
+    favorable decisions?
+  clarification: >-
+    This question concerns transactional corruption in judicial decision-making —
+    judges accepting payments, gifts, or other inducements in exchange for decisions
+    favorable to the paying party. This is distinct from political influence over
+    courts (see v2juhcind) and from systemic underfunding of the judiciary. Focus on
+    whether corrupt exchanges in individual cases are common, occasional, or rare.
+  categories:
+    - >-
+      Judicial corruption is pervasive. Corrupt exchanges routinely determine case
+      outcomes at all court levels.
+    - >-
+      Judicial corruption is common. A substantial share of cases involves corrupt
+      exchanges; judges face little accountability.
+    - >-
+      Judicial corruption occurs but is not the norm. Corrupt exchanges happen in
+      some cases, particularly high-value or politically sensitive ones.
+    - >-
+      Judicial corruption is rare. Isolated incidents occur but judges generally
+      decide cases on the merits.
+    - "Judicial corruption is effectively non-existent."
+  state-dept: ["1e"]
+  freedom-house: ["F"]

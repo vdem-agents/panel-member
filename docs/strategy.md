@@ -1,9 +1,9 @@
 # Panel Member: Research Strategy
 
 *Updated July 2026. IRT dropped — panel-mean deviation test replaces the sequential
-replacement experiment. Prompt engineering expanded to four stages. Raw panel means
-replace calibration-weighted means (no empirical difference in practice). Persona
-prompting retained as exploratory condition; see `notes/persona-prompting-design-archive.md`.*
+replacement experiment. Three prompt conditions across five models. Raw panel means replace
+calibration-weighted means (no empirical difference in practice). Persona prompting
+retained as exploratory condition; see `notes/persona-prompting-design-archive.md`.*
 
 ## Research questions
 
@@ -15,7 +15,7 @@ prompting retained as exploratory condition; see `notes/persona-prompting-design
 
 ## Stage 1: Prompt engineering calibration
 
-### The four conditions
+### The three conditions
 
 **Condition 1 — Codebook-only**: global comparative framing + V-Dem codebook question
 text + response scale + output instruction. No source text. Measures the baseline signal
@@ -24,107 +24,126 @@ produce well-calibrated ratings from codebook text, the evidence pipeline adds c
 commensurate benefit.
 
 **Condition 2 — Evidence packets**: adds section-extracted State Dept and Freedom House
-text. Same prompt structure as bridge-coder Stage 1. Measures what structured primary
-source text adds over codebook-only.
+text plus few-shot calibration examples (one per ordinal level 0–4, globally distributed).
+Measures what structured primary source text and calibration anchors add over codebook-only.
 
 **Condition 3 — Anonymized summaries**: an LLM agent rewrites the extracted sections to
 remove country-identifying information (country name, named organizations, leaders,
-recognizable events) before the coding call. Motivated by the regime-type anchoring bias
-observed in bridge-coder preliminary results for 2020: models appear to use country
-identity as a shortcut rather than reasoning from evidence. Anonymization forces the coding
-model to reason from described political conditions alone.
+recognizable events) before the coding call. Few-shot examples are also anonymized.
+Motivated by the regime-type anchoring bias observed in bridge-coder preliminary results
+for 2020: models appear to use country identity as a shortcut rather than reasoning from
+evidence. Anonymization forces the coding model to reason from described political
+conditions alone.
 
-**Condition 4 — Fine-tuning**: QLoRA fine-tune on (anonymized section text, raw panel
-mean) pairs. Training text uses the same anonymization pipeline as Condition 3, so the
-fine-tuned model's inference distribution matches its training distribution. Measures what
-fine-tuning adds beyond the best few-shot condition.
+### The five models
+
+All three conditions run on four base models. Fine-tuned Llama 70B is a fifth model that
+uses the anonymized prompt format without the few-shot block; calibration is embedded in
+the adapter weights.
+
+| Model | Scale | Platform | Conditions |
+|---|---|---|---|
+| Claude Sonnet 4.6 | Frontier | Claude API | Codebook, Evidence, Anonymized |
+| Llama 405B Instruct | 405B open | GW 8×A100 80GB | Codebook, Evidence, Anonymized |
+| Llama 3.3 70B Instruct | 70B open | GW A100 80GB | Codebook, Evidence, Anonymized |
+| Llama 3.2 9B Instruct | 9B open | GW V100 16GB | Codebook, Evidence, Anonymized |
+| Llama 3.3 70B (fine-tuned) | 70B ft | GW A100 80GB | Anonymized format, no few-shot |
+
+Fine-tuning uses QLoRA on (anonymized section text, individual coder rating) pairs from
+V-Dem v15 — one row per coder per CYI, not panel means. Training window: 2013–2018.
+~120,000 training examples across 12 indicators. Primary evaluation: MAE/MSE against
+held-out individual coder ratings. Secondary: MAD against panel mean for cross-model
+calibration comparison.
 
 ### Country-year pool (calibration)
 
-2020 as the primary calibration year (broadest coverage, overlap with bridge-coder
-preliminary analysis). Expand to 2018–2020 if a larger evaluation set is needed for
-reliable per-condition MAD estimates. Pool: all countries with raw panel mean available
-in V-Dem v15 coder-level data for each indicator in the target year(s).
+**2019** as the primary calibration year — clean one-year temporal holdout after the
+2013–2018 training window, full panels, no exogenous anomalies. 2020 is avoided as
+primary: COVID-19 emergency restrictions distort civil society, media, and judicial
+indicators and make the human panel means noisier targets than usual.
 
-### Models
+Secondary robustness: **2024** — best-performing model only. Tests generalization to
+the thin-panel recent years that are the paper's primary deployment target. Panel size
+~4,421 coders by 2024 (vs. 8,212 in 2018); frame as deployment simulation, not
+primary validation. Addresses the reviewer question "does it work for recent years?"
+while tying the answer directly to the paper's motivation.
 
-| Model | Scale | Platform | Conditions run |
-|---|---|---|---|
-| Claude Sonnet 4.6 | Frontier | Claude API | 1, 2, 3 |
-| Llama 405B Instruct | 405B open | GW 8×A100 80GB | 1, 2, 3 |
-| Llama 3.3 70B Instruct | 70B open | GW A100 80GB | 1, 2, 3 |
-| Llama 3.2 9B Instruct | 9B open | GW V100 16GB | 1, 2, 3 |
-| Llama 3.3 70B (fine-tuned) | 70B ft | GW A100 80GB | 4 |
+Pool: all countries with raw panel mean available in V-Dem v15 coder-level data for
+each indicator in the target year.
 
-Fine-tuning (Condition 4) runs on Llama 70B. If a model performs poorly in Conditions
-1–3, it is still informative for the scale-effects comparison but may not be used as an
-AI panel member in Stage 2. Which models advance to the replacement experiment depends
-on Stage 1 results.
+If a base model performs poorly across all three conditions, it is still informative for
+the scale-effects comparison but may not advance to Stage 2. Which models are used in the
+replacement experiment depends on Stage 1 results.
 
 ### Outcome
 
-**MAD**: `mean(|AI_rating − raw_panel_mean|)` across pool, per condition × model ×
-indicator. Primary calibration metric.
+**LOO MAE** (primary): for each CYI, compare `|AI_rating − panel_mean|` against the human
+baseline `mean(|rating_i − mean(panel \ {i})|)` — the typical error of a held-out human
+coder against the rest of their panel. Bootstrap at the CYI level (B=500) for CIs and a
+paired significance test. Reported as a model × indicator table (5 models × 12 indicators
++ aggregate column).
 
-**Signed deviation by democracy quintile**: diagnostic for compression (systematic
-tendency to rate autocracies too high or democracies too low). Motivated by the
-bridge-coder preliminary finding that few-shot prompting with country-identified evidence
-exhibits this pattern.
+**Exact match rate and adjacent-category agreement** (secondary): proportion of AI ratings
+equal to, or within ±1 of, the rounded panel mean. Readable calibration summaries for a
+mixed audience.
+
+**Signed deviation by quintile** (diagnostic): `mean(AI_rating − panel_mean)` by
+v2x_polyarchy quintile. The human baseline is ~0 by construction; any systematic AI
+deviation reveals directional compression bias — rating autocracies too generously or
+democracies too harshly. Report as a figure. See `notes/evaluation-metrics.md`.
 
 ---
 
-## Stage 2: Replacement experiment
+## Stage 2: Generalization test (primary novel finding)
 
 ### Design
 
-Take well-formed panels (≥8 distinct coders) from the evaluation window. For each panel
-and k = 1, 2, 3:
+The fine-tuned Llama 70B adapter is trained jointly on all 12 indicators. X held-out
+indicators — from the same modules and evidence sources but unseen during training — are
+evaluated after training is complete. Held-out indicators and their section mappings are
+locked in `config/indicator_sections.yaml` before any fine-tuning runs.
 
-1. Randomly draw k coders to remove from the human panel
-2. Substitute AI ratings from the best Stage 1 condition for the removed coders
-3. Compute the AI-augmented panel mean
-4. Compare to full-panel mean: `divergence_k = |mean_aug_k − mean_full|`
+**Candidate hold-out indicators** (verify against V-Dem codebook before locking):
+- v2clrelig (freedom of religion) — civil liberties, high observability
+- v2meharjrn (harassment of journalists) — media, high observability
+- v2cseeorgs (CSO entry and exit) — civil society, medium observability
+- v2jucorrdc (judicial corruption decisions) — judiciary, medium observability
 
-Bootstrap across removal draws (B = 500). Report divergence curve by k (mean + 95% CI).
-The **replacement tolerance** is the k at which the lower bound of the 95% CI on
-divergence_k first exceeds a pre-specified threshold (to be pre-registered before running).
+### Outcome
 
-### Country-year pool (replacement)
+For trained and held-out indicators alike, compute MAE against held-out individual coder
+ratings and MAD against panel mean (2020 evaluation year). Compare:
 
-Well-formed panels with ≥8 distinct coders in 2018–2022. Stratified by democracy quintile
-(10 country-years per quintile = 50 total). Lock to `data/processed/cy_pool.csv` before
-running any LLM calls.
+| Comparison | What it shows |
+|---|---|
+| MAE: trained vs. held-out indicators | Whether fine-tuning generalizes beyond training set |
+| MAD: fine-tuned vs. few-shot (Conditions 1–3) | Whether fine-tuning beats prompt engineering |
+| MAE: high vs. medium observability hold-outs | Where generalization is easier / harder |
 
-### AI panel member variation
+**Primary finding**: if generalization holds, the result supports a scalable V-Dem AI
+coder applicable beyond the 12 indicators studied — motivating application to the full
+~100 Type C indicator set.
 
-Three sources of distinct AI panel members, used in separate analyses:
+---
 
-**Primary — Model variation**: each model is a distinct AI panel member. For k = 2
-replacements, two different models provide the two AI ratings (e.g., Claude + Llama 70B).
-For k = 3, three models. This is methodologically grounded: each model has genuinely
-different pretraining and produces genuinely different ratings. The constraint is that the
-number of available well-calibrated models caps the practical k.
+## Stage 3: Integration robustness (secondary / supplemental)
 
-**Exploratory — Persona variation**: 2 conditions (strict framing / lenient framing) added
-to the best-performing model. Pre-registered as exploratory. Expected to be null or weak
-per the archived persona design evidence (see `notes/persona-prompting-design-archive.md`
-and Morocho et al. 2026). Included because: (a) it would be a cheap source of additional
-distinct AI panel members if effects are systematic, and (b) the test is informative
-regardless of outcome.
+### Design
 
-**Sensitivity — Temperature variation**: re-run the best model at temperature 0.7 on
-the evaluation pool. Reports the spread of ratings as a measure of model uncertainty
-rather than as distinct panel members. Not used in the main replacement analysis.
+k=1 replacement check only. For all country-years in the 2019 calibration pool with
+≥8 distinct coders, add one AI rating from the best-calibrated model and compare the
+AI-augmented panel mean to the full human panel mean. Bootstrap B=500. Report mean
+divergence ± 95% CI. No pool size cap — AI ratings for these CYs already exist from
+the calibration run, so there is no cost to using the full eligible set.
+
+k=2 and k=3 are dropped: with a single fine-tuned adapter, multiple genuinely distinct
+AI coders are not available. The k=1 check is the cleanest and most realistic deployment
+scenario and suffices as a robustness test on the calibration finding.
 
 ### Coder removal strategy
 
-**Primary**: random removal (uniform draw over panel coders). Expected-case replacement
-effect under realistic augmentation where the deploying researcher does not know which
-human coders are best.
-
-**Bounds**: worst-first removal (remove k coders with highest individual deviation from
-panel mean) and best-first removal (remove k coders with lowest individual deviation).
-Reports worst-case and best-case bounds on the divergence curve.
+Random removal (uniform draw) only. Worst/best-first bounds dropped given secondary
+status — keep the analysis simple.
 
 ---
 
@@ -153,9 +172,11 @@ new LLM call inserted between section extraction and the coding model.
 
 | Stage | Years | Notes |
 |---|---|---|
-| Calibration | 2020 primary; 2018–2020 expanded | Overlap with bridge-coder preliminary |
-| Replacement | 2018–2022 | Requires ≥8 coders per panel |
-| Fine-tuning training | 2010–2015 | Held out from all evaluation pools |
+| Calibration (primary) | 2019 | Clean holdout; full panels; no COVID anomaly |
+| Calibration (robustness) | 2020 | Best model only; COVID stress test |
+| Deployment robustness | 2024 | Best model only; thin panels; reviewer generalization check |
+| Replacement (k=1 check) | 2019 | All ≥8-coder CYs from calibration pool; no extra ingestion needed |
+| Fine-tuning training | 2013–2018 | Post-lateral-coder; pre-attrition; 6 years |
 | Augmentation (attrition) | 2015 (ref) + 2022 (thin) | Post-2013 attrition window |
 | Deployment (historical) | 1975–1989 | FH from 1972; State Dept from 1977 |
 
@@ -165,24 +186,40 @@ new LLM call inserted between section extraction and the coding model.
 
 | Task | Platform | Est. cost / time |
 |---|---|---|
-| Calibration, Claude (3 cond × 12 ind × ~150 CY) | Claude API | ~$80 |
-| Calibration, Llama 405B (3 cond × 12 ind × ~150 CY) | GW 8×A100 | Free, ~4–6 hr |
-| Calibration, Llama 70B (3 cond × 12 ind × ~150 CY) | GW A100 | Free, ~2–3 hr |
-| Calibration, Llama 9B (3 cond × 12 ind × ~150 CY) | GW V100 | Free, ~1 hr |
-| Fine-tuning 70B (200–500 pairs × 12 ind, QLoRA 4-bit) | GW A100 80GB | Free, ~12–24 hr |
-| Replacement experiment (best model, k=1–3, B=500) | Claude API or GW | ~$30 or free |
+| Calibration, Claude (3 cond × 12 ind × ~170 CY) | Claude API (laptop) | ~$280 |
+| Calibration, Llama 405B (3 cond × 12 ind × ~170 CY) | Pegasus `gpu`, `gpu:a100:4` | Free, ~4–6 hr |
+| Calibration, Llama 70B (3 cond × 12 ind × ~170 CY) | Pegasus `gpu`, `gpu:a100:1` | Free, ~2–3 hr |
+| Calibration, Llama 9B (3 cond × 12 ind × ~170 CY) | Pegasus `gpu`, `gpu:v100:1` | Free, ~1 hr |
+| Fine-tuning 70B (~120k examples × 12 ind, QLoRA 4-bit) | Pegasus `gpu`, `gpu:a100:1` | Free, ~36 hr total |
+| Replacement experiment (best model, k=1–3, B=500) | Claude API or Pegasus | ~$30 or free |
 
-Llama 405B requires the GW 8×A100 80GB nodes (640GB aggregate; 405B at 4-bit needs
-~200GB). Llama 70B and fine-tuning fit on a single A100 80GB. Llama 9B fits on any
-V100 16GB node.
+Claude runs from laptop (no HPC queue, no internet firewall uncertainty). All Llama
+models run on Pegasus using TRES resource requests. Llama 405B requires 4× A100 80GB
+(320 GB; 405B at 4-bit needs ~200 GB). Llama 70B and fine-tuning fit on a single A100
+80GB. Llama 9B fits on any V100 16GB node. See `notes/hpc-sequencing-strategy.md` for
+confirmed partition names, GRES strings, and run sequence.
 
 ---
 
 ## Key open questions
 
 - [ ] Lock calibration pool: year(s), minimum ratings per country-indicator, confirmed N
-- [ ] Lock fine-tuning training window and confirm no overlap with evaluation pools
-- [ ] Pre-register divergence threshold for replacement experiment (in raw rating points)
+- [ ] Select and lock X hold-out indicators: verify codes, section mappings, and codebook
+      text against V-Dem codebook before any fine-tuning runs
+- [ ] Lock fine-tuning training window: 2013–2018 (post-lateral-coder drop; pre-attrition;
+      no overlap with 2019 test year or 2024 deployment check)
 - [ ] Confirm Llama 405B availability on GW Pegasus (may require allocation request)
-- [ ] Decide scope of persona exploratory condition: all 12 indicators or focused subset?
-- [ ] Decide whether fine-tuning runs on 9B as well as 70B (lower bound on scale effects)
+- [ ] **Replacement experiment year**: trade-off between 2019 (richer ≥8-coder pool,
+      consistent with calibration year, no additional source documents needed) and a
+      later year such as 2021–2022 (harder test, panels already thinning — more directly
+      relevant to the deployment scenario). 2019 gives a larger eligibility pool; later
+      years make the robustness case stronger because the panels being augmented are
+      already thin.
+- [ ] **Larger-scale replacement vision**: if temperature variation or persona prompting
+      produces genuinely distinct AI coder draws, k=2 or k=3 replacement becomes feasible.
+      This would require a year with well-formed panels (≥8 coders) large enough to
+      remove multiple human coders and still measure the effect. Exploratory; depends on
+      whether temperature/persona conditions show reliable within-indicator variation.
+- [ ] Decide scope of persona exploratory condition: retain or drop given redesign?
+- [ ] Decide whether fine-tuning runs on 9B as well as 70B (lower bound on scale × 
+      generalization interaction)

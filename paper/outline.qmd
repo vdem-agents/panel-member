@@ -1,0 +1,215 @@
+---
+title: "AI as Panel Members: Outline"
+format:
+  html:
+    toc: true
+    toc-depth: 3
+    embed-resources: true
+execute:
+  warning: false
+  message: false
+---
+
+Working outline. Sections marked **[RESULT]** depend on data not yet collected.
+
+---
+
+## 1. Introduction
+
+The reliability of V-Dem's democracy scores depends on panel size. When a country-year has
+13 coders, the IRT posterior is well-identified and robust to outliers. When it has 2, a
+single high-reliability coder anchors the estimate and the posterior is barely
+distinguishable from the hierarchical prior.
+
+Three distinct pathologies motivate the problem:
+
+- **Historical sparsity**: 59% of pre-1990 country-years have ≤3 distinct coders.
+  V-Dem's retrospective coding relied on 1–2 country specialists who coded entire
+  national histories back to 1789. Major democracies (Germany, France, UK) have 100+
+  years of 2-coder panels. Pre-1900 cross-national comparisons largely reflect the
+  model's prior beliefs, not the data.
+
+- **Chronic thin coverage**: ~35 contemporary countries have mean panel size < 8 in
+  2010–2024 — predominantly small island states, small African states, and
+  hard-access authoritarian regimes.
+
+- **Leading-edge attrition**: post-2013 coder cohorts are aging out without
+  replacement. Annual attrition of 45–133 coders with near-zero new recruitment.
+  Median panel size ~5.8 by 2024, returning to pre-2005 levels. The most urgent
+  and universal gap. See `analysis/01-panel-degradation-pathologies.qmd` for
+  the full empirical picture.
+
+The paper asks: can AI-generated ratings substitute for human expert coders in V-Dem's
+measurement system? Specifically: which prompt strategy and model scale produces the most
+calibrated AI ratings, and does a fine-tuned model generalize to indicators it was not
+trained on?
+
+---
+
+## 2. Background
+
+### V-Dem's measurement model
+
+V-Dem pools ordinal ratings from multiple expert coders through an IRT model that
+estimates latent country-year democracy scores while simultaneously modeling coder
+reliability (β) and threshold placement (γ). Adding a coder moves the posterior from
+prior-dominated to data-informed — but only if the added ratings are sufficiently
+similar to existing human ratings that they do not shift the panel mean detectably.
+
+### Prior work on AI annotation
+
+- Gilardi et al. (2023): GPT-3.5 matches or exceeds crowd-workers on political text
+  annotation — but crowd-workers are not calibrated domain experts.
+- LLM-as-survey-respondent literature (Bisbee et al.; Argyle et al.): AI can
+  approximate aggregate human opinion distributions. Not directly applicable —
+  we are not trying to simulate opinion, but to apply globally calibrated expert
+  standards to observable political conditions.
+- Bridge-coder companion paper: AI as cross-national calibration tool (bridge coder).
+  Different problem from this paper — that paper tests whether AI can link
+  disconnected national panels via IRT thresholds; this paper tests substitution
+  within panels.
+
+---
+
+## 3. Research design
+
+### Prompt conditions (3)
+
+1. **Codebook-only**: global framing + V-Dem codebook question and response categories.
+   No source text. Measures the calibration signal available from pretraining alone.
+
+2. **Evidence**: adds section-extracted State Department and Freedom House text, plus
+   five few-shot calibration examples (one per ordinal level, globally distributed).
+
+3. **Anonymized**: same as Evidence but an LLM agent replaces all country-identifying
+   labels (names, cities, parties, leaders, organizations) with generic equivalents
+   before the coding call. Few-shot examples are also anonymized. Tests whether
+   country-identity shortcuts drive the compression bias observed in preliminary results.
+
+### Models (5)
+
+| Model | Scale | Platform |
+|---|---|---|
+| Claude Sonnet 4.6 | Frontier | Claude API |
+| Llama 405B Instruct | 405B open | GW Pegasus |
+| Llama 3.3 70B Instruct | 70B open | GW Pegasus |
+| Llama 3.2 9B Instruct | 9B open | GW Pegasus |
+| Llama 3.3 70B (fine-tuned) | 70B ft | GW Pegasus |
+
+Fine-tuned Llama 70B is trained on (anonymized section text, individual coder rating)
+pairs from V-Dem v15, 2013–2018, ~120K examples across 12 indicators. Uses the same
+anonymized prompt format without the few-shot block.
+
+### Evaluation
+
+Primary: **LOO MAE** — AI error against the panel mean vs. the typical error of a
+held-out human coder against the rest of their panel. Bootstrap CIs (B=500) at the
+CYI level. If AI LOO MAE ≈ human LOO MAE, the AI performs within the range of normal
+human disagreement.
+
+Secondary: exact match rate; adjacent-category agreement (within ±1 of rounded panel
+mean).
+
+Diagnostic: **signed deviation by democracy quintile** — detects directional compression
+bias (rating autocracies too high, democracies too low).
+
+### Generalization test
+
+Fine-tuned model trained on 12 indicators, evaluated on X held-out indicators from the
+same modules and evidence sources (never seen during training). If LOO MAE on held-out
+indicators ≈ LOO MAE on trained indicators, the result supports a scalable AI coder
+applicable beyond the indicators studied.
+
+### Country-year pool
+
+Primary: 2019 — one year after the training window closes, full panels, no COVID
+distortion. Robustness: 2024 (best model only, thin-panel deployment simulation).
+
+---
+
+## 4. Results (anticipated)
+
+### 4.1 Calibration table
+
+**[RESULT]** LOO MAE by model × indicator, with human LOO baseline. Primary table.
+Rows: 5 models (+ human baseline). Columns: 12 indicators + aggregate. Spanners by
+observability tier (High / Medium / Low).
+
+Expected pattern: Evidence > Codebook-only; fine-tuned ≈ or > Anonymized; high
+observability indicators easier than low observability. Whether anonymization helps
+or hurts vs. Evidence is not predetermined — the direction of the country-identity
+effect is an empirical question.
+
+### 4.2 Compression diagnostic
+
+**[RESULT]** Signed deviation by quintile, one line per model × condition. Expected:
+without anonymization, AI rates Q1 autocracies too generously and Q5 democracies too
+harshly (compression toward the middle). Anonymization should reduce this if
+country-identity is the mechanism.
+
+### 4.3 Generalization test
+
+**[RESULT]** Fine-tuned LOO MAE on held-out indicators vs. trained indicators. If the
+gap is small, the finding supports a general V-Dem AI coder. If large, it characterizes
+the limits of generalization and motivates indicator-specific fine-tuning.
+
+### 4.4 Integration robustness (k=1 replacement check)
+
+**[RESULT]** For all 2019 CYIs with ≥8 coders: `|mean(panel + AI) − mean(panel)|`.
+Bootstrap B=500. If mean divergence CI includes zero, adding one AI coder does not
+detectably shift the panel mean. Reported as supplemental.
+
+---
+
+## 5. Contributions
+
+### Political science / democracy measurement
+
+- Practical answer to an operational V-Dem problem: which AI strategy and model scale
+  is safe to use for panel augmentation?
+- Evidence-based guidance for three deployment scenarios: historical sparse panels
+  (1975–1989), chronically thin contemporary panels (~35 countries), and the leading-
+  edge attrition gap (post-2020).
+- Generalization result, if it holds, motivates application to the full ~100 Type C
+  V-Dem indicator set without per-indicator fine-tuning.
+
+### NLP / AI annotation
+
+- LOO benchmarking framework: frames AI annotation quality in terms of human
+  inter-rater disagreement rather than deviation from a fixed gold label. Applicable
+  to any multi-annotator annotation setting.
+- Empirical test of fine-tuning generalization for structured ordinal expert annotation
+  — a relatively understudied task type compared to classification and generation.
+- Anonymization as a controlled test of identity-based shortcuts in LLM coding: does
+  stripping country labels improve or degrade calibration?
+
+### Practical guidance
+
+The results will likely support a tiered recommendation:
+
+- **Codebook + frontier model**: sufficient for quick, low-volume coding or initial
+  exploration when fine-tuning is not feasible. If frontier models already produce
+  well-calibrated ratings from codebook text alone, the evidence pipeline is
+  unnecessary for many use cases.
+
+- **Evidence + few-shot + large open model**: a practical middle ground for users who
+  have source documents and GPU access but cannot invest in fine-tuning.
+
+- **Fine-tuned model at scale**: highest calibration for systematic, large-volume
+  deployment. Worth the investment when coding thousands of country-years across the
+  full indicator set.
+
+The crossover point — where the added cost of fine-tuning is justified by the
+calibration gain — is itself a finding the paper can report.
+
+---
+
+## 6. Relation to companion paper
+
+The bridge-coder paper (Political Analysis target) addresses cross-national calibration
+via IRT: can AI link disconnected national panels by acting as a bridge coder across
+country pairs? That paper's contribution is about threshold stability (γ); this paper's
+contribution is about substitution (adding AI to a panel without shifting the mean).
+
+Both papers share source documents, section extraction, and the anonymization pipeline.
+Fine-tuning is secondary in the bridge-coder paper; it is a primary condition here.

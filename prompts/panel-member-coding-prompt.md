@@ -1,10 +1,9 @@
 # Panel Member Coding Prompt
 
-*Template for Conditions 2 (evidence) and 3 (anonymized). Placeholders in `{UPPER_CASE}`
-are filled by `pipeline/assemble_prompt.py`. Codebook text loaded from
-`config/indicator_sections.yaml`. Few-shot examples loaded from
-`data/fewshot_examples.json` (Condition 2) or `data/fewshot_examples_anonymized.json`
-(Condition 3).*
+*Template for Conditions 2 (evidence), 3 (anonymized), and 4 (finetuned). Placeholders
+in `{UPPER_CASE}` are filled by `pipeline/assemble_prompt.py`. Codebook text loaded from
+`config/indicator_sections.yaml`. `{CALIBRATION_SECTION}` is the full calibration block
+(header + few-shot examples) for Conditions 2–3; empty string for Condition 4.*
 
 ---
 
@@ -39,15 +38,7 @@ You will rate **{FOCAL_COUNTRY}** in **{FOCAL_YEAR}** on the following V-Dem ind
 
 ---
 
-## Calibration examples
-
-The following examples show mean expert panel ratings from V-Dem's global coder pool,
-reflecting globally anchored thresholds rather than regional standards. Panel means are
-continuous; your task is to assign a single integer on the same 0–4 scale.
-
-{FEWSHOT_EXAMPLES}
-
----
+{CALIBRATION_SECTION}
 
 ## Evidence for {FOCAL_COUNTRY}, {FOCAL_YEAR}
 

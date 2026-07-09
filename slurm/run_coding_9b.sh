@@ -5,12 +5,10 @@
 # Submit: sbatch slurm/run_coding_9b.sh
 #
 #SBATCH --job-name=pm-llama9b
-#SBATCH --partition=gpuq            # adjust to Pegasus GPU partition name
-#SBATCH --nodes=1
-#SBATCH --ntasks=1
-#SBATCH --cpus-per-task=8
-#SBATCH --mem=32G
-#SBATCH --gres=gpu:V100:1           # V100 16GB; adjust if different
+#SBATCH --partition=gpu
+#SBATCH --gres=gpu:v100:1
+#SBATCH --cpus-per-gpu=8
+#SBATCH --mem-per-gpu=32G
 #SBATCH --time=6:00:00
 #SBATCH --output=logs/llama9b_%j.out
 #SBATCH --error=logs/llama9b_%j.err
@@ -38,7 +36,7 @@ conda activate vllm
 vllm serve "$MODEL_PATH" \
     --dtype float16 \
     --port "$VLLM_PORT" \
-    --max-model-len 8192 \
+    --max-model-len 16384 \
     --gpu-memory-utilization 0.85 &
 VLLM_PID=$!
 conda activate panel-member
@@ -58,4 +56,11 @@ python3 -m pipeline.run_coding_batch \
 
 # ── Cleanup ────────────────────────────────────────────────────────────────────
 kill "$VLLM_PID" && wait "$VLLM_PID" 2>/dev/null || true
+
+# ── Archive output to home (scratch purged after 30 days) ─────────────────────
+ARCHIVE_DIR="$HOME/panel-member-archive/runs"
+mkdir -p "$ARCHIVE_DIR"
+rsync -av "$OUTPUT" "$ARCHIVE_DIR/"
+echo "Archived to $ARCHIVE_DIR/$(basename "$OUTPUT")"
+echo "Pull locally: rsync -avz <user>@pegasus.arc.gwu.edu:~/panel-member-archive/ data/output/"
 echo "Done."

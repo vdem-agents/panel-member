@@ -8,12 +8,11 @@
 # Submit: sbatch slurm/run_coding_405b.sh
 #
 #SBATCH --job-name=pm-llama405b
-#SBATCH --partition=gpuq            # adjust to Pegasus GPU partition name
+#SBATCH --partition=gpu
 #SBATCH --nodes=1
-#SBATCH --ntasks=1
-#SBATCH --cpus-per-task=32
-#SBATCH --mem=128G
-#SBATCH --gres=gpu:A100:4           # 4×A100 80GB = 320GB; increase to 8 if needed
+#SBATCH --gres=gpu:a100:4           # 4×A100 80GB = 320GB; increase to 8 if needed
+#SBATCH --cpus-per-gpu=8
+#SBATCH --mem-per-gpu=32G
 #SBATCH --time=24:00:00
 #SBATCH --output=logs/llama405b_%j.out
 #SBATCH --error=logs/llama405b_%j.err
@@ -45,7 +44,7 @@ vllm serve "$MODEL_PATH" \
     --load-format bitsandbytes \
     --tensor-parallel-size "$TENSOR_PARALLEL_SIZE" \
     --port "$VLLM_PORT" \
-    --max-model-len 8192 \
+    --max-model-len 16384 \
     --gpu-memory-utilization 0.88 &
 VLLM_PID=$!
 conda activate panel-member
@@ -65,4 +64,11 @@ python3 -m pipeline.run_coding_batch \
 
 # ── Cleanup ────────────────────────────────────────────────────────────────────
 kill "$VLLM_PID" && wait "$VLLM_PID" 2>/dev/null || true
+
+# ── Archive output to home (scratch purged after 30 days) ─────────────────────
+ARCHIVE_DIR="$HOME/panel-member-archive/runs"
+mkdir -p "$ARCHIVE_DIR"
+rsync -av "$OUTPUT" "$ARCHIVE_DIR/"
+echo "Archived to $ARCHIVE_DIR/$(basename "$OUTPUT")"
+echo "Pull locally: rsync -avz <user>@pegasus.arc.gwu.edu:~/panel-member-archive/ data/output/"
 echo "Done."

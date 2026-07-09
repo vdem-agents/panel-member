@@ -10,9 +10,7 @@
 # Submit: sbatch slurm/run_coding_claude.sh
 #
 #SBATCH --job-name=pm-claude
-#SBATCH --partition=compute         # CPU partition; adjust to Pegasus name
-#SBATCH --nodes=1
-#SBATCH --ntasks=1
+#SBATCH --partition=cpu
 #SBATCH --cpus-per-task=4
 #SBATCH --mem=16G
 #SBATCH --time=8:00:00

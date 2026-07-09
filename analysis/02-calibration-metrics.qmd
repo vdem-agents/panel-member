@@ -1,0 +1,340 @@
+---
+title: "Calibration Metrics: LOO MAE, Exact Match, and Compression Diagnostics"
+format:
+  html:
+    toc: true
+    toc-depth: 3
+    embed-resources: true
+    code-fold: true
+execute:
+  warning: false
+  message: false
+params:
+  n_boot: 500
+  year: 2019
+  min_coders: 2
+---
+
+Three prompt conditions × five models evaluated against 12 V-Dem indicators for
+`r params$year`. Primary metric is leave-one-out MAE: the AI error against the panel mean
+compared to the typical error of a randomly held-out human coder against the rest of their
+panel. Secondary metrics are exact match rate and adjacent-category agreement (±1).
+Signed deviation by democracy quintile is reported as a compression diagnostic.
+
+Bootstrap CIs use `r params$n_boot` resamples at the country-year-indicator (CYI) level.
+See `notes/evaluation-metrics.md` for full metric rationale.
+
+---
+
+## 1. Setup
+
+```{r setup}
+library(tidyverse)
+library(rsample)
+library(gt)
+library(here)
+
+indicators <- c(
+  "v2clkill", "v2cltort", "v2mecenefm", "v2csreprss", "v2jupoatck",
+  "v2mecenefi", "v2juhcind", "v2clacfree", "v2clslavef",
+  "v2psoppaut", "v2excrptps", "v2pepwrsoc"
+)
+
+observability <- tribble(
+  ~indicator,    ~tier,
+  "v2clkill",    "High",
+  "v2cltort",    "High",
+  "v2mecenefm",  "High",
+  "v2csreprss",  "High",
+  "v2jupoatck",  "High",
+  "v2mecenefi",  "Medium",
+  "v2juhcind",   "Medium",
+  "v2clacfree",  "Medium",
+  "v2clslavef",  "Medium",
+  "v2psoppaut",  "Medium",
+  "v2excrptps",  "Medium",
+  "v2pepwrsoc",  "Low"
+)
+
+model_labels <- c(
+  "claude-sonnet"      = "Claude Sonnet 4.6",
+  "llama-405b"         = "Llama 405B",
+  "llama-70b"          = "Llama 70B",
+  "llama-9b"           = "Llama 9B",
+  "llama-70b-finetuned" = "Llama 70B (fine-tuned)"
+)
+
+condition_labels <- c(
+  "codebook"   = "Codebook",
+  "evidence"   = "Evidence",
+  "anonymized" = "Anonymized"
+)
+
+data_dir  <- here("data", "processed")
+runs_dir  <- here("data", "output", "runs")
+```
+
+---
+
+## 2. Data loading
+
+```{r load-data}
+#| cache: true
+#| cache.lazy: false
+
+# AI ratings — all JSONL files in runs_dir
+ai_raw <- list.files(runs_dir, pattern = "\\.jsonl$", full.names = TRUE) |>
+  map(\(f) {
+    readLines(f) |>
+      keep(\(l) nzchar(trimws(l))) |>
+      map(jsonlite::fromJSON) |>
+      bind_rows()
+  }) |>
+  bind_rows()
+
+# Human panel means — country_text_id, year, indicator, raw_mean, n_coders, theta_quintile
+panel_means <- read_csv(file.path(data_dir, "panel_means.csv"), show_col_types = FALSE)
+
+# Individual coder ratings — country_text_id, year, indicator, coder_id, rating
+human_ratings <- read_csv(file.path(data_dir, "human_ratings.csv"), show_col_types = FALSE)
+```
+
+---
+
+## 3. Metric construction
+
+### Human LOO baseline
+
+For each CYI with ≥ `r params$min_coders` coders, compute each coder's leave-one-out
+error: how far their rating falls from the panel mean with them removed.
+
+```{r human-loo}
+#| cache: true
+
+human_loo <- human_ratings |>
+  filter(year == params$year, indicator %in% indicators) |>
+  group_by(country_text_id, year, indicator) |>
+  filter(n() >= params$min_coders) |>
+  mutate(
+    panel_sum  = sum(rating),
+    n_coders   = n(),
+    loo_mean   = (panel_sum - rating) / (n_coders - 1),
+    loo_error  = abs(rating - loo_mean)
+  ) |>
+  summarise(
+    human_loo_mae = mean(loo_error),
+    panel_mean    = mean(rating),
+    n_coders      = first(n_coders),
+    .groups       = "drop"
+  )
+```
+
+### AI metrics per CYI
+
+```{r ai-metrics}
+ai_metrics <- ai_raw |>
+  filter(year == params$year, indicator %in% indicators) |>
+  rename(country_text_id = country) |>
+  inner_join(human_loo, by = c("country_text_id", "year", "indicator")) |>
+  left_join(
+    select(panel_means, country_text_id, year, indicator, theta_quintile),
+    by = c("country_text_id", "year", "indicator")
+  ) |>
+  mutate(
+    ai_error    = abs(rating - panel_mean),
+    exact_match = as.integer(rating == round(panel_mean)),
+    adjacent    = as.integer(abs(rating - round(panel_mean)) <= 1),
+    signed_dev  = rating - panel_mean,
+    model_label = recode(model_key, !!!model_labels),
+    cond_label  = recode(condition, !!!condition_labels)
+  )
+```
+
+---
+
+## 4. Bootstrap CIs
+
+Resample at the CYI level. For each draw, compute AI LOO MAE, human LOO MAE, and their
+difference.
+
+```{r bootstrap}
+#| cache: true
+
+loo_stat <- function(split) {
+  d <- analysis(split)
+  d |>
+    group_by(model_key, condition) |>
+    summarise(
+      ai_mae    = mean(ai_error),
+      human_mae = mean(human_loo_mae),
+      diff      = mean(ai_error) - mean(human_loo_mae),
+      .groups   = "drop"
+    )
+}
+
+set.seed(42)
+
+# One bootstrap per unique CYI (pool across models first, then resample CYIs)
+cyi_pool <- ai_metrics |>
+  distinct(country_text_id, year, indicator, human_loo_mae, panel_mean)
+
+boots <- bootstraps(cyi_pool, times = params$n_boot, apparent = TRUE)
+
+# Re-attach AI errors for each bootstrap draw
+boot_results <- boots |>
+  mutate(
+    result = map(splits, \(s) {
+      cyi_s <- analysis(s)
+      ai_metrics |>
+        semi_join(cyi_s, by = c("country_text_id", "year", "indicator")) |>
+        group_by(model_key, condition) |>
+        summarise(
+          ai_mae    = mean(ai_error),
+          human_mae = mean(human_loo_mae),
+          diff      = mean(ai_error) - mean(human_loo_mae),
+          .groups   = "drop"
+        )
+    })
+  ) |>
+  unnest(result)
+
+boot_ci <- boot_results |>
+  group_by(model_key, condition) |>
+  summarise(
+    ai_mae_mean  = mean(ai_mae[id == "Apparent"]),
+    human_mae    = mean(human_mae[id == "Apparent"]),
+    ci_lo        = quantile(diff, 0.025),
+    ci_hi        = quantile(diff, 0.975),
+    p_gt_zero    = mean(diff > 0),
+    .groups      = "drop"
+  )
+```
+
+---
+
+## 5. Primary table: LOO MAE by model × indicator
+
+```{r loo-table}
+loo_by_indicator <- ai_metrics |>
+  group_by(model_key, condition, indicator) |>
+  summarise(ai_mae = mean(ai_error), .groups = "drop") |>
+  left_join(
+    ai_metrics |>
+      group_by(indicator) |>
+      summarise(human_mae = mean(human_loo_mae), .groups = "drop"),
+    by = "indicator"
+  )
+
+# Aggregate column
+loo_agg <- ai_metrics |>
+  group_by(model_key, condition) |>
+  summarise(ai_mae = mean(ai_error), .groups = "drop") |>
+  mutate(indicator = "Overall")
+
+loo_wide <- bind_rows(
+    loo_by_indicator |> select(model_key, condition, indicator, ai_mae),
+    loo_agg
+  ) |>
+  mutate(label = paste0(
+    recode(model_key, !!!model_labels), " — ",
+    recode(condition, !!!condition_labels)
+  )) |>
+  pivot_wider(names_from = indicator, values_from = ai_mae, id_cols = label)
+
+# Human baseline row
+human_row <- ai_metrics |>
+  summarise(across(
+    c(human_loo_mae),
+    \(x) mean(x),
+    .names = "Overall"
+  )) |>
+  mutate(label = "Human LOO baseline")
+
+loo_wide |>
+  gt() |>
+  tab_header(
+    title    = "LOO MAE by model, condition, and indicator",
+    subtitle = glue::glue("Year: {params$year}  |  Bootstrap B = {params$n_boot}")
+  ) |>
+  fmt_number(columns = where(is.numeric), decimals = 2) |>
+  tab_spanner(label = "High observability",
+              columns = c(v2clkill, v2cltort, v2mecenefm, v2csreprss, v2jupoatck)) |>
+  tab_spanner(label = "Medium observability",
+              columns = c(v2mecenefi, v2juhcind, v2clacfree, v2clslavef,
+                          v2psoppaut, v2excrptps)) |>
+  tab_spanner(label = "Low observability", columns = v2pepwrsoc) |>
+  tab_style(
+    style = cell_fill(color = "#f0f0f0"),
+    locations = cells_body(rows = str_detect(label, "fine-tuned"))
+  )
+```
+
+---
+
+## 6. Secondary metrics
+
+```{r secondary-metrics}
+ai_metrics |>
+  group_by(model_key, condition) |>
+  summarise(
+    exact_match = mean(exact_match),
+    adjacent    = mean(adjacent),
+    .groups     = "drop"
+  ) |>
+  mutate(
+    model_label = recode(model_key, !!!model_labels),
+    cond_label  = recode(condition, !!!condition_labels)
+  ) |>
+  select(model_label, cond_label, exact_match, adjacent) |>
+  gt() |>
+  tab_header(title = "Exact match and adjacent-category agreement") |>
+  fmt_percent(columns = c(exact_match, adjacent), decimals = 1) |>
+  cols_label(
+    model_label = "Model",
+    cond_label  = "Condition",
+    exact_match = "Exact match",
+    adjacent    = "Within ±1"
+  )
+```
+
+---
+
+## 7. Compression diagnostic: signed deviation by quintile
+
+The human baseline for signed deviation is ~0 by construction. Any systematic AI
+deviation reveals directional bias: positive values in low quintiles indicate the AI
+rates autocracies too generously; negative values in high quintiles indicate it rates
+democracies too harshly.
+
+```{r signed-deviation}
+#| fig-width: 8
+#| fig-height: 5
+
+ai_metrics |>
+  filter(!is.na(theta_quintile)) |>
+  group_by(model_key, condition, theta_quintile) |>
+  summarise(signed_dev = mean(signed_dev), .groups = "drop") |>
+  mutate(
+    model_label = recode(model_key, !!!model_labels),
+    cond_label  = recode(condition, !!!condition_labels),
+    series      = paste0(model_label, " — ", cond_label)
+  ) |>
+  ggplot(aes(x = theta_quintile, y = signed_dev, color = model_label,
+             linetype = cond_label, group = series)) +
+  geom_line() +
+  geom_point(size = 2) +
+  geom_hline(yintercept = 0, linetype = "dashed", color = "grey40") +
+  scale_x_continuous(breaks = 1:5,
+                     labels = c("Q1\n(most\nautocratic)", "Q2", "Q3", "Q4",
+                                "Q5\n(most\ndemocratic)")) +
+  labs(
+    x        = "Democracy quintile (v2x_polyarchy)",
+    y        = "Signed deviation (AI − panel mean)",
+    color    = "Model",
+    linetype = "Condition",
+    title    = "Compression bias by regime type",
+    subtitle = glue::glue("Year: {params$year}")
+  ) +
+  theme_minimal(base_size = 12) +
+  theme(legend.position = "bottom")
+```

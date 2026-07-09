@@ -44,23 +44,33 @@ most urgent gap: universal across countries, growing at ~0.5 coders/year.
 
 ## The approach
 
-The paper tests whether AI-generated ratings can substitute for human panel members without
-detectably shifting V-Dem's expert panel means. The design has two main components:
+The paper tests whether AI-generated ratings can substitute for human expert coders in
+V-Dem's measurement system, and whether a fine-tuned model generalizes to indicators it
+was not trained on. The design has three components:
 
-**Component 1 — Prompt engineering calibration**: test four progressively richer prompt
-conditions across four model scales. Conditions: (1) codebook-only (no source text —
-measures baseline signal from model training data alone), (2) evidence packets
-(section-extracted State Dept and Freedom House text), (3) anonymized summaries (an agent
-rewrites the extracted text to strip country-identifying information before coding, targeting
-the regime-type anchoring bias observed in bridge-coder preliminary results), (4) fine-tuning
-(QLoRA on Llama 70B, trained on anonymized text). Models: Claude Sonnet 4.6 (frontier),
-Llama 405B, Llama 70B, Llama 9B (scale comparison). Outcome: mean absolute deviation from
-the human panel's raw mean rating.
+**Component 1 — Prompt engineering calibration**: test three prompt conditions across five
+models. Conditions: (1) codebook-only (no source text — measures baseline signal from model
+training data alone), (2) evidence packets (section-extracted State Dept and Freedom House
+text + few-shot calibration examples), (3) anonymized summaries (an agent rewrites the
+extracted text to strip country-identifying information before coding). Models: Claude
+Sonnet 4.6 (frontier), Llama 405B, Llama 70B, Llama 9B, and fine-tuned Llama 70B (QLoRA
+adapter trained on individual coder ratings from V-Dem v15; runs on the anonymized prompt
+format without few-shot examples, since calibration is in the weights). Outcome: MAD from
+raw panel mean across all five models; MAE against individual coder ratings for fine-tuned
+model.
 
-**Component 2 — Replacement experiment**: using the best-performing condition, test how
-many human coders can be replaced by AI before the raw panel mean shifts detectably. Start
-from well-formed panels (≥8 coders), remove k = 1, 2, 3 human coders, substitute AI
-ratings from distinct models, compare the AI-augmented panel mean to the full-panel mean.
+**Component 2 — Generalization test (primary novel finding)**: the fine-tuned model is
+trained on 12 V-Dem indicators and evaluated on X held-out indicators from the same modules
+(same evidence sources, unseen during training). If MAE on held-out indicators approximates
+MAE on trained indicators, the result supports a general V-Dem AI coder claim — a model
+that can code indicators beyond those it was explicitly trained on. This is the core
+contribution: not just calibration on known indicators, but transferability across V-Dem's
+measurement system.
+
+**Component 3 — Integration robustness (secondary)**: using the best-calibrated model,
+test whether adding one AI coder to a well-formed human panel shifts the raw panel mean
+detectably. Simplified replacement experiment (k=1) on a subset of country-year-indicators.
+Serves as a robustness check on the calibration finding, not the paper's primary claim.
 
 The pipeline shares source documents, ingestion, and section extraction infrastructure with
 the bridge-coder paper. No separate data collection is needed for the contemporary window.
@@ -96,21 +106,26 @@ low-observability indicators (diffuse evaluative judgments) hardest.
 
 ## Contribution claim
 
-**The key contribution is not that AI coders are as good as human experts.** It is two
-related findings:
+**The key contribution is not that AI coders are as good as human experts.** It is three
+related findings in sequence:
 
 1. **Calibration**: which prompt strategy and model scale produces AI ratings closest to
-   human panel means, and by how much does each step in the prompt pipeline improve
-   calibration? This answers the practical question of how to build an AI coder and whether
-   more expensive options (larger models, anonymization, fine-tuning) are justified.
+   human panel means across 12 V-Dem indicators? This answers the practical question of how
+   to build an AI coder and whether more expensive options (larger models, anonymization,
+   fine-tuning) are justified.
 
-2. **Replacement tolerance**: how many human coders can AI replace before the raw panel
-   mean shifts detectably? This answers the deployment question: is AI augmentation safe
-   for well-formed panels, and for thin panels recovering from attrition?
+2. **Generalization**: does a fine-tuned model transfer to V-Dem indicators it was not
+   trained on? If yes, the result supports a scalable AI coder that could be applied across
+   V-Dem's full measurement system — not just the 12 indicators studied here. This is the
+   primary novel finding.
+
+3. **Safe integration**: does adding one AI coder to an existing human panel shift the raw
+   panel mean detectably? This answers the deployment question for thin and attriting panels.
+   Reported as a robustness check on the calibration finding.
 
 Secondary: the codebook-only condition tests whether large frontier and open-weights models
-already have latent calibration from their training data, independent of evidence. This
-has implications for whether the evidence pipeline is necessary at all for some indicators.
+already have latent calibration from their training data, independent of evidence — with
+implications for whether the evidence pipeline is necessary at all.
 
 ---
 

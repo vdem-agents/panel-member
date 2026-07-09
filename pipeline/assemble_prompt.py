@@ -2,7 +2,7 @@
 """
 Prompt assembly for the panel-member coding pipeline.
 
-Handles three prompt conditions:
+Handles four prompt conditions:
 
   "codebook"   — global framing + codebook text only; no evidence; no few-shot examples.
                  Measures the baseline calibration signal from model pretraining alone.
@@ -15,12 +15,14 @@ Handles three prompt conditions:
                  Requires prior anonymize_section.py run for focal country-year AND for
                  all few-shot example countries.
 
-Fine-tuned model inference (Condition 4) does not use this module — see
-run_finetuned_batch.py.
+  "finetuned"  — same as "anonymized" but with no few-shot calibration block. Used for
+                 both fine-tuning training data (prepare_finetune_data.py) and inference
+                 with the fine-tuned adapter (run_finetuned_batch.py). Calibration is in
+                 the model weights rather than the prompt.
 
 Usage:
     python3 -m pipeline.assemble_prompt \\
-        --slug nigeria --name Nigeria --year 2020 \\
+        --slug nigeria --name Nigeria --iso NGA --year 2020 \\
         --indicator v2csreprss --condition evidence
 """
 
@@ -174,6 +176,15 @@ def _codebook_user(country_name: str, year: int, indicator: str, ind: dict) -> s
     return "\n".join(lines)
 
 
+_CALIBRATION_HEADER = (
+    "## Calibration examples\n\n"
+    "The following examples show mean expert panel ratings from V-Dem's global coder pool,\n"
+    "reflecting globally anchored thresholds rather than regional standards. Panel means are\n"
+    "continuous; your task is to assign a single integer on the same 0–4 scale.\n\n"
+    "{fewshot_block}\n\n---"
+)
+
+
 def assemble_prompt(
     country_slug: str,
     country_name: str,
@@ -190,14 +201,17 @@ def assemble_prompt(
         country_name:  Display name for the prompt, e.g. "Nigeria"
         year:          Target year, e.g. 2020
         indicator:     V-Dem indicator code, e.g. "v2csreprss"
-        condition:     "codebook" | "evidence" | "anonymized"
-        iso:           ISO-3 code (required for condition="anonymized"), e.g. "NGA"
+        condition:     "codebook" | "evidence" | "anonymized" | "finetuned"
+        iso:           ISO-3 code (required for "anonymized" and "finetuned"), e.g. "NGA"
 
     Returns:
         (system_text, user_text) ready for the API messages list
     """
-    if condition not in ("codebook", "evidence", "anonymized"):
-        raise ValueError(f"Invalid condition {condition!r}. Use codebook, evidence, or anonymized.")
+    if condition not in ("codebook", "evidence", "anonymized", "finetuned"):
+        raise ValueError(
+            f"Invalid condition {condition!r}. "
+            "Use codebook, evidence, anonymized, or finetuned."
+        )
 
     config = _load_config()
     if indicator not in config:
@@ -207,7 +221,7 @@ def assemble_prompt(
     if condition == "codebook":
         return CODEBOOK_ONLY_SYSTEM, _codebook_user(country_name, year, indicator, ind)
 
-    # evidence or anonymized: use the prompt template
+    # evidence, anonymized, finetuned: use the prompt template
     system_raw, user_raw = _load_template()
 
     categories = ind["categories"]
@@ -225,9 +239,11 @@ def assemble_prompt(
             get_evidence(country_slug, year, indicator, "freedom-house")
             or "[No source document available for this country-year.]"
         )
-        fewshot_block = _build_fewshot_block(indicator, anonymized=False)
+        calibration_section = _CALIBRATION_HEADER.format(
+            fewshot_block=_build_fewshot_block(indicator, anonymized=False)
+        )
 
-    else:  # anonymized
+    elif condition == "anonymized":
         if iso is None:
             raise ValueError("iso is required for condition='anonymized'")
         anon_text = load_anonymized(iso, year, indicator)
@@ -240,7 +256,22 @@ def assemble_prompt(
             )
         state_ev = anon_text
         fh_ev = "[Included in anonymized text above]"
-        fewshot_block = _build_fewshot_block(indicator, anonymized=True)
+        calibration_section = _CALIBRATION_HEADER.format(
+            fewshot_block=_build_fewshot_block(indicator, anonymized=True)
+        )
+
+    else:  # finetuned — anonymized evidence, no few-shot block
+        if iso is None:
+            raise ValueError("iso is required for condition='finetuned'")
+        anon_text = load_anonymized(iso, year, indicator)
+        if anon_text is None:
+            raise FileNotFoundError(
+                f"No anonymized text for {iso} {year} {indicator}. "
+                f"Run anonymize_section.py before prepare_finetune_data.py."
+            )
+        state_ev = anon_text
+        fh_ev = "[Included in anonymized text above]"
+        calibration_section = ""
 
     user_text = (
         user_raw
@@ -255,7 +286,7 @@ def assemble_prompt(
         .replace("{CATEGORY_3}", categories[3])
         .replace("{CATEGORY_4}", categories[4])
         .replace("{CLARIFICATION_BLOCK}", clarification_block)
-        .replace("{FEWSHOT_EXAMPLES}", fewshot_block)
+        .replace("{CALIBRATION_SECTION}", calibration_section)
         .replace("{STATE_DEPT_EVIDENCE}", state_ev)
         .replace("{FH_EVIDENCE}", fh_ev)
     )
@@ -271,7 +302,9 @@ if __name__ == "__main__":
     parser.add_argument("--year", type=int, default=2020)
     parser.add_argument("--indicator", required=True)
     parser.add_argument(
-        "--condition", choices=["codebook", "evidence", "anonymized"], default="evidence"
+        "--condition",
+        choices=["codebook", "evidence", "anonymized", "finetuned"],
+        default="evidence",
     )
     parser.add_argument("--chars", type=int, default=4000,
                         help="Characters of user message to preview")

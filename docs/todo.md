@@ -6,15 +6,18 @@
 
 ## GW Pegasus HPC setup (before any HPC runs)
 
-- [ ] **Confirm partition and GPU resource names** with GW research computing.
-  The SLURM scripts in `slurm/` use placeholder names (`gpuq`, `compute`,
-  `gpu:A100:1`, `gpu:V100:1`). Replace with Pegasus's actual partition and GRES
-  names before submitting any jobs.
+- [x] **Confirm partition and GPU resource names** — done 2026-07-08.
+  Pegasus now uses TRES scheduling (upgraded February 2026). Confirmed partition and
+  GRES names via `sinfo` on login node log001. All `slurm/*.sh` scripts updated.
+  See `notes/hpc-sequencing-strategy.md` for full details and TRES resource table.
+  - Partitions: `cpu` (non-GPU), `gpu` (all GPU jobs), `basestar` (Grace Hopper)
+  - GRES: `gpu:v100:1` (9B), `gpu:a100:1` (70B / fine-tuning), `gpu:a100:4` (405B)
+  - TRES style: use `--cpus-per-gpu` and `--mem-per-gpu` for GPU jobs
 
-- [ ] **Check whether compute nodes have outbound internet access**.
-  The Claude API (`api.anthropic.com`) requires outbound HTTPS from the node running
-  the job. If compute nodes are firewalled, run `run_coding_claude.sh` from the login
-  node instead. The JSONL checkpoint makes it safe to run interactively and resume.
+- [ ] **Claude API jobs: run from laptop, not HPC**.
+  Outbound internet access to `api.anthropic.com` from Pegasus compute nodes is
+  unconfirmed. Claude requires no GPU and JSONL checkpointing makes it safe to run
+  across sessions. Do not submit `run_coding_claude.sh` to Pegasus — run it locally.
 
 - [ ] **Download model weights to Pegasus scratch storage** (run once on login node).
   Run `slurm/setup_models.sh` after setting `HF_TOKEN` in `.env`. Requires a
@@ -119,47 +122,87 @@
 
 ---
 
-## Blocking: cannot run replacement experiment until resolved
+## Blocking: cannot run generalization test until resolved
 
-- [ ] **Lock `data/processed/cy_pool.csv`** (replacement experiment pool).
-  Eligibility: ≥8 distinct coders, 2018–2022, stratified by `theta_quintile`
-  (10 CYs per quintile = 50 total). Lock before running any LLM calls for the replacement
-  experiment. Required columns: `country_text_id`, `year`, `indicator`, `theta_quintile`.
+- [ ] **Finalize and lock hold-out indicators** (verify before any fine-tuning runs).
+  Candidates — v2clrelig, v2meharjrn, v2cseeorgs, v2jucorrdc — are now in
+  `config/indicator_sections.yaml` with `held_out: true` and approximate codebook text,
+  but all four are marked `# TODO: verify`. Before locking:
+  - Confirm indicator codes exist in V-Dem v15 (check `vdemdata::codebook` in R)
+  - Verify codebook question wording, clarification text, and response categories
+    against the official PDF or `vdemdata::codebook`
+  - Confirm State Dept and Freedom House section mappings against
+    `initial-exploration/explore-indicators/02-indicator-source-map.html`
+  - Decide whether all four are kept or whether any are dropped (e.g. if section
+    coverage is poor or the indicator is retired in v15)
 
 - [ ] **Generate `data/processed/human_ratings.csv`** — individual coder ratings from
-  V-Dem v15 coder-level dataset. Required columns: `country_text_id`, `year`,
-  `indicator`, `coder_id`, `rating`. Needed by `replacement_experiment.py`.
+  V-Dem v15 coder-level dataset for both trained and held-out indicators.
+  Required columns: `country_text_id`, `year`, `indicator`, `coder_id`, `rating`.
+  Used for MAE evaluation of fine-tuned model on both indicator sets.
 
-- [ ] **Update `MODEL_PRIORITY`** in `pipeline/replacement_experiment.py` after Stage 1
-  calibration results are in. The priority list determines which models serve as AI panel
-  members for k=2 and k=3 replacements. Must be pre-registered before running.
+---
+
+## Secondary analysis: integration robustness (k=1 replacement check)
+
+Previously the primary experiment; now a supplemental robustness check. Simplified
+to k=1 only — k=2 and k=3 dropped since a single fine-tuned adapter cannot provide
+multiple genuinely distinct AI coders.
+
+- [ ] **Lock `data/processed/cy_pool.csv`** after Stage 1 calibration results are in.
+  Eligibility: ≥8 distinct coders, 2019 only (same year as calibration — AI ratings
+  already exist; no extra ingestion or coding needed). Use all eligible CYs, no cap.
+  Run `pipeline/select_cy_pool.py` to generate the file reproducibly.
+
+- [ ] **Simplify `pipeline/replacement_experiment.py`** to k=1 only.
+  Remove k=2, k=3 logic and the MODEL_PRIORITY assignment. Single AI rating from
+  best-calibrated model per bootstrap draw.
 
 ---
 
 ## Blocking: cannot run Condition 4 (fine-tuning) until resolved
 
-- [ ] **Write `pipeline/prepare_finetune_data.py`**.
-  Generates the training JSONL from (anonymized section text, raw panel mean) pairs.
-  Training window: 2010–2015 (held out of all evaluation pools). Save list of training
-  CYIs to `data/processed/training_set.csv` before training.
+- [x] **Write `pipeline/prepare_finetune_data.py`**. Done 2026-07-09.
+  Builds training JSONL from (Condition 4 prompt, individual coder rating) pairs.
+  Training window 2013–2018. Outputs `finetune_train.jsonl` and `training_set.csv`.
 
-- [ ] **Write `pipeline/finetune_llama.py`**.
-  QLoRA fine-tune on GW Pegasus A100 80GB. Base: `meta-llama/Llama-3.3-70B-Instruct`.
-  Dependencies: `transformers`, `peft`, `bitsandbytes`, `trl`, `accelerate` (install
-  in a separate conda env — see HPC setup section above).
-  Hyperparameters to pre-register: LoRA rank, alpha, learning rate, batch size, epochs,
-  base model commit hash.
+- [x] **Write `pipeline/finetune_llama.py`**. Done 2026-07-09.
+  QLoRA fine-tune on Pegasus A100 80GB. Base: `meta-llama/Llama-3.3-70B-Instruct`.
+  LoRA rank 16, alpha 32, lr 2e-4, batch 4 × grad_accum 4, 3 epochs.
+  Saves adapter only to `data/output/adapters/llama-70b-vdem-ft/`.
 
-- [ ] **Write `slurm/run_finetune.sh`**.
-  SLURM script wrapping `finetune_llama.py`. Single A100 80GB node, ~2–4 hours per
-  indicator. Same pattern as `run_coding_llama70b.sh` but no vLLM — training runs
-  directly via `python3 -m pipeline.finetune_llama`.
+- [x] **Write `slurm/run_finetune.sh`**. Done 2026-07-09.
+  SLURM wrapper for `finetune_llama.py`. Single A100 80GB, ~3–5 hr wall-clock.
+  Archives adapter to `$HOME/panel-member-archive/adapters/` on completion.
 
-- [ ] **Write `pipeline/run_finetuned_batch.py`**.
-  Inference with fine-tuned weights served via local vLLM with LoRA adapter loaded
-  via `--lora-modules`. Output schema same as other conditions with
-  `condition="finetuned"`. Corresponding SLURM script: adapt `run_coding_llama70b.sh`
-  with `--model llama-70b-finetuned` and the adapter path added to the vLLM launch.
+- [x] **Write `pipeline/run_finetuned_batch.py`**. Done 2026-07-09.
+  Thin wrapper around `run_coding_batch.run_batch()` with fixed condition="finetuned"
+  and model="llama-70b-finetuned". Requires vLLM running with adapter via --lora-modules.
+
+- [x] **Write `slurm/run_inference_finetuned.sh`**. Done 2026-07-09.
+  Starts vLLM with `--lora-modules`, runs `run_finetuned_batch.py`, archives output.
+
+- [ ] **Generate `data/processed/human_ratings.csv`** from V-Dem v15 coder-level data in R.
+  Required columns: `country_text_id`, `iso3`, `year`, `indicator`, `coder_id`, `rating`.
+  Include both training indicators (2013–2018) and held-out indicators (for MAE eval).
+  The `iso3` column is required by `prepare_finetune_data.py` for anonymized text lookup.
+
+---
+
+## Source documents: download locally (do before any coding runs)
+
+- [ ] **Download 2019 Freedom House and State Dept reports** (primary test year).
+  Run `bridge-coder/pipeline/download_reports.py --year 2019` on laptop. Store in
+  `bridge-coder/data/raw/{state-dept,freedom-house}/2019/`. Symlink or copy to
+  panel-member as needed. ~170 countries, ~30 min on home internet.
+
+- [ ] **Download 2013–2018 source documents** (fine-tuning training window).
+  Same script, one run per year. ~6 × 30 min. Can chip away across sessions — the
+  download script checkpoints so interrupted runs resume cleanly.
+
+- [ ] **Download 2024 source documents** (deployment robustness check, best model only).
+  Run `download_reports.py --year 2024`. Note: State Dept 2024 report (covering 2024
+  events) was published early 2025; confirm URL pattern still holds.
 
 ---
 
@@ -188,16 +231,24 @@
 - [ ] **Persona exploratory condition**: write strict and lenient framing text; decide
   which indicators and models to test; lock before running.
 
-- [ ] **Stopping rule**: document the k progression rule and whether you will report
-  results beyond the tolerance threshold.
+- [ ] **Divergence threshold**: choose and justify the value (in rating points on 0–4
+  scale) at which the 95% CI lower bound would indicate non-negligible panel distortion.
+
+- [ ] **Stopping rule and k progression**: document the rule for reporting results at
+  k=2 and k=3 (contingent on exploratory temperature/persona results producing
+  genuinely distinct AI draws). What k triggers "replacement tolerance exceeded" and
+  do you report results beyond that point?
+
+- [ ] **Coder removal sensitivity**: random removal is primary; decide whether to
+  report worst-first and best-first bounds as supplementary robustness checks.
 
 ---
 
 ## Paper / analysis (non-blocking)
 
-- [ ] **Write `pipeline/select_cy_pool.py`**: script to select the locked pool from
-  v15 panel-size and θ data, applying eligibility criteria and quintile stratification.
-  Makes the pool selection reproducible.
+- [ ] **Write `pipeline/select_cy_pool.py`**: filter `panel_means.csv` to 2019 rows
+  with `n_coders ≥ 8` and save to `data/processed/cy_pool.csv`. No sampling, no cap —
+  all eligible CYs from the calibration pool. Run after Stage 1 to lock the pool.
 
 - [ ] **Attrition sample**: identify countries with ≥8 coders in 2015 and ≤5 by 2022
   for the augmentation-of-attrited-panels secondary analysis.

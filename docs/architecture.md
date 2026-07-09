@@ -173,27 +173,35 @@ Output path: `data/output/{model_key}_anonymized_{indicator}_{year}.jsonl`
 {
     "messages": [
         {"role": "system", "content": GLOBAL_FRAMING},
-        {"role": "user",   "content": anonymized_section_text},
-        {"role": "assistant", "content": str(round(raw_panel_mean))}
+        {"role": "user",   "content": section_text},
+        {"role": "assistant", "content": str(individual_coder_rating)}
     ]
 }
 ```
 
-Training set: 200–500 pairs per indicator from 2010–2015, held out of all evaluation
-pools. Anonymization is applied to training text so the fine-tuned model's inference
-distribution matches its training distribution — at test time, the same anonymized
-pipeline produces the input.
+One row per coder per country-year-indicator — individual coder ratings from the V-Dem
+v15 coder-level dataset, not panel means. Training window: **2013–2018** (post-lateral-coder
+drop; pre-attrition panels; no overlap with 2019 test year or 2024 deployment check).
+Expected scale: ~6 years × ~150 CYs × 12 indicators × ~11 coders ≈ ~120,000 training
+examples. Save training CYI list to `data/processed/training_set.csv`.
+
+**Evaluation design**:
+- Primary: MAE/MSE/exact match against held-out individual coder ratings — standard
+  supervised evaluation against the training target.
+- Secondary: include fine-tuned model in cross-model MAD comparison alongside
+  Conditions 1–3 — it outputs a 0–4 rating and slots directly into `calibration_check.py`.
+- Replacement experiment: participates as a model candidate alongside few-shot models.
 
 **Fine-tuning** (`pipeline/finetune_llama.py`):
 - Base: `meta-llama/Llama-3.3-70B-Instruct`
 - Method: QLoRA (4-bit, rank 16, alpha 32)
-- Platform: GW A100 80GB (1 GPU, ~40GB at 4-bit + activations)
+- Platform: GW Pegasus A100 80GB, `--partition=gpu --gres=gpu:a100:1`
 - Batch: 4; gradient accumulation: 4 (effective 16); epochs: 3
 - Learning rate: 2e-4 with cosine decay
-- Estimated time: 2–4 hours per indicator
+- Estimated time: 2–4 hours per indicator; 12 indicators ≈ 36 A100-hours total
+- Adapter size: ~500 MB–1 GB per indicator; base model weights (~140 GB) stored once
 
-At inference: anonymized section text only — no few-shot examples. Calibration is in
-the weights.
+At inference: section text only — no few-shot examples. Calibration is in the weights.
 
 Output path: `data/output/llama70b_finetuned_{indicator}_{year}.jsonl`
 
@@ -272,6 +280,7 @@ panel-member/
     output/                       # coded JSONL files (gitignored)
   notes/
     persona-prompting-design-archive.md
+    hpc-sequencing-strategy.md     # Pegasus/Raptor setup, TRES resource requests, sequencing
 ```
 
 **Shared files**: bridge-coder is the authoritative copy of source documents, ingest.py,

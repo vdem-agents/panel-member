@@ -1,24 +1,30 @@
 # Panel Member: Experimental Design
 
-*Updated July 2026. IRT replaced by panel-mean deviation test. Four prompt conditions,
-four model scales. Replacement experiment (primary), attrited-panel augmentation
-(secondary), persona and temperature variation (exploratory/sensitivity). Raw panel means
-throughout. See `notes/persona-prompting-design-archive.md` for archived persona design.*
+*Updated July 2026. IRT replaced by panel-mean deviation test. Three prompt conditions,
+five models. Replacement experiment (primary), attrited-panel augmentation (secondary),
+persona and temperature variation (exploratory/sensitivity). Raw panel means throughout.
+See `notes/persona-prompting-design-archive.md` for archived persona design.*
 
 ---
 
 ## Design overview
 
-The experiment addresses two questions in sequence:
+The experiment addresses three questions in sequence:
 
 **Question 1 (calibration)**: Which prompt condition and model scale produces AI ratings
 closest to the human expert panel's raw mean across 12 V-Dem indicators?
 
-**Question 2 (replacement)**: Using the best-calibrated condition, how many human coders
-can AI replace before the raw panel mean shifts detectably?
+**Question 2 (generalization — primary novel finding)**: Does a fine-tuned V-Dem AI coder
+transfer to indicators it was not trained on? Trained on 12 indicators, evaluated on X
+held-out indicators from the same modules and evidence sources.
 
-The design is a **4 × 4 calibration experiment** (4 prompt conditions × 4 model scales)
-followed by a **sequential replacement experiment** using the best-performing condition(s).
+**Question 3 (integration robustness — secondary)**: Does adding one AI coder to a
+well-formed human panel shift the raw panel mean detectably? Simplified replacement
+experiment (k=1) reported as a robustness check on the calibration finding.
+
+The design is a **3 × 5 calibration experiment** (3 prompt conditions × 5 models),
+followed by a **generalization test** on held-out indicators, with a **k=1 replacement
+check** as supplementary analysis.
 
 ---
 
@@ -29,23 +35,40 @@ followed by a **sequential replacement experiment** using the best-performing co
 | Label | Prompt content | New element |
 |---|---|---|
 | Codebook-only | Global framing + codebook text | — |
-| Evidence | + raw section text | Structured source evidence |
-| Anonymized | + anonymized section text | Country-identity stripped |
-| Fine-tuned | Anonymized text → fine-tuned 70B | Calibration in weights |
+| Evidence | + raw section text + few-shot calibration examples | Structured source evidence + anchors |
+| Anonymized | + anonymized section text + anonymized few-shot examples | Country-identity stripped |
 
-Each condition is additive: Condition 2 adds evidence to Condition 1; Condition 3 adds
-anonymization to Condition 2; Condition 4 replaces few-shot with fine-tuned weights.
+Each condition is additive: Evidence adds source text and few-shot calibration anchors to
+Codebook-only; Anonymized strips country identity from both the focal evidence and the
+few-shot examples.
 
 ### Models
 
-Claude Sonnet 4.6, Llama 405B Instruct, Llama 3.3 70B Instruct, Llama 3.2 9B Instruct.
-Conditions 1–3 run on all four models. Condition 4 runs on Llama 70B (primary) and
-optionally Llama 9B (lower bound on scale × fine-tuning interaction).
+| Model | Scale | Platform | Conditions |
+|---|---|---|---|
+| Claude Sonnet 4.6 | Frontier | Claude API | Codebook, Evidence, Anonymized |
+| Llama 405B Instruct | 405B open | GW 8×A100 80GB | Codebook, Evidence, Anonymized |
+| Llama 3.3 70B Instruct | 70B open | GW A100 80GB | Codebook, Evidence, Anonymized |
+| Llama 3.2 9B Instruct | 9B open | GW V100 16GB | Codebook, Evidence, Anonymized |
+| Llama 3.3 70B (fine-tuned) | 70B ft | GW A100 80GB | Anonymized format, no few-shot |
+
+Fine-tuned Llama 70B uses the anonymized prompt format without the few-shot calibration
+block; calibration is embedded in the adapter weights. Comparing it to the base 70B under
+Anonymized shows what fine-tuning adds over few-shot prompting on the same model and
+evidence format.
 
 ### Country-year pool (calibration)
 
-Primary: 2020 (~150–170 country-year-indicator cells per indicator with v15 raw panel
-means). Expand to 2018–2020 if per-condition MAD estimates are unstable at N=150.
+Primary: **2019** (~150–170 country-year-indicator cells per indicator with v15 raw panel
+means). 2019 is the clean one-year temporal holdout after the fine-tuning training window
+(2013–2018) with full panels and no exogenous anomalies. 2020 is avoided as a primary
+test year: COVID-19 emergency restrictions systematically distort civil society, judicial,
+and media indicators, making the human panel mean itself a noisier target.
+
+Deployment robustness: **2024** — best-performing model only (Condition 4 or whichever
+wins calibration). Tests generalization to recent thin-panel years where AI augmentation
+is most needed. Panel size ~4,421 active coders by 2024 (vs. ~8,212 in 2018), so ground
+truth is uncertain; frame as deployment simulation, not primary validation.
 
 ### Outcome
 
@@ -57,60 +80,73 @@ across indicators). Secondary: signed deviation by democracy quintile.
 
 | Comparison | What it isolates |
 |---|---|
-| Condition 1 vs. 2 (same model) | Marginal value of source evidence |
-| Condition 2 vs. 3 (same model) | Marginal value of anonymization |
-| Condition 3 vs. 4 (70B) | Marginal value of fine-tuning over few-shot |
+| Codebook vs. Evidence (same model) | Marginal value of source evidence + few-shot anchors |
+| Evidence vs. Anonymized (same model) | Marginal value of anonymization |
+| Anonymized (70B base) vs. Fine-tuned 70B | Marginal value of fine-tuning over few-shot |
 | Models (same condition) | Scale effects on calibration |
 | Quintile signed deviation | Regime-type anchoring bias |
 
 ---
 
-## Part 2: Replacement experiment
+## Part 2: Generalization test (primary novel finding)
 
 ### Design
 
-Pool: well-formed panels (≥8 distinct coders) from 2018–2022. Stratify by democracy
-quintile (10 country-years per quintile = 50 total). Lock to `data/processed/cy_pool.csv`
-before running any LLM calls.
+The fine-tuned Llama 70B adapter is trained jointly on all 12 indicators. A set of X
+held-out indicators — from the same modules and covered by the same evidence sources
+(State Dept + Freedom House) — are withheld from training entirely.
 
-For each country-year (cy), k ∈ {1, 2, 3}, and bootstrap draw b ∈ {1,...,500}:
+**Hold-out indicator candidates** (verify against V-Dem codebook before locking):
 
-1. Randomly draw k human coders to remove from the panel
-2. Substitute k AI ratings from the best Stage 1 condition (one rating per model)
-3. Compute `mean_aug_k = mean(remaining_human_ratings + k_AI_ratings)`
-4. Record `divergence_k = |mean_aug_k − mean_full|`
+| Candidate | Module | Evidence sources | Observability |
+|---|---|---|---|
+| v2clrelig (freedom of religion) | Civil liberties | State Dept §2c, FH §F | High |
+| v2meharjrn (harassment of journalists) | Media | State Dept §2a, FH §D | High |
+| v2cseeorgs (CSO entry and exit) | Civil society | State Dept §2b, FH §E | Medium |
+| v2jucorrdc (judicial corruption decisions) | Judiciary | State Dept §1e, FH §F | Medium |
 
-Report divergence curve: mean divergence by k with 2.5–97.5% bootstrap CI, averaged
-across the 50 country-years and stratified by democracy quintile.
+Final selection and section mappings must be verified against the V-Dem codebook and
+locked in `config/indicator_sections.yaml` before any fine-tuning runs.
 
-**Replacement tolerance** (primary finding): the k at which the lower bound of the 95%
-CI on divergence_k first exceeds the pre-registered threshold. Pre-register the
-threshold value and its justification before running.
+### Evaluation
 
-### AI panel member assignment
+For the 12 trained indicators and X held-out indicators, compute:
+- **MAE / exact match** against held-out individual coder ratings from V-Dem v15
+- **MAD** against raw panel mean (for cross-condition comparison)
 
-For k > 1, AI ratings come from k distinct models. Pre-register the assignment rule:
+**Primary finding**: if MAE on held-out indicators ≈ MAE on trained indicators, the
+result supports a general V-Dem AI coder claim — a fine-tuned model that transfers
+across V-Dem's measurement system. If held-out MAE is substantially worse, the result
+characterizes the limits of generalization.
 
-| k | AI panel members used |
-|---|---|
-| 1 | Best Stage 1 model |
-| 2 | Best + 2nd-best Stage 1 models |
-| 3 | Best + 2nd-best + 3rd-best Stage 1 models |
+This test is more informative than any calibration-only result: good calibration on
+training indicators could reflect memorization; good performance on held-out indicators
+demonstrates genuine transferability.
 
-"Best" defined by lowest overall MAD in Stage 1. If a model performs poorly in Stage 1,
-it is excluded from the replacement experiment — this is one motivation for running Stage
-1 first and locking the Stage 2 pool only after Stage 1 results are in hand.
+---
 
-### Coder removal strategy
+## Part 3: Integration robustness (secondary / supplemental)
 
-**Primary**: random removal (uniform draw). Expected-case effect under realistic
-deployment where the researcher does not know individual coder quality.
+### Design
 
-**Bounds** (secondary):
-- Worst-first: remove k coders with highest individual deviation from panel mean
-- Best-first: remove k coders with lowest individual deviation from panel mean
+Simplified replacement experiment: k=1 only. For each country-year in the 2019
+calibration pool with ≥8 distinct coders, add one AI rating from the best-calibrated
+model and compare the AI-augmented panel mean to the full human panel mean.
 
-Report bounds as supplementary; the random-removal curve is the main result.
+```
+divergence = |mean(human_panel + AI_rating) − mean(human_panel)|
+```
+
+Bootstrap across country-years (B=500). Report mean divergence with 95% CI.
+
+**Purpose**: robustness check on calibration finding. If MAD is already low, this
+demonstrates that the low MAD translates to negligible panel-mean distortion under
+realistic deployment (k=1). Not the primary claim.
+
+k=2 and k=3 are dropped: with a single fine-tuned model, multiple "distinct" AI
+coders are not available, and mixing fine-tuned + few-shot models in the same panel
+slot is conceptually awkward. The k=1 test is the cleanest and most policy-relevant
+scenario regardless.
 
 ---
 
@@ -165,14 +201,20 @@ Report as a diagnostic in the supplementary materials.
 
 ## Outcome variables
 
-| Variable | Definition | Stage |
+| Variable | Definition | Role |
 |---|---|---|
-| MAD | `mean(\|AI_rating − raw_mean\|)` across pool | Calibration primary |
-| Signed deviation | `mean(AI_rating − raw_mean)` | Calibration diagnostic |
-| Quintile signed dev | Signed dev by democracy quintile | Compression diagnostic |
-| divergence_k | `\|mean_aug_k − mean_full\|` | Replacement primary |
-| Replacement tolerance | k at which 95% CI lower bound > threshold | Replacement finding |
+| LOO MAE | `mean(\|AI_rating − panel_mean\|)` vs. `mean(\|rating_i − mean(panel \ {i})\|)` with bootstrap CIs | Calibration primary |
+| Exact match rate | `% (AI_rating == round(panel_mean))` | Calibration secondary |
+| Adjacent agreement | `% (\|AI_rating − round(panel_mean)\| ≤ 1)` | Calibration secondary |
+| Signed deviation by quintile | `mean(AI_rating − panel_mean)` by v2x_polyarchy quintile | Compression diagnostic |
+| divergence_k | `\|mean_aug_k − mean_full\|` | Replacement check |
 | Augmentation gain | `\|mean_aug_k − mean_ref\| < \|mean_thin − mean_ref\|`? | Augmentation |
+
+LOO MAE is reported as a model × indicator table (5 models × 12 indicators + aggregate
+column). The human LOO MAE is the baseline: it represents the error of a randomly held-out
+human coder against the rest of their panel. Bootstrap resampling at the CYI level
+(B=500) yields CIs and a paired significance test. See `notes/evaluation-metrics.md` for
+full rationale and CS background.
 
 ---
 
@@ -206,32 +248,43 @@ Lock all of the following before running any LLM calls or accessing v15 coder-le
 for the replacement pool:
 
 **Calibration pool**
-- [ ] Year(s): 2020 primary; specify if expanding to 2018–2020
+- [ ] Year(s): 2019 primary; 2020 robustness check (best model only — COVID anomaly, not primary validation)
 - [ ] Minimum ratings per country-indicator for inclusion
 - [ ] Final N per condition (confirm before running)
 
+**Deployment robustness**
+- [ ] Year: 2024 (best model only)
+- [ ] Source documents: download Freedom House and State Dept for 2024
+- [ ] Note: 2024 panel means from thin panels (~4–6 coders); frame as deployment simulation
+
 **Replacement pool**
-- [ ] Eligibility: ≥8 distinct coders, year range 2018–2022
-- [ ] Stratification: 10 country-years per quintile; confirm quintile cutoffs from v15 θ
+- [ ] Eligibility: ≥8 distinct coders, 2019 only (same year as calibration pool — AI ratings already exist)
+- [ ] No sampling cap — use all eligible CYs from the calibration pool
 - [ ] Pool saved to `data/processed/cy_pool.csv`
-- [ ] AI panel member assignment rule for k = 2, 3 (model priority order)
 
 **Fine-tuning**
-- [ ] Training window: 2010–2015 (confirm no country-year overlap with calibration/replacement pools)
-- [ ] Training set saved to `data/processed/training_set.csv`
+- [ ] Training window: 2013–2018 (rationale: post-lateral-coder drop; pre-attrition panels; no overlap with 2019 test year or 2024 deployment check)
+- [ ] Training data: individual coder ratings from V-Dem v15 coder-level dataset — one row
+      per coder per CYI (~120,000 examples); training set saved to `data/processed/training_set.csv`
 - [ ] Hyperparameters: LoRA rank, alpha, learning rate, batch size, epochs, base model commit hash
+- [ ] Evaluation metrics: primary MAE/MSE against held-out individual coder ratings;
+      secondary MAD against panel mean (for cross-model calibration comparison)
 
 **Models**
 - [ ] Claude Sonnet 4.6 API version pinned
 - [ ] Llama 405B commit hash (HuggingFace)
-- [ ] Llama 3.3 70B commit hash
+- [ ] Llama 3.3 70B Instruct commit hash
 - [ ] Llama 3.2 9B commit hash
+- [ ] Llama 3.3 70B fine-tuned: base model commit hash + adapter checkpoint path
 
 **Replacement experiment**
 - [ ] Divergence threshold value and justification (in rating points on 0–4 scale)
 - [ ] Bootstrap B = 500; CI = 2.5–97.5%
-- [ ] Coder removal: random primary; worst/best-first as bounds
-- [ ] k values: 1, 2, 3
+- [ ] Coder removal strategy: random primary; worst/best-first as sensitivity bounds
+- [ ] k values: 1 (primary); k=2, 3 contingent on whether temperature or persona
+      variation produces genuinely distinct AI draws (see exploratory analyses)
+- [ ] Stopping rule: document at what k (if any) you cease reporting results, and
+      whether you will report results beyond the tolerance threshold
 
 **Persona exploratory**
 - [ ] Strict and lenient framing text locked

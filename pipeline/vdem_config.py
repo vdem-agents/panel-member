@@ -70,10 +70,15 @@ LLM_CONFIGS = {
 }
 
 # Valid prompt conditions (in order of increasing richness)
-CONDITIONS = ["codebook", "evidence", "anonymized", "finetuned"]
+# Fine-tuned Llama 70B (llama-70b-finetuned) uses the "anonymized" prompt format
+# without the few-shot block; it is handled as a separate model, not a condition.
+CONDITIONS = ["codebook", "evidence", "anonymized"]
 
-# Models used for the calibration experiment (Conditions 1–3)
+# Base models for the 3-condition calibration experiment
 PRIMARY_MODELS = ["claude-sonnet", "llama-405b", "llama-70b", "llama-9b"]
+
+# All five models (base + fine-tuned); fine-tuned runs only under "anonymized" format
+ALL_MODELS = ["claude-sonnet", "llama-405b", "llama-70b", "llama-9b", "llama-70b-finetuned"]
 
 # On GW Pegasus, swap in local variants:
 # PRIMARY_MODELS_LOCAL = ["claude-sonnet", "llama-405b-local", "llama-70b-local", "llama-9b-local"]
