@@ -1,6 +1,6 @@
 # Panel Member: Outstanding Work
 
-*Updated 2026-07-08. Items are roughly ordered by pipeline dependency.*
+*Updated 2026-07-10. Items are roughly ordered by pipeline dependency.*
 
 ---
 
@@ -43,12 +43,8 @@
   pip install vllm
   ```
 
-- [ ] **Create symlinks on Pegasus** (same as local, but in the Pegasus copy of the repo):
-  ```bash
-  cd panel-member/pipeline
-  ln -s ../../bridge-coder/pipeline/ingest.py ingest.py
-  ln -s ../../bridge-coder/pipeline/extract_sections.py extract_sections.py
-  ```
+- [ ] **Copy `ingest.py` and `extract_sections.py` to Pegasus** (already copied locally on 2026-07-09;
+  repeat after pushing to the remote or cloning fresh on Pegasus).
 
 - [ ] **Test vLLM startup** with a small model (9B) before running full batches.
   Submit `slurm/run_coding_9b.sh` with `--indicators v2csreprss` and `--year 2020`
@@ -59,44 +55,42 @@
 
 ## Blocking: cannot run any coding until resolved
 
-- [ ] **Create symlinks** in `pipeline/`:
-  ```bash
-  cd panel-member/pipeline
-  ln -s ../../bridge-coder/pipeline/ingest.py ingest.py
-  ln -s ../../bridge-coder/pipeline/extract_sections.py extract_sections.py
-  ```
-  Both scripts look for `data/processed-text/` relative to their own parent directory,
-  so the symlink approach requires the panel-member processed-text dir to mirror
-  bridge-coder's. Alternatively, copy and update the `PROCESSED_DIR` path constant.
+- [x] **Copy `ingest.py` and `extract_sections.py`** into `pipeline/` — done 2026-07-09.
+  Copied from `bridge-coder/pipeline/`. Both pipelines may diverge (different section
+  mappings), so independent copies are intentional. Update `PROCESSED_DIR` path constant
+  if needed once ingestion is tested.
 
 - [ ] **Generate `data/processed/panel_means.csv`** from V-Dem v15 coder-level data.
   Required columns: `country_text_id`, `year`, `indicator`, `raw_mean`, `n_coders`,
   `theta_quintile` (1–5 from v15 `v2x_polyarchy` quintiles).
   The `theta_quintile` column is used by `calibration_check.py` for compression diagnostics
   and by the pool stratification. If not available, set to 0 (disables quintile analysis).
+  **Date filter**: The coder-level dataset has two rows per coder-country-year (Jan 1 and
+  Dec 31) as a structural feature. Filter to `format(historical_date, "%m-%d") == "12-31"`
+  before computing means to get one rating per coder per year, matching V-Dem's published
+  end-of-year values. Omitting this filter doubles the effective N without adding signal.
 
-- [ ] **Expand `data/fewshot_examples.json`** from 4 indicators to all 12.
-  Current file (from bridge-coder) covers: `v2csreprss`, `v2mecenefm`, `v2clkill`,
-  `v2juncind`. Need to add: `v2cltort`, `v2jupoatck`, `v2mecenefi`, `v2juhcind`,
-  `v2clacfree`, `v2clslavef`, `v2psoppaut`, `v2excrptps`, `v2pepwrsoc`.
-  Each indicator needs 5 examples (one per ordinal level 0–4), globally distributed,
-  with fields: `country`, `slug`, `country_name`, `year`, `level`, `raw_mean`, `region`.
-  The evidence text is loaded on-the-fly by `assemble_prompt.py`; only the metadata
-  needs to be in the JSON.
+- [ ] **Select and lock 25–30 evaluation indicators** (3–4 per module, spanning coverage
+  tiers). Requires qualitative section-mapping review first — read sample report sections
+  to confirm section-to-indicator assignments are evidentiarily relevant. Must include at
+  least one weak-coverage module (e.g., Legislature, State bureaucracy) for the coverage-
+  tier gradient finding. Lock list in `config/indicator_sections.yaml` before any inference.
 
-- [ ] **Verify codebook text for 8 new indicators** in `config/indicator_sections.yaml`.
-  The entries for `v2cltort`, `v2jupoatck`, `v2mecenefi`, `v2juhcind`, `v2clacfree`,
-  `v2clslavef`, `v2psoppaut`, `v2excrptps`, `v2pepwrsoc` contain approximate text
-  marked `# TODO`. Verify against the V-Dem codebook (vdemdata::codebook in R or the
-  PDF codebook) before running any coding — incorrect codebook text goes directly into
-  the prompt and degrades output quality.
+- [ ] **Expand `data/fewshot_examples.json`** to cover all evaluation indicators (exact
+  set TBD, ~25–30). Current file covers: `v2csreprss`, `v2mecenefm`, `v2clkill`,
+  `v2juncind`. Each indicator needs 5 examples (one per ordinal level 0–4), globally
+  distributed, with fields: `country`, `slug`, `country_name`, `year`, `level`,
+  `raw_mean`, `region`. Evidence text is loaded on-the-fly; only the metadata goes here.
 
-- [ ] **Confirm section mappings for all 12 indicators** against
-  `initial-exploration/explore-indicators/02-indicator-source-map.html`.
-  The YAML section keys were derived from `02-indicator-selection.html` but should be
-  cross-checked against the source map, particularly for indicators that span multiple
-  sections (e.g., `v2jupoatck` maps to 1e in State Dept — verify this covers government
-  attacks on the judiciary, not just fair trial denials).
+- [ ] **Extend `config/indicator_sections.yaml`** to cover all ~174 training indicators
+  and all ~25–30 evaluation indicators. Many entries currently have approximate codebook
+  text marked `# TODO` — verify against V-Dem codebook (vdemdata::codebook in R or PDF)
+  before any coding or fine-tuning runs.
+
+- [ ] **Confirm section mappings for all evaluation indicators** against
+  `initial-exploration/explore-indicators/02-indicator-selection.html`.
+  Cross-check particularly for indicators spanning multiple sections and for weak-coverage
+  module indicators that were not part of the original 12-indicator mapping.
 
 ---
 
@@ -119,27 +113,6 @@
   ```
   Note: anonymized examples do not include `country`, `slug`, or `country_name` fields
   (that is the point). The text is the full combined anonymized evidence from both sources.
-
----
-
-## Blocking: cannot run generalization test until resolved
-
-- [ ] **Finalize and lock hold-out indicators** (verify before any fine-tuning runs).
-  Candidates — v2clrelig, v2meharjrn, v2cseeorgs, v2jucorrdc — are now in
-  `config/indicator_sections.yaml` with `held_out: true` and approximate codebook text,
-  but all four are marked `# TODO: verify`. Before locking:
-  - Confirm indicator codes exist in V-Dem v15 (check `vdemdata::codebook` in R)
-  - Verify codebook question wording, clarification text, and response categories
-    against the official PDF or `vdemdata::codebook`
-  - Confirm State Dept and Freedom House section mappings against
-    `initial-exploration/explore-indicators/02-indicator-source-map.html`
-  - Decide whether all four are kept or whether any are dropped (e.g. if section
-    coverage is poor or the indicator is retired in v15)
-
-- [ ] **Generate `data/processed/human_ratings.csv`** — individual coder ratings from
-  V-Dem v15 coder-level dataset for both trained and held-out indicators.
-  Required columns: `country_text_id`, `year`, `indicator`, `coder_id`, `rating`.
-  Used for MAE evaluation of fine-tuned model on both indicator sets.
 
 ---
 
@@ -184,8 +157,15 @@ multiple genuinely distinct AI coders.
 
 - [ ] **Generate `data/processed/human_ratings.csv`** from V-Dem v15 coder-level data in R.
   Required columns: `country_text_id`, `iso3`, `year`, `indicator`, `coder_id`, `rating`.
-  Include both training indicators (2013–2018) and held-out indicators (for MAE eval).
-  The `iso3` column is required by `prepare_finetune_data.py` for anonymized text lookup.
+  Include both training indicators (2013–2018) and all evaluation indicators (including
+  weak-coverage). Used by `prepare_finetune_data.py` (training) and `calibration_check.py`
+  (LOO MAE evaluation). The `iso3` column is required by `prepare_finetune_data.py` for
+  anonymized text lookup.
+  **Date filter**: filter to `format(historical_date, "%m-%d") == "12-31"` before
+  exporting — the dataset has two rows per coder-country-year (Jan 1 + Dec 31) as a
+  structural feature. Without this filter, `prepare_finetune_data.py` produces ~2× the
+  training examples (~2–4M instead of ~1–2M), doubling fine-tuning time to ~20–36 A100
+  hours with no benefit (duplicated identical prompts and ratings).
 
 ---
 
@@ -228,19 +208,14 @@ multiple genuinely distinct AI coders.
   scale) above which the 95% CI lower bound triggers "replacement tolerance exceeded."
   Document in a pre-registration file.
 
-- [ ] **Persona exploratory condition**: write strict and lenient framing text; decide
-  which indicators and models to test; lock before running.
+- [ ] **Persona exploratory condition**: lock strict and lenient framing text; specify
+  indicator subset (suggest: 4 high-observability indicators). Run on best fine-tuned
+  model only. **Pre-registered as exploratory**: if persona shifts are reliable and
+  directional, k=2/k=3 from persona draws becomes viable; if not, report null and close
+  the question. Lock both the framing text and the indicator subset before running.
 
-- [ ] **Divergence threshold**: choose and justify the value (in rating points on 0–4
-  scale) at which the 95% CI lower bound would indicate non-negligible panel distortion.
-
-- [ ] **Stopping rule and k progression**: document the rule for reporting results at
-  k=2 and k=3 (contingent on exploratory temperature/persona results producing
-  genuinely distinct AI draws). What k triggers "replacement tolerance exceeded" and
-  do you report results beyond that point?
-
-- [ ] **Coder removal sensitivity**: random removal is primary; decide whether to
-  report worst-first and best-first bounds as supplementary robustness checks.
+- [ ] **Temperature sensitivity**: lock the temperature=0.7 exploratory plan — which
+  model, which indicators, full pool or subset — before running.
 
 ---
 
@@ -252,6 +227,3 @@ multiple genuinely distinct AI coders.
 
 - [ ] **Attrition sample**: identify countries with ≥8 coders in 2015 and ≤5 by 2022
   for the augmentation-of-attrited-panels secondary analysis.
-
-- [ ] **Temperature sensitivity**: plan the temperature=0.7 runs on best model.
-  Decide whether to run on the full pool or a subset.

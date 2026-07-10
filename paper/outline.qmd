@@ -97,8 +97,8 @@ similar to existing human ratings that they do not shift the panel mean detectab
 | Llama 3.3 70B (fine-tuned) | 70B ft | GW Pegasus |
 
 Fine-tuned Llama 70B is trained on (anonymized section text, individual coder rating)
-pairs from V-Dem v15, 2013–2018, ~120K examples across 12 indicators. Uses the same
-anonymized prompt format without the few-shot block.
+pairs from V-Dem v15, 2013–2018, covering all strong + partial coverage Type C indicators
+(~174 indicators). Uses the same anonymized prompt format without the few-shot block.
 
 ### Evaluation
 
@@ -113,12 +113,14 @@ mean).
 Diagnostic: **signed deviation by democracy quintile** — detects directional compression
 bias (rating autocracies too high, democracies too low).
 
-### Generalization test
+### Evaluation indicator set
 
-Fine-tuned model trained on 12 indicators, evaluated on X held-out indicators from the
-same modules and evidence sources (never seen during training). If LOO MAE on held-out
-indicators ≈ LOO MAE on trained indicators, the result supports a scalable AI coder
-applicable beyond the indicators studied.
+25–30 indicators selected for inference (3–4 per module), spanning coverage tiers from
+strong to weak. Coverage tier (strong / partial / weak) enters as a moderating variable
+in the results: the gradient from strong to weak coverage indicators is the within-study
+test of how well the model generalizes beyond the evidence its prompts can anchor.
+Exact indicator list determined after qualitative review of section-to-indicator
+assignments; locked before any inference runs.
 
 ### Country-year pool
 
@@ -131,14 +133,16 @@ distortion. Robustness: 2024 (best model only, thin-panel deployment simulation)
 
 ### 4.1 Calibration table
 
-**[RESULT]** LOO MAE by model × indicator, with human LOO baseline. Primary table.
-Rows: 5 models (+ human baseline). Columns: 12 indicators + aggregate. Spanners by
-observability tier (High / Medium / Low).
+**[RESULT]** LOO MAE by model × indicator, with human LOO baseline. Primary display:
+forest plot with paired AI and human LOO MAE estimates per indicator (or difference
+from human baseline centered on zero). Supplementary table: rows = 5 models + human
+baseline, columns = 25–30 indicators grouped by module, with coverage tier noted.
 
-Expected pattern: Evidence > Codebook-only; fine-tuned ≈ or > Anonymized; high
-observability indicators easier than low observability. Whether anonymization helps
-or hurts vs. Evidence is not predetermined — the direction of the country-identity
-effect is an empirical question.
+Expected pattern: Evidence > Codebook-only; fine-tuned ≈ or > Anonymized; strong-
+coverage indicators easier than weak-coverage. Whether anonymization helps or hurts
+vs. Evidence is not predetermined — the direction of the country-identity effect is
+an empirical question. Coverage tier gradient within the indicator set is the
+within-study generalization test.
 
 ### 4.2 Compression diagnostic
 
@@ -147,17 +151,35 @@ without anonymization, AI rates Q1 autocracies too generously and Q5 democracies
 harshly (compression toward the middle). Anonymization should reduce this if
 country-identity is the mechanism.
 
-### 4.3 Generalization test
+### 4.3 Coverage-tier moderation
 
-**[RESULT]** Fine-tuned LOO MAE on held-out indicators vs. trained indicators. If the
-gap is small, the finding supports a general V-Dem AI coder. If large, it characterizes
-the limits of generalization and motivates indicator-specific fine-tuning.
+**[RESULT]** LOO MAE by coverage tier (strong / partial / weak) across the evaluation
+indicator set, for the best-performing model. Does calibration quality degrade
+systematically as source coverage weakens? If the gradient is shallow, the result
+supports a general V-Dem AI coder — trained on strong + partial indicators, it
+generalizes to weaker-evidence indicators without per-indicator fine-tuning.
 
 ### 4.4 Integration robustness (k=1 replacement check)
 
 **[RESULT]** For all 2019 CYIs with ≥8 coders: `|mean(panel + AI) − mean(panel)|`.
 Bootstrap B=500. If mean divergence CI includes zero, adding one AI coder does not
 detectably shift the panel mean. Reported as supplemental.
+
+### 4.5 Exploratory and sensitivity analyses
+
+**Persona variation** **[RESULT if run]**: two persona conditions (strict / lenient
+framing) applied to the best-performing fine-tuned model on a subset of high-observability
+indicators. Pre-registered as exploratory. If persona conditions produce reliable,
+directional shifts in ratings, they provide a route to genuinely distinct AI panel
+members for k=2/k=3 replacement. If not, the result contributes to evidence that
+persona prompting does not shift ordinal ratings in structured expert-coding tasks.
+Report: signed deviation (strict − neutral) and (lenient − neutral) by indicator and
+democracy quintile.
+
+**Temperature sensitivity**: best model re-run at temperature 0.7 on the calibration
+pool. The spread of ratings across draws is a measure of model uncertainty. Reported as
+a diagnostic in supplementary materials; not used as a source of distinct panel members
+in the main replacement experiment.
 
 ---
 
@@ -170,8 +192,9 @@ detectably shift the panel mean. Reported as supplemental.
 - Evidence-based guidance for three deployment scenarios: historical sparse panels
   (1975–1989), chronically thin contemporary panels (~35 countries), and the leading-
   edge attrition gap (post-2020).
-- Generalization result, if it holds, motivates application to the full ~100 Type C
-  V-Dem indicator set without per-indicator fine-tuning.
+- Generalization result — whether LOO MAE degrades across the strong → weak coverage
+  gradient — motivates (or cautions against) application to the full ~216 Type C
+  V-Dem indicator set without indicator-specific fine-tuning.
 
 ### NLP / AI annotation
 

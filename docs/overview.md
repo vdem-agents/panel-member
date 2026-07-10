@@ -54,18 +54,17 @@ training data alone), (2) evidence packets (section-extracted State Dept and Fre
 text + few-shot calibration examples), (3) anonymized summaries (an agent rewrites the
 extracted text to strip country-identifying information before coding). Models: Claude
 Sonnet 4.6 (frontier), Llama 405B, Llama 70B, Llama 9B, and fine-tuned Llama 70B (QLoRA
-adapter trained on individual coder ratings from V-Dem v15; runs on the anonymized prompt
-format without few-shot examples, since calibration is in the weights). Outcome: MAD from
-raw panel mean across all five models; MAE against individual coder ratings for fine-tuned
-model.
+adapter trained on all strong + partial Type C indicators from V-Dem v15; runs on the
+anonymized prompt format without few-shot examples, since calibration is in the weights).
+Outcome: LOO MAE from raw panel mean across all five models; exact list of evaluation
+indicators (25–30, 3–4 per module) locked after qualitative section-mapping review.
 
-**Component 2 — Generalization test (primary novel finding)**: the fine-tuned model is
-trained on 12 V-Dem indicators and evaluated on X held-out indicators from the same modules
-(same evidence sources, unseen during training). If MAE on held-out indicators approximates
-MAE on trained indicators, the result supports a general V-Dem AI coder claim — a model
-that can code indicators beyond those it was explicitly trained on. This is the core
-contribution: not just calibration on known indicators, but transferability across V-Dem's
-measurement system.
+**Component 2 — Coverage-tier generalization**: the evaluation indicator set spans all
+source-coverage tiers — strong, partial, and weak — providing a within-study test of
+generalization. Coverage tier enters as a moderating variable: if LOO MAE is stable across
+the strong → weak gradient, the fine-tuned model generalizes beyond the high-evidence
+setting it was primarily trained on. This is the core contribution: not just calibration
+on easily-sourced indicators, but transferability across V-Dem's full measurement system.
 
 **Component 3 — Integration robustness (secondary)**: using the best-calibrated model,
 test whether adding one AI coder to a well-formed human panel shifts the raw panel mean
@@ -79,28 +78,27 @@ the bridge-coder paper. No separate data collection is needed for the contempora
 
 ## Indicators
 
-12 V-Dem Type C indicators spanning seven modules, selected for evidentiary coverage by
-State Dept and Freedom House reports. Selection rationale:
+### Training set
+
+All strong + partial coverage Type C indicators from V-Dem v15 (~174 indicators, based
+on the 2020 cross-section in `02-indicator-selection.qmd`; exact count for the 2013–2018
+training window confirmed by `prepare_finetune_data.py`), coded 2013–2018. Strong-coverage modules: Civil liberties, Media freedom, Digital/social media,
+Civil society, Elections, Judiciary, Academic freedom. Partial-coverage modules: Civic
+activism, Executive, Political parties, Political equality. Weak and none coverage
+indicators are excluded from training. Full module breakdown:
 `initial-exploration/explore-indicators/02-indicator-selection.html`.
 
-| Tag | Indicator | Module | Observability |
-|---|---|---|---|
-| v2clkill | Political killings | Civil liberties | High |
-| v2cltort | Torture | Civil liberties | High |
-| v2mecenefm | Media censorship (formal) | Media | High |
-| v2csreprss | Civil society repression | Civil society | High |
-| v2jupoatck | Government attacks on judiciary | Judiciary | High |
-| v2mecenefi | Media censorship (informal) | Media | Medium |
-| v2juhcind | High court independence | Judiciary | Medium |
-| v2clacfree | Academic freedom | Civil liberties | Medium |
-| v2clslavef | Freedom from forced labor | Civil liberties | Medium |
-| v2psoppaut | Opposition party autonomy | Political parties | Medium |
-| v2excrptps | Public sector corruption | Executive | Medium |
-| v2pepwrsoc | Political power by social group | Political equality | Low |
+### Evaluation set
 
-Expect calibration MAD to vary systematically by observability tier: high-observability
-indicators (discrete, named events) should be easiest for AI to code from annual reports;
-low-observability indicators (diffuse evaluative judgments) hardest.
+25–30 indicators (3–4 per module) selected to span all source-coverage tiers. Indicators
+from weak-coverage modules (Legislature, State bureaucracy, Sovereignty, Education content,
+Media curriculum) are included in the evaluation set to test whether the fine-tuned model
+generalizes beyond the strong-evidence setting. Exact list determined after qualitative
+review of section-to-indicator assignments and locked before any inference runs.
+
+Expect LOO MAE to vary with both observability (discrete incidents easier than diffuse
+evaluative judgments) and coverage tier (strong-evidence indicators easier than weak).
+The coverage-tier gradient is the within-study generalization test.
 
 ---
 
@@ -110,14 +108,13 @@ low-observability indicators (diffuse evaluative judgments) hardest.
 related findings in sequence:
 
 1. **Calibration**: which prompt strategy and model scale produces AI ratings closest to
-   human panel means across 12 V-Dem indicators? This answers the practical question of how
-   to build an AI coder and whether more expensive options (larger models, anonymization,
-   fine-tuning) are justified.
+   human panel means across the 25–30 evaluation indicators? This answers the practical
+   question of how to build an AI coder and whether more expensive options (larger models,
+   anonymization, fine-tuning) are justified.
 
-2. **Generalization**: does a fine-tuned model transfer to V-Dem indicators it was not
-   trained on? If yes, the result supports a scalable AI coder that could be applied across
-   V-Dem's full measurement system — not just the 12 indicators studied here. This is the
-   primary novel finding.
+2. **Generalization**: does LOO MAE degrade as source coverage weakens? If the strong →
+   weak coverage gradient is shallow, the result supports a scalable AI coder applicable
+   across V-Dem's full ~216 Type C indicator set. This is the primary novel finding.
 
 3. **Safe integration**: does adding one AI coder to an existing human panel shift the raw
    panel mean detectably? This answers the deployment question for thin and attriting panels.

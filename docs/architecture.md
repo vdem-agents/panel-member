@@ -2,7 +2,8 @@
 
 *Updated July 2026. IRT runner removed. Four prompt conditions (codebook-only, evidence
 packets, anonymized summaries, fine-tuning). Anonymization agent added as Stage 2b.
-Raw panel means replace calibration-weighted means throughout.*
+Raw panel means replace calibration-weighted means. Fine-tuning covers all strong +
+partial Type C indicators (~174); inference runs on 25–30 selected evaluation indicators.*
 
 ## Overview
 
@@ -62,8 +63,9 @@ If bridge-coder has already downloaded and processed a year, do not re-download.
 **Shared with bridge-coder**. `pipeline/extract_sections.py` + `config/indicator_sections.yaml`.
 
 Regex parsing of document structure, pulling indicator-relevant sections. The YAML config
-must be expanded from the 4-indicator bridge-coder version to cover all 12 indicators.
-Confirmed section mappings (to be locked in `config/indicator_sections.yaml` before running):
+must be expanded from the 4-indicator bridge-coder version to cover all ~174 training
+indicators and the ~25–30 evaluation indicators. Current confirmed section mappings for
+the original 12 indicators (to be extended; lock before running):
 
 ```yaml
 # High observability
@@ -182,8 +184,11 @@ Output path: `data/output/{model_key}_anonymized_{indicator}_{year}.jsonl`
 One row per coder per country-year-indicator — individual coder ratings from the V-Dem
 v15 coder-level dataset, not panel means. Training window: **2013–2018** (post-lateral-coder
 drop; pre-attrition panels; no overlap with 2019 test year or 2024 deployment check).
-Expected scale: ~6 years × ~150 CYs × 12 indicators × ~11 coders ≈ ~120,000 training
-examples. Save training CYI list to `data/processed/training_set.csv`.
+Expected scale: ~6 years × ~150 CYs × ~174 indicators × ~11 coders ≈ ~1–2M training
+examples (exact count pending data generation). The ~174 indicator count is derived from
+the 2020 coder-level cross-section in `02-indicator-selection.qmd`; the actual count for
+the 2013–2018 training window may differ if some indicators have sparse early-year
+coverage. Save training CYI list to `data/processed/training_set.csv`.
 
 **Evaluation design**:
 - Primary: MAE/MSE/exact match against held-out individual coder ratings — standard
@@ -198,7 +203,7 @@ examples. Save training CYI list to `data/processed/training_set.csv`.
 - Platform: GW Pegasus A100 80GB, `--partition=gpu --gres=gpu:a100:1`
 - Batch: 4; gradient accumulation: 4 (effective 16); epochs: 3
 - Learning rate: 2e-4 with cosine decay
-- Estimated time: 2–4 hours per indicator; 12 indicators ≈ 36 A100-hours total
+- Estimated time: joint training on ~174 indicators ≈ 10–18 A100-hours total
 - Adapter size: ~500 MB–1 GB per indicator; base model weights (~140 GB) stored once
 
 At inference: section text only — no few-shot examples. Calibration is in the weights.
@@ -253,7 +258,7 @@ Output: divergence curve by k (mean ± 95% CI), stratified by democracy quintile
 ```
 panel-member/
   config/
-    indicator_sections.yaml    # expanded to 12 indicators; confirm section mappings
+    indicator_sections.yaml    # expanded to ~174 training + ~28 eval indicators; confirm mappings
   pipeline/
     ingest.py                  # symlink → bridge-coder/pipeline/ingest.py
     extract_sections.py        # symlink → bridge-coder/pipeline/extract_sections.py

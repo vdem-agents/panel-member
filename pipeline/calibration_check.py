@@ -24,7 +24,7 @@ import json
 from collections import defaultdict
 from pathlib import Path
 
-PANEL_MEANS_PATH = Path(__file__).parent.parent / "data" / "processed" / "panel_means.csv"
+PANEL_MEANS_PATH = Path(__file__).parent.parent.parent / "shared" / "vdem-data" / "panel_means.csv"
 OUTPUT_DIR = Path(__file__).parent.parent / "data" / "output" / "calibration"
 
 QUINTILE_FIELD = "theta_quintile"   # column name in panel_means.csv (1=most autocratic, 5=most democratic)

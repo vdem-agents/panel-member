@@ -34,7 +34,7 @@ import yaml
 from pipeline.assemble_prompt import assemble_prompt
 
 CONFIG_PATH = Path(__file__).parent.parent / "config" / "indicator_sections.yaml"
-HUMAN_RATINGS_PATH = Path(__file__).parent.parent / "data" / "processed" / "human_ratings.csv"
+HUMAN_RATINGS_PATH = Path(__file__).parent.parent.parent / "shared" / "vdem-data" / "human_ratings.csv"
 OUTPUT_DIR = Path(__file__).parent.parent / "data" / "processed"
 
 DEFAULT_TRAINING_YEARS = list(range(2013, 2019))  # 2013–2018 inclusive

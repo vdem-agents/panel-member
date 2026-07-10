@@ -1,30 +1,28 @@
 # Panel Member: Experimental Design
 
 *Updated July 2026. IRT replaced by panel-mean deviation test. Three prompt conditions,
-five models. Replacement experiment (primary), attrited-panel augmentation (secondary),
-persona and temperature variation (exploratory/sensitivity). Raw panel means throughout.
+five models. Training on all strong + partial Type C indicators (~174); inference on
+25–30 selected evaluation indicators spanning all coverage tiers. Coverage-tier gradient
+replaces separate generalization test. Raw panel means throughout.
 See `notes/persona-prompting-design-archive.md` for archived persona design.*
 
 ---
 
 ## Design overview
 
-The experiment addresses three questions in sequence:
+The experiment addresses two questions:
 
 **Question 1 (calibration)**: Which prompt condition and model scale produces AI ratings
-closest to the human expert panel's raw mean across 12 V-Dem indicators?
+closest to the human expert panel's raw mean across the 25–30 evaluation indicators?
 
-**Question 2 (generalization — primary novel finding)**: Does a fine-tuned V-Dem AI coder
-transfer to indicators it was not trained on? Trained on 12 indicators, evaluated on X
-held-out indicators from the same modules and evidence sources.
+**Question 2 (generalization)**: Does LOO MAE degrade as source-coverage tier weakens?
+The evaluation indicator set spans strong, partial, and weak coverage, making coverage
+tier a within-study moderating variable rather than a separate experimental condition.
 
-**Question 3 (integration robustness — secondary)**: Does adding one AI coder to a
-well-formed human panel shift the raw panel mean detectably? Simplified replacement
-experiment (k=1) reported as a robustness check on the calibration finding.
-
-The design is a **3 × 5 calibration experiment** (3 prompt conditions × 5 models),
-followed by a **generalization test** on held-out indicators, with a **k=1 replacement
-check** as supplementary analysis.
+The design is a **3 × 5 calibration experiment** (3 prompt conditions × 5 models) on
+25–30 evaluation indicators (3–4 per module, spanning coverage tiers), with a **k=1
+replacement check** as supplementary analysis. Fine-tuned Llama 70B is trained on all
+strong + partial indicators (~174) but evaluated on the same 25–30 indicator set.
 
 ---
 
@@ -53,9 +51,9 @@ few-shot examples.
 | Llama 3.3 70B (fine-tuned) | 70B ft | GW A100 80GB | Anonymized format, no few-shot |
 
 Fine-tuned Llama 70B uses the anonymized prompt format without the few-shot calibration
-block; calibration is embedded in the adapter weights. Comparing it to the base 70B under
-Anonymized shows what fine-tuning adds over few-shot prompting on the same model and
-evidence format.
+block; calibration is embedded in the adapter weights. Trained on all strong + partial
+Type C indicators (~174) from 2013–2018. Comparing it to the base 70B under Anonymized
+shows what fine-tuning adds over few-shot prompting on the same model and evidence format.
 
 ### Country-year pool (calibration)
 
@@ -72,9 +70,12 @@ truth is uncertain; frame as deployment simulation, not primary validation.
 
 ### Outcome
 
-**MAD**: `mean(|AI_rating − raw_panel_mean|)` across pool, per condition × model ×
-indicator. Report as a table: rows = condition × model, columns = indicators (+ mean
-across indicators). Secondary: signed deviation by democracy quintile.
+**LOO MAE**: for each CYI, compare `|AI_rating − panel_mean|` against the human baseline
+`mean(|rating_i − mean(panel \ {i})|)`. Bootstrap at the CYI level (B=500). Report as
+a forest plot (indicators as rows grouped by module, paired AI vs. human estimates or
+difference centered on zero) and a supplementary table (rows = condition × model, columns
+= 25–30 indicators with coverage tier noted). Secondary: signed deviation by democracy
+quintile.
 
 ### What each comparison tells you
 
@@ -88,40 +89,32 @@ across indicators). Secondary: signed deviation by democracy quintile.
 
 ---
 
-## Part 2: Generalization test (primary novel finding)
+## Part 2: Coverage-tier moderation (generalization embedded in main analysis)
 
 ### Design
 
-The fine-tuned Llama 70B adapter is trained jointly on all 12 indicators. A set of X
-held-out indicators — from the same modules and covered by the same evidence sources
-(State Dept + Freedom House) — are withheld from training entirely.
+The fine-tuned Llama 70B adapter is trained on all strong + partial coverage Type C
+indicators (~174 indicators). The 25–30 evaluation indicators are drawn from all
+coverage tiers: strong (directly addressed by dedicated report sections), partial
+(addressed but not systematically), and weak (only tangentially covered).
 
-**Hold-out indicator candidates** (verify against V-Dem codebook before locking):
+Coverage tier is a within-study moderating variable, not a separate experimental
+condition. There is no training/held-out split: the model is trained on strong + partial
+indicators and we observe how well it codes across the coverage gradient.
 
-| Candidate | Module | Evidence sources | Observability |
-|---|---|---|---|
-| v2clrelig (freedom of religion) | Civil liberties | State Dept §2c, FH §F | High |
-| v2meharjrn (harassment of journalists) | Media | State Dept §2a, FH §D | High |
-| v2cseeorgs (CSO entry and exit) | Civil society | State Dept §2b, FH §E | Medium |
-| v2jucorrdc (judicial corruption decisions) | Judiciary | State Dept §1e, FH §F | Medium |
-
-Final selection and section mappings must be verified against the V-Dem codebook and
-locked in `config/indicator_sections.yaml` before any fine-tuning runs.
+Exact evaluation indicators are TBD pending qualitative section-mapping review.
+Candidates from weak-coverage modules include Legislature (v2lg*), State bureaucracy
+(v2st*), Sovereignty (v2sv*), Education content (v2ed*), and Media curriculum (v2med*).
 
 ### Evaluation
 
-For the 12 trained indicators and X held-out indicators, compute:
-- **MAE / exact match** against held-out individual coder ratings from V-Dem v15
-- **MAD** against raw panel mean (for cross-condition comparison)
+For all evaluation indicators (spanning coverage tiers), compute:
+- **LOO MAE** against panel mean (primary metric, comparable across all conditions)
+- **Exact match / adjacent agreement** (secondary)
 
-**Primary finding**: if MAE on held-out indicators ≈ MAE on trained indicators, the
-result supports a general V-Dem AI coder claim — a fine-tuned model that transfers
-across V-Dem's measurement system. If held-out MAE is substantially worse, the result
-characterizes the limits of generalization.
-
-This test is more informative than any calibration-only result: good calibration on
-training indicators could reflect memorization; good performance on held-out indicators
-demonstrates genuine transferability.
+**Primary finding**: if LOO MAE is stable across the strong → weak coverage gradient,
+the result supports a scalable AI coder applicable across the full ~216 Type C indicator
+set. If the gradient is steep, it characterizes where the approach reaches its limits.
 
 ---
 
@@ -143,10 +136,10 @@ Bootstrap across country-years (B=500). Report mean divergence with 95% CI.
 demonstrates that the low MAD translates to negligible panel-mean distortion under
 realistic deployment (k=1). Not the primary claim.
 
-k=2 and k=3 are dropped: with a single fine-tuned model, multiple "distinct" AI
-coders are not available, and mixing fine-tuned + few-shot models in the same panel
-slot is conceptually awkward. The k=1 test is the cleanest and most policy-relevant
-scenario regardless.
+k=2 and k=3 are contingent on persona exploratory results: if persona prompting on the
+best fine-tuned model produces reliably distinct ratings, those additional draws serve
+as distinct AI panel members. The k=1 test is the primary and most policy-relevant
+scenario; k=2/k=3 are added as secondary if persona results support them.
 
 ---
 
@@ -210,35 +203,34 @@ Report as a diagnostic in the supplementary materials.
 | divergence_k | `\|mean_aug_k − mean_full\|` | Replacement check |
 | Augmentation gain | `\|mean_aug_k − mean_ref\| < \|mean_thin − mean_ref\|`? | Augmentation |
 
-LOO MAE is reported as a model × indicator table (5 models × 12 indicators + aggregate
-column). The human LOO MAE is the baseline: it represents the error of a randomly held-out
-human coder against the rest of their panel. Bootstrap resampling at the CYI level
-(B=500) yields CIs and a paired significance test. See `notes/evaluation-metrics.md` for
+LOO MAE is the primary metric. Human LOO MAE is the baseline: the error of a randomly
+held-out human coder against the rest of their panel. Bootstrap resampling at the CYI
+level (B=500) yields CIs and a paired significance test. Primary display is a forest
+plot; supplementary display is a model × indicator table (5 models × 25–30 indicators +
+aggregate column, with coverage tier noted). See `notes/evaluation-metrics.md` for
 full rationale and CS background.
 
 ---
 
 ## Indicators
 
-All 12 selected indicators (selection rationale: `02-indicator-selection.html`):
+### Training set (~174 indicators)
 
-| Tag | Indicator | Observability |
-|---|---|---|
-| v2clkill | Political killings | High |
-| v2cltort | Torture | High |
-| v2mecenefm | Media censorship (formal) | High |
-| v2csreprss | Civil society repression | High |
-| v2jupoatck | Government attacks on judiciary | High |
-| v2mecenefi | Media censorship (informal) | Medium |
-| v2juhcind | High court independence | Medium |
-| v2clacfree | Academic freedom | Medium |
-| v2clslavef | Freedom from forced labor | Medium |
-| v2psoppaut | Opposition party autonomy | Medium |
-| v2excrptps | Public sector corruption | Medium |
-| v2pepwrsoc | Political power by social group | Low |
+All strong + partial coverage Type C indicators from V-Dem v15, 2013–2018. Modules:
+Civil liberties, Media freedom, Digital/social media, Civil society, Elections, Judiciary,
+Academic freedom (strong); Civic activism, Executive, Political parties, Political equality
+(partial). Weak and none coverage indicators excluded from training.
+Full list: `initial-exploration/explore-indicators/02-indicator-selection.html`.
 
-Expect MAD to vary systematically by observability tier across all conditions. Report
-calibration results by tier as well as by indicator.
+### Evaluation set (25–30 indicators, TBD)
+
+3–4 indicators per module, spanning strong, partial, and weak coverage tiers. Exact list
+locked after qualitative section-mapping review. Must include at least one weak-coverage
+module (e.g., Legislature, State bureaucracy) to provide a meaningful coverage-tier
+gradient for the generalization finding.
+
+Expect LOO MAE to vary with observability tier and coverage tier. Report calibration
+results by both dimensions.
 
 ---
 
@@ -265,10 +257,11 @@ for the replacement pool:
 **Fine-tuning**
 - [ ] Training window: 2013–2018 (rationale: post-lateral-coder drop; pre-attrition panels; no overlap with 2019 test year or 2024 deployment check)
 - [ ] Training data: individual coder ratings from V-Dem v15 coder-level dataset — one row
-      per coder per CYI (~120,000 examples); training set saved to `data/processed/training_set.csv`
+      per coder per CYI, covering all strong + partial Type C indicators (~174 indicators);
+      training set saved to `data/processed/training_set.csv`
 - [ ] Hyperparameters: LoRA rank, alpha, learning rate, batch size, epochs, base model commit hash
-- [ ] Evaluation metrics: primary MAE/MSE against held-out individual coder ratings;
-      secondary MAD against panel mean (for cross-model calibration comparison)
+- [ ] Evaluation metrics: LOO MAE against panel mean (primary); exact match and adjacent
+      agreement (secondary); coverage-tier gradient analysis
 
 **Models**
 - [ ] Claude Sonnet 4.6 API version pinned
@@ -280,11 +273,10 @@ for the replacement pool:
 **Replacement experiment**
 - [ ] Divergence threshold value and justification (in rating points on 0–4 scale)
 - [ ] Bootstrap B = 500; CI = 2.5–97.5%
-- [ ] Coder removal strategy: random primary; worst/best-first as sensitivity bounds
-- [ ] k values: 1 (primary); k=2, 3 contingent on whether temperature or persona
-      variation produces genuinely distinct AI draws (see exploratory analyses)
-- [ ] Stopping rule: document at what k (if any) you cease reporting results, and
-      whether you will report results beyond the tolerance threshold
+- [ ] Coder removal strategy: random (uniform draw)
+- [ ] k values: 1 (primary); k=2, 3 contingent on persona exploratory results
+      producing reliably distinct AI draws (see exploratory analyses)
+- [ ] If k>1 phase is triggered: pre-register stopping rule (maximum k, tolerance threshold)
 
 **Persona exploratory**
 - [ ] Strict and lenient framing text locked
