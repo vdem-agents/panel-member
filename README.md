@@ -37,6 +37,39 @@ data/
 Design phase. Stage 0 (2020 pilot) complete in bridge-coder repo; results inform the
 few-shot baseline here. Stage 1 (replacement experiment design) in preparation.
 
+## Shared data directory
+
+Both repos share source documents and processed text via a `shared/` directory at the
+workspace root (`v-dem-coding/shared/`). This directory is **not committed to git** —
+it holds large binary files (State Dept PDFs, Freedom House text, V-Dem coder-level data).
+
+```
+v-dem-coding/
+  shared/
+    vdem-data/
+      V-Dem-Coder-Level-v15_rds/
+      V-Dem-Coder-Level-v15_csv/
+    source-docs/
+      state-dept/{year}/{country_code}.pdf
+      freedom-house/{year}/{country_code}.txt
+    processed-text/
+      state-dept/{year}/{country_code}.txt
+      freedom-house/{year}/{country_code}.txt
+```
+
+`panel-member/data/raw` is a symlink to `shared/source-docs`. The anonymized text
+directory (`data/processed-text/anonymized/`) is local — panel-member specific.
+If you clone fresh, recreate the symlinks:
+
+```bash
+cd panel-member/data
+ln -s ../../shared/source-docs raw
+ln -s ../../../shared/processed-text/state-dept processed-text/state-dept
+ln -s ../../../shared/processed-text/freedom-house processed-text/freedom-house
+```
+
+Then populate `shared/` from your local copy or rsync from the original machine.
+
 ## Related repo
 
 [bridge-coder](https://github.com/vdem-agents/bridge-coder) — the companion paper on

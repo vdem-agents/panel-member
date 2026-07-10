@@ -33,7 +33,7 @@ from collections import defaultdict
 from pathlib import Path
 
 CY_POOL_PATH = Path(__file__).parent.parent / "data" / "processed" / "cy_pool.csv"
-HUMAN_RATINGS_PATH = Path(__file__).parent.parent / "data" / "processed" / "human_ratings.csv"
+HUMAN_RATINGS_PATH = Path(__file__).parent.parent.parent / "shared" / "vdem-data" / "human_ratings.csv"
 OUTPUT_DIR = Path(__file__).parent.parent / "data" / "output" / "replacement"
 
 # Pre-registered AI panel member assignment (by model priority from Stage 1 calibration).

@@ -2,14 +2,16 @@
 
 *Updated July 2026. IRT dropped — panel-mean deviation test replaces the sequential
 replacement experiment. Three prompt conditions across five models. Raw panel means replace
-calibration-weighted means (no empirical difference in practice). Persona prompting
+calibration-weighted means. Training on all strong + partial Type C indicators (~174);
+evaluation on 25–30 selected indicators spanning all coverage tiers. Persona prompting
 retained as exploratory condition; see `notes/persona-prompting-design-archive.md`.*
 
 ## Research questions
 
 1. Which prompt condition and model scale produces AI ratings closest to the human expert
-   panel's raw mean across 12 V-Dem indicators?
-2. How many human coders can AI replace before the raw panel mean shifts detectably?
+   panel's raw mean across the 25–30 evaluation indicators?
+2. Does LOO MAE degrade as source-coverage tier weakens — and if not, how many human
+   coders can AI replace before the raw panel mean shifts detectably?
 
 ---
 
@@ -51,9 +53,9 @@ the adapter weights.
 
 Fine-tuning uses QLoRA on (anonymized section text, individual coder rating) pairs from
 V-Dem v15 — one row per coder per CYI, not panel means. Training window: 2013–2018.
-~120,000 training examples across 12 indicators. Primary evaluation: MAE/MSE against
-held-out individual coder ratings. Secondary: MAD against panel mean for cross-model
-calibration comparison.
+Training covers all strong + partial coverage Type C indicators (~174 indicators). Primary
+evaluation: LOO MAE against panel mean on the 25–30 evaluation indicators. Secondary:
+exact match rate and adjacent-category agreement.
 
 ### Country-year pool (calibration)
 
@@ -80,8 +82,9 @@ replacement experiment depends on Stage 1 results.
 **LOO MAE** (primary): for each CYI, compare `|AI_rating − panel_mean|` against the human
 baseline `mean(|rating_i − mean(panel \ {i})|)` — the typical error of a held-out human
 coder against the rest of their panel. Bootstrap at the CYI level (B=500) for CIs and a
-paired significance test. Reported as a model × indicator table (5 models × 12 indicators
-+ aggregate column).
+paired significance test. Primary display: forest plot, indicators as rows grouped by
+module, paired AI vs. human LOO MAE estimates (or difference centered on zero).
+Supplementary: model × indicator table (5 models × 25–30 indicators, with coverage tier noted).
 
 **Exact match rate and adjacent-category agreement** (secondary): proportion of AI ratings
 equal to, or within ±1 of, the rounded panel mean. Readable calibration summaries for a
@@ -94,35 +97,30 @@ democracies too harshly. Report as a figure. See `notes/evaluation-metrics.md`.
 
 ---
 
-## Stage 2: Generalization test (primary novel finding)
+## Stage 2: Coverage-tier generalization (embedded in main analysis)
 
 ### Design
 
-The fine-tuned Llama 70B adapter is trained jointly on all 12 indicators. X held-out
-indicators — from the same modules and evidence sources but unseen during training — are
-evaluated after training is complete. Held-out indicators and their section mappings are
-locked in `config/indicator_sections.yaml` before any fine-tuning runs.
+The fine-tuned Llama 70B adapter is trained on all strong + partial coverage Type C
+indicators (~174 indicators). The 25–30 evaluation indicators are selected to span all
+three source-coverage tiers (strong, partial, weak), providing a within-study
+generalization test without requiring a separate held-out training split.
 
-**Candidate hold-out indicators** (verify against V-Dem codebook before locking):
-- v2clrelig (freedom of religion) — civil liberties, high observability
-- v2meharjrn (harassment of journalists) — media, high observability
-- v2cseeorgs (CSO entry and exit) — civil society, medium observability
-- v2jucorrdc (judicial corruption decisions) — judiciary, medium observability
+Coverage tier enters as a moderating variable in the main results. The gradient from
+strong to weak coverage indicators tests whether calibration quality degrades as source
+evidence weakens — and by how much.
 
 ### Outcome
 
-For trained and held-out indicators alike, compute MAE against held-out individual coder
-ratings and MAD against panel mean (2020 evaluation year). Compare:
-
 | Comparison | What it shows |
 |---|---|
-| MAE: trained vs. held-out indicators | Whether fine-tuning generalizes beyond training set |
-| MAD: fine-tuned vs. few-shot (Conditions 1–3) | Whether fine-tuning beats prompt engineering |
-| MAE: high vs. medium observability hold-outs | Where generalization is easier / harder |
+| LOO MAE by coverage tier | Whether fine-tuning generalizes to weaker-evidence indicators |
+| Fine-tuned vs. few-shot (same coverage tier) | What fine-tuning adds over prompting alone |
+| Observability × coverage tier interaction | Where generalization is easiest / hardest |
 
-**Primary finding**: if generalization holds, the result supports a scalable V-Dem AI
-coder applicable beyond the 12 indicators studied — motivating application to the full
-~100 Type C indicator set.
+**Primary finding**: if the strong → weak coverage gradient in LOO MAE is shallow, the
+result supports a scalable V-Dem AI coder applicable across the full ~216 Type C indicator
+set, motivating application beyond the training distribution.
 
 ---
 
@@ -136,9 +134,10 @@ AI-augmented panel mean to the full human panel mean. Bootstrap B=500. Report me
 divergence ± 95% CI. No pool size cap — AI ratings for these CYs already exist from
 the calibration run, so there is no cost to using the full eligible set.
 
-k=2 and k=3 are dropped: with a single fine-tuned adapter, multiple genuinely distinct
-AI coders are not available. The k=1 check is the cleanest and most realistic deployment
-scenario and suffices as a robustness test on the calibration finding.
+k=2 and k=3 are contingent on persona exploratory results: if persona prompting on the
+best fine-tuned model produces reliably distinct ratings, those additional draws could
+serve as distinct AI panel members. The k=1 check is the primary and most realistic
+deployment scenario; k=2/k=3 would be added as secondary if persona results support them.
 
 ### Coder removal strategy
 
@@ -147,7 +146,7 @@ status — keep the analysis simple.
 
 ---
 
-## Stage 3: Augmentation of attrited panels (secondary)
+## Stage 4: Augmentation of attrited panels (secondary)
 
 Apply AI augmentation to panels degraded by post-2013 coder attrition. For countries
 with well-formed panels in 2015 (≥8 coders) that have thin panels by 2022 (≤5 coders):
@@ -186,12 +185,13 @@ new LLM call inserted between section extraction and the coding model.
 
 | Task | Platform | Est. cost / time |
 |---|---|---|
-| Calibration, Claude (3 cond × 12 ind × ~170 CY) | Claude API (laptop) | ~$280 |
-| Calibration, Llama 405B (3 cond × 12 ind × ~170 CY) | Pegasus `gpu`, `gpu:a100:4` | Free, ~4–6 hr |
-| Calibration, Llama 70B (3 cond × 12 ind × ~170 CY) | Pegasus `gpu`, `gpu:a100:1` | Free, ~2–3 hr |
-| Calibration, Llama 9B (3 cond × 12 ind × ~170 CY) | Pegasus `gpu`, `gpu:v100:1` | Free, ~1 hr |
-| Fine-tuning 70B (~120k examples × 12 ind, QLoRA 4-bit) | Pegasus `gpu`, `gpu:a100:1` | Free, ~36 hr total |
-| Replacement experiment (best model, k=1–3, B=500) | Claude API or Pegasus | ~$30 or free |
+| Calibration, Claude (3 cond × ~28 ind × ~180 CY) | Claude API (laptop) | ~$600–800 |
+| Calibration, Llama 405B (3 cond × ~28 ind × ~180 CY) | Pegasus `gpu`, `gpu:a100:4` | Free, ~10–14 hr |
+| Calibration, Llama 70B (3 cond × ~28 ind × ~180 CY) | Pegasus `gpu`, `gpu:a100:1` | Free, ~4–6 hr |
+| Calibration, Llama 9B (3 cond × ~28 ind × ~180 CY) | Pegasus `gpu`, `gpu:v100:1` | Free, ~2 hr |
+| Fine-tuning 70B (~174 ind, QLoRA 4-bit, 2013–2018) | Pegasus `gpu`, `gpu:a100:1` | Free, ~10–18 hr |
+| Inference, fine-tuned 70B (~28 ind × ~180 CY) | Pegasus `gpu`, `gpu:a100:1` | Free, ~4 hr |
+| Replacement experiment (best model, k=1, B=500) | Claude API or Pegasus | ~$30 or free |
 
 Claude runs from laptop (no HPC queue, no internet firewall uncertainty). All Llama
 models run on Pegasus using TRES resource requests. Llama 405B requires 4× A100 80GB
@@ -204,22 +204,17 @@ confirmed partition names, GRES strings, and run sequence.
 ## Key open questions
 
 - [ ] Lock calibration pool: year(s), minimum ratings per country-indicator, confirmed N
-- [ ] Select and lock X hold-out indicators: verify codes, section mappings, and codebook
-      text against V-Dem codebook before any fine-tuning runs
+- [ ] Select and lock 25–30 evaluation indicators (3–4 per module, spanning coverage
+      tiers); verify section mappings and codebook text before any inference runs
+- [ ] Qualitative section-mapping review: read sample report sections to confirm
+      section-to-indicator assignments are evidentiarily relevant, not just thematically
+      adjacent; update `config/indicator_sections.yaml` to cover all evaluation indicators;
+      reference `initial-exploration/explore-indicators/02-indicator-selection.html`
 - [ ] Lock fine-tuning training window: 2013–2018 (post-lateral-coder drop; pre-attrition;
       no overlap with 2019 test year or 2024 deployment check)
 - [ ] Confirm Llama 405B availability on GW Pegasus (may require allocation request)
-- [ ] **Replacement experiment year**: trade-off between 2019 (richer ≥8-coder pool,
-      consistent with calibration year, no additional source documents needed) and a
-      later year such as 2021–2022 (harder test, panels already thinning — more directly
-      relevant to the deployment scenario). 2019 gives a larger eligibility pool; later
-      years make the robustness case stronger because the panels being augmented are
-      already thin.
-- [ ] **Larger-scale replacement vision**: if temperature variation or persona prompting
-      produces genuinely distinct AI coder draws, k=2 or k=3 replacement becomes feasible.
-      This would require a year with well-formed panels (≥8 coders) large enough to
-      remove multiple human coders and still measure the effect. Exploratory; depends on
-      whether temperature/persona conditions show reliable within-indicator variation.
-- [ ] Decide scope of persona exploratory condition: retain or drop given redesign?
-- [ ] Decide whether fine-tuning runs on 9B as well as 70B (lower bound on scale × 
+- [x] Decide scope of persona exploratory condition: **retained**. Narrow 2-condition test
+      (strict / lenient framing) on the best fine-tuned model. If persona shifts produce
+      reliable, directional rating changes, k=2/k=3 from persona draws becomes viable.
+- [ ] Decide whether fine-tuning runs on 9B as well as 70B (lower bound on scale ×
       generalization interaction)

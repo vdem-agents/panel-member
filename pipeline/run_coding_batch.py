@@ -29,13 +29,43 @@ Usage:
 
     # Re-running is safe: completed rows (country × year × indicator × condition × model)
     # are skipped automatically via the JSONL checkpoint.
+
+    # With concurrent workers (vLLM only — not Claude API):
+    python3 -m pipeline.run_coding_batch \\
+        --year 2019 --condition evidence --models llama-405b-local \\
+        --workers 8 \\
+        --output data/output/runs/evidence_2019_405b.jsonl
+
+Parameters:
+    --year        Calendar year to code (default: 2020). Primary test year is 2019.
+    --indicators  Subset of indicators to run (default: all in indicator_sections.yaml).
+    --condition   Prompt condition: codebook | evidence | anonymized (default: evidence).
+                    codebook   — codebook text only, no source evidence
+                    evidence   — adds raw State Dept / Freedom House sections + few-shot examples
+                    anonymized — same as evidence but country identity stripped from text and examples
+    --models      One or more model keys from vdem_config.LLM_CONFIGS (default: PRIMARY_MODELS).
+                    claude-sonnet       — Claude API (requires ANTHROPIC_API_KEY)
+                    llama-405b          — Together.xyz 405B (dev/testing)
+                    llama-70b           — Together.xyz 70B (dev/testing)
+                    llama-9b            — Together.xyz 9B (dev/testing)
+                    llama-405b-local    — vLLM on Pegasus 8×A100 (requires VLLM_BASE_URL)
+                    llama-70b-local     — vLLM on Pegasus A100 (requires VLLM_BASE_URL)
+                    llama-9b-local      — vLLM on Pegasus V100 (requires VLLM_BASE_URL)
+                    llama-70b-finetuned — fine-tuned adapter via vLLM --lora-modules
+    --output      Output JSONL path (appended to if exists; default: timestamped file).
+    --workers     Concurrent requests sent to the inference server (default: 1).
+                  Values > 1 let vLLM batch requests together and improve GPU utilization.
+                  Has no effect on response quality. Not recommended for Claude API (rate limits).
+                  Suggested: 4 for 70B/9B on one GPU; 8–16 for 405B on 8×A100.
 """
 
 import argparse
 import csv
 import json
 import sys
+import threading
 import time
+from concurrent.futures import ThreadPoolExecutor, as_completed
 from datetime import datetime
 from pathlib import Path
 
@@ -51,7 +81,7 @@ except ImportError:
 
 CONFIG_PATH = Path(__file__).parent.parent / "config" / "indicator_sections.yaml"
 PROCESSED_TEXT_DIR = Path(__file__).parent.parent / "data" / "processed-text"
-PANEL_MEANS_PATH = Path(__file__).parent.parent / "data" / "processed" / "panel_means.csv"
+PANEL_MEANS_PATH = Path(__file__).parent.parent.parent / "shared" / "vdem-data" / "panel_means.csv"
 
 # Slugs pycountry cannot match from title-cased name
 SLUG_OVERRIDES: dict[str, tuple[str, str] | None] = {
@@ -161,6 +191,7 @@ def run_batch(
     condition: str,
     models: list[str],
     output_path: Path,
+    workers: int = 1,
 ) -> None:
     output_path.parent.mkdir(parents=True, exist_ok=True)
 
@@ -185,24 +216,40 @@ def run_batch(
 
     print(
         f"Jobs: {len(jobs)} total, {len(done)} done, {len(remaining)} remaining "
-        f"[{condition} | {year}]"
+        f"[{condition} | {year} | workers={workers}]"
     )
     if not remaining:
         print("Nothing to do.")
         return
 
     errors = 0
+    write_lock = threading.Lock()
+    completed = 0
+
+    def _run_one(job: tuple) -> tuple[dict | None, Exception | None, str]:
+        iso, slug, name, yr, indicator, cond, model_key = job
+        label = f"{iso} {yr} {indicator} {cond} {model_key}"
+        try:
+            record = _backoff_call(iso, slug, name, yr, indicator, cond, model_key)
+            return record, None, label
+        except Exception as e:
+            return None, e, label
+
     with open(output_path, "a") as out_f:
-        for i, (iso, slug, name, yr, indicator, cond, model_key) in enumerate(remaining, 1):
-            label = f"[{i}/{len(remaining)}] {iso} {yr} {indicator} {cond} {model_key}"
-            try:
-                record = _backoff_call(iso, slug, name, yr, indicator, cond, model_key)
-                out_f.write(json.dumps(record) + "\n")
-                out_f.flush()
-                print(f"  {label} → {record['rating']}")
-            except Exception as e:
-                errors += 1
-                print(f"  {label} → ERROR: {e}", file=sys.stderr)
+        with ThreadPoolExecutor(max_workers=workers) as pool:
+            futures = {pool.submit(_run_one, job): job for job in remaining}
+            for future in as_completed(futures):
+                completed += 1
+                record, exc, label = future.result()
+                progress = f"[{completed}/{len(remaining)}]"
+                if exc is not None:
+                    errors += 1
+                    print(f"  {progress} {label} → ERROR: {exc}", file=sys.stderr)
+                else:
+                    with write_lock:
+                        out_f.write(json.dumps(record) + "\n")
+                        out_f.flush()
+                    print(f"  {progress} {label} → {record['rating']}")
 
     print(f"\nDone. {len(remaining) - errors} succeeded, {errors} failed.")
     if errors:
@@ -232,6 +279,11 @@ if __name__ == "__main__":
         default=f"data/output/runs/batch_{datetime.now():%Y%m%d_%H%M}.jsonl",
         help="Output JSONL file (appended to if exists)"
     )
+    parser.add_argument(
+        "--workers", type=int, default=1,
+        help="Number of concurrent inference requests (default: 1). Use 4-8 for vLLM."
+    )
     args = parser.parse_args()
 
-    run_batch(args.year, args.indicators, args.condition, args.models, Path(args.output))
+    run_batch(args.year, args.indicators, args.condition, args.models, Path(args.output),
+              workers=args.workers)
