@@ -1,21 +1,21 @@
 #!/usr/bin/env python3
 """
-Stage 4: Calibration check — compute MAD and signed deviation from raw panel means.
+Stage 4: Substitution evaluation — compute LOO MAE and signed deviation from raw panel means.
 
 Loads one or more JSONL output files, merges with panel_means.csv, and reports:
-  - MAD table: rows = condition × model, columns = indicators (+ overall mean)
+  - LOO MAE table: rows = condition × model, columns = indicators (+ overall mean)
   - Signed deviation by democracy quintile (compression diagnostic)
   - Best condition × model per indicator and overall
 
 Usage:
-    python3 -m pipeline.calibration_check \\
+    python3 -m pipeline.substitution_eval \\
         --inputs data/output/runs/codebook_2020.jsonl \\
                  data/output/runs/evidence_2020.jsonl \\
                  data/output/runs/anonymized_2020.jsonl \\
         --year 2020
 
     # Save full results to CSV:
-    python3 -m pipeline.calibration_check --inputs ... --year 2020 --save
+    python3 -m pipeline.substitution_eval --inputs ... --year 2020 --save
 """
 
 import argparse

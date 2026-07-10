@@ -1,0 +1,190 @@
+{
+  "v2csreprss": [
+    {
+      "country": "PRK",
+      "slug": "north-korea",
+      "country_name": "North Korea",
+      "year": 2020,
+      "level": 0,
+      "raw_mean": 0.0,
+      "region": "East Asia"
+    },
+    {
+      "country": "SAU",
+      "slug": "saudi-arabia",
+      "country_name": "Saudi Arabia",
+      "year": 2020,
+      "level": 1,
+      "raw_mean": 1.0,
+      "region": "MENA"
+    },
+    {
+      "country": "AGO",
+      "slug": "angola",
+      "country_name": "Angola",
+      "year": 2020,
+      "level": 2,
+      "raw_mean": 2.0,
+      "region": "Sub-Saharan Africa"
+    },
+    {
+      "country": "MEX",
+      "slug": "mexico",
+      "country_name": "Mexico",
+      "year": 2020,
+      "level": 3,
+      "raw_mean": 3.1,
+      "region": "Latin America"
+    },
+    {
+      "country": "SWE",
+      "slug": "sweden",
+      "country_name": "Sweden",
+      "year": 2020,
+      "level": 4,
+      "raw_mean": 4.0,
+      "region": "Western Europe"
+    }
+  ],
+  "v2mecenefm": [
+    {
+      "country": "SYR",
+      "slug": "syria",
+      "country_name": "Syria",
+      "year": 2020,
+      "level": 0,
+      "raw_mean": 0.0,
+      "region": "MENA"
+    },
+    {
+      "country": "SWZ",
+      "slug": "eswatini",
+      "country_name": "Eswatini",
+      "year": 2020,
+      "level": 1,
+      "raw_mean": 1.0,
+      "region": "Sub-Saharan Africa"
+    },
+    {
+      "country": "MYS",
+      "slug": "malaysia",
+      "country_name": "Malaysia",
+      "year": 2020,
+      "level": 2,
+      "raw_mean": 2.1429,
+      "region": "Southeast Asia"
+    },
+    {
+      "country": "ECU",
+      "slug": "ecuador",
+      "country_name": "Ecuador",
+      "year": 2020,
+      "level": 3,
+      "raw_mean": 3.1111,
+      "region": "Latin America"
+    },
+    {
+      "country": "DEU",
+      "slug": "germany",
+      "country_name": "Germany",
+      "year": 2020,
+      "level": 4,
+      "raw_mean": 4.0,
+      "region": "Western Europe"
+    }
+  ],
+  "v2clkill": [
+    {
+      "country": "SYR",
+      "slug": "syria",
+      "country_name": "Syria",
+      "year": 2020,
+      "level": 0,
+      "raw_mean": 0.3333,
+      "region": "MENA"
+    },
+    {
+      "country": "GNQ",
+      "slug": "equatorial-guinea",
+      "country_name": "Equatorial Guinea",
+      "year": 2020,
+      "level": 1,
+      "raw_mean": 0.875,
+      "region": "Sub-Saharan Africa"
+    },
+    {
+      "country": "CHN",
+      "slug": "china",
+      "country_name": "China",
+      "year": 2020,
+      "level": 2,
+      "raw_mean": 1.9231,
+      "region": "East Asia"
+    },
+    {
+      "country": "KAZ",
+      "slug": "kazakhstan",
+      "country_name": "Kazakhstan",
+      "year": 2020,
+      "level": 3,
+      "raw_mean": 3.0,
+      "region": "Central Asia"
+    },
+    {
+      "country": "URY",
+      "slug": "uruguay",
+      "country_name": "Uruguay",
+      "year": 2020,
+      "level": 4,
+      "raw_mean": 4.0,
+      "region": "Latin America"
+    }
+  ],
+  "v2juncind": [
+    {
+      "country": "NIC",
+      "slug": "nicaragua",
+      "country_name": "Nicaragua",
+      "year": 2020,
+      "level": 0,
+      "raw_mean": 0.1429,
+      "region": "Latin America"
+    },
+    {
+      "country": "BGD",
+      "slug": "bangladesh",
+      "country_name": "Bangladesh",
+      "year": 2020,
+      "level": 1,
+      "raw_mean": 0.875,
+      "region": "South Asia"
+    },
+    {
+      "country": "ETH",
+      "slug": "ethiopia",
+      "country_name": "Ethiopia",
+      "year": 2020,
+      "level": 2,
+      "raw_mean": 2.0,
+      "region": "Sub-Saharan Africa"
+    },
+    {
+      "country": "POL",
+      "slug": "poland",
+      "country_name": "Poland",
+      "year": 2020,
+      "level": 3,
+      "raw_mean": 3.0,
+      "region": "Eastern Europe"
+    },
+    {
+      "country": "NZL",
+      "slug": "new-zealand",
+      "country_name": "New Zealand",
+      "year": 2020,
+      "level": 4,
+      "raw_mean": 4.0,
+      "region": "Oceania"
+    }
+  ]
+}
