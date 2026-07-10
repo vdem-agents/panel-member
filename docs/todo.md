@@ -63,7 +63,7 @@
 - [ ] **Generate `data/processed/panel_means.csv`** from V-Dem v15 coder-level data.
   Required columns: `country_text_id`, `year`, `indicator`, `raw_mean`, `n_coders`,
   `theta_quintile` (1–5 from v15 `v2x_polyarchy` quintiles).
-  The `theta_quintile` column is used by `calibration_check.py` for compression diagnostics
+  The `theta_quintile` column is used by `substitution_eval.py` for compression diagnostics
   and by the pool stratification. If not available, set to 0 (disables quintile analysis).
   **Date filter**: The coder-level dataset has two rows per coder-country-year (Jan 1 and
   Dec 31) as a structural feature. Filter to `format(historical_date, "%m-%d") == "12-31"`
@@ -158,7 +158,7 @@ multiple genuinely distinct AI coders.
 - [ ] **Generate `data/processed/human_ratings.csv`** from V-Dem v15 coder-level data in R.
   Required columns: `country_text_id`, `iso3`, `year`, `indicator`, `coder_id`, `rating`.
   Include both training indicators (2013–2018) and all evaluation indicators (including
-  weak-coverage). Used by `prepare_finetune_data.py` (training) and `calibration_check.py`
+  weak-coverage). Used by `prepare_finetune_data.py` (training) and `substitution_eval.py`
   (LOO MAE evaluation). The `iso3` column is required by `prepare_finetune_data.py` for
   anonymized text lookup.
   **Date filter**: filter to `format(historical_date, "%m-%d") == "12-31"` before
@@ -223,7 +223,7 @@ multiple genuinely distinct AI coders.
 
 - [ ] **Write `pipeline/select_cy_pool.py`**: filter `panel_means.csv` to 2019 rows
   with `n_coders ≥ 8` and save to `data/processed/cy_pool.csv`. No sampling, no cap —
-  all eligible CYs from the calibration pool. Run after Stage 1 to lock the pool.
+  all eligible CYs from the evaluation pool. Run after Stage 1 to lock the pool.
 
 - [ ] **Attrition sample**: identify countries with ≥8 coders in 2015 and ≤5 by 2022
   for the augmentation-of-attrited-panels secondary analysis.

@@ -12,21 +12,21 @@ See `notes/persona-prompting-design-archive.md` for archived persona design.*
 
 The experiment addresses two questions:
 
-**Question 1 (calibration)**: Which prompt condition and model scale produces AI ratings
+**Question 1 (substitution)**: Which prompt condition and model scale produces AI ratings
 closest to the human expert panel's raw mean across the 25–30 evaluation indicators?
 
 **Question 2 (generalization)**: Does LOO MAE degrade as source-coverage tier weakens?
 The evaluation indicator set spans strong, partial, and weak coverage, making coverage
 tier a within-study moderating variable rather than a separate experimental condition.
 
-The design is a **3 × 5 calibration experiment** (3 prompt conditions × 5 models) on
+The design is a **3 × 5 substitution experiment** (3 prompt conditions × 5 models) on
 25–30 evaluation indicators (3–4 per module, spanning coverage tiers), with a **k=1
 replacement check** as supplementary analysis. Fine-tuned Llama 70B is trained on all
 strong + partial indicators (~174) but evaluated on the same 25–30 indicator set.
 
 ---
 
-## Part 1: Calibration experiment
+## Part 1: Substitution experiment
 
 ### Conditions
 
@@ -123,7 +123,7 @@ set. If the gradient is steep, it characterizes where the approach reaches its l
 ### Design
 
 Simplified replacement experiment: k=1 only. For each country-year in the 2019
-calibration pool with ≥8 distinct coders, add one AI rating from the best-calibrated
+evaluation pool with ≥8 distinct coders, add one AI rating from the best-calibrated
 model and compare the AI-augmented panel mean to the full human panel mean.
 
 ```
@@ -182,7 +182,7 @@ indicator and democracy quintile.
 
 ### Temperature variation (sensitivity)
 
-Re-run the best model at temperature 0.7 on the calibration pool. Compare the
+Re-run the best model at temperature 0.7 on the evaluation pool. Compare the
 distribution of ratings across draws to the temperature=0 result. This is a measure of
 model uncertainty — the spread of the distribution indicates how much variance the model
 has around its modal answer.
@@ -250,8 +250,8 @@ for the replacement pool:
 - [ ] Note: 2024 panel means from thin panels (~4–6 coders); frame as deployment simulation
 
 **Replacement pool**
-- [ ] Eligibility: ≥8 distinct coders, 2019 only (same year as calibration pool — AI ratings already exist)
-- [ ] No sampling cap — use all eligible CYs from the calibration pool
+- [ ] Eligibility: ≥8 distinct coders, 2019 only (same year as evaluation pool — AI ratings already exist)
+- [ ] No sampling cap — use all eligible CYs from the evaluation pool
 - [ ] Pool saved to `data/processed/cy_pool.csv`
 
 **Fine-tuning**

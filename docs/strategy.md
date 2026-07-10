@@ -15,7 +15,7 @@ retained as exploratory condition; see `notes/persona-prompting-design-archive.m
 
 ---
 
-## Stage 1: Prompt engineering calibration
+## Stage 1: Prompt engineering
 
 ### The three conditions
 
@@ -59,7 +59,7 @@ exact match rate and adjacent-category agreement.
 
 ### Country-year pool (calibration)
 
-**2019** as the primary calibration year — clean one-year temporal holdout after the
+**2019** as the primary evaluation year — clean one-year temporal holdout after the
 2013–2018 training window, full panels, no exogenous anomalies. 2020 is avoided as
 primary: COVID-19 emergency restrictions distort civil society, media, and judicial
 indicators and make the human panel means noisier targets than usual.
@@ -128,7 +128,7 @@ set, motivating application beyond the training distribution.
 
 ### Design
 
-k=1 replacement check only. For all country-years in the 2019 calibration pool with
+k=1 replacement check only. For all country-years in the 2019 evaluation pool with
 ≥8 distinct coders, add one AI rating from the best-calibrated model and compare the
 AI-augmented panel mean to the full human panel mean. Bootstrap B=500. Report mean
 divergence ± 95% CI. No pool size cap — AI ratings for these CYs already exist from
@@ -174,7 +174,7 @@ new LLM call inserted between section extraction and the coding model.
 | Calibration (primary) | 2019 | Clean holdout; full panels; no COVID anomaly |
 | Calibration (robustness) | 2020 | Best model only; COVID stress test |
 | Deployment robustness | 2024 | Best model only; thin panels; reviewer generalization check |
-| Replacement (k=1 check) | 2019 | All ≥8-coder CYs from calibration pool; no extra ingestion needed |
+| Replacement (k=1 check) | 2019 | All ≥8-coder CYs from evaluation pool; no extra ingestion needed |
 | Fine-tuning training | 2013–2018 | Post-lateral-coder; pre-attrition; 6 years |
 | Augmentation (attrition) | 2015 (ref) + 2022 (thin) | Post-2013 attrition window |
 | Deployment (historical) | 1975–1989 | FH from 1972; State Dept from 1977 |
@@ -203,7 +203,7 @@ confirmed partition names, GRES strings, and run sequence.
 
 ## Key open questions
 
-- [ ] Lock calibration pool: year(s), minimum ratings per country-indicator, confirmed N
+- [ ] Lock evaluation pool: year(s), minimum ratings per country-indicator, confirmed N
 - [ ] Select and lock 25–30 evaluation indicators (3–4 per module, spanning coverage
       tiers); verify section mappings and codebook text before any inference runs
 - [ ] Qualitative section-mapping review: read sample report sections to confirm

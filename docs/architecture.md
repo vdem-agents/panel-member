@@ -194,7 +194,7 @@ coverage. Save training CYI list to `data/processed/training_set.csv`.
 - Primary: MAE/MSE/exact match against held-out individual coder ratings — standard
   supervised evaluation against the training target.
 - Secondary: include fine-tuned model in cross-model MAD comparison alongside
-  Conditions 1–3 — it outputs a 0–4 rating and slots directly into `calibration_check.py`.
+  Conditions 1–3 — it outputs a 0–4 rating and slots directly into `substitution_eval.py`.
 - Replacement experiment: participates as a model candidate alongside few-shot models.
 
 **Fine-tuning** (`pipeline/finetune_llama.py`):
@@ -214,7 +214,7 @@ Output path: `data/output/llama70b_finetuned_{indicator}_{year}.jsonl`
 
 ## Stage 4: Calibration Check
 
-`pipeline/calibration_check.py`
+`pipeline/substitution_eval.py`
 
 Computes MAD from raw panel mean per condition × model × indicator. Reports:
 - MAD table: rows = condition × model combinations, columns = indicators
@@ -269,7 +269,7 @@ panel-member/
     prepare_finetune_data.py   # generate anonymized training JSONL for condition 4
     finetune_llama.py          # QLoRA training
     run_finetuned_batch.py     # inference with fine-tuned weights
-    calibration_check.py       # MAD from raw panel mean
+    substitution_eval.py       # MAD from raw panel mean
     replacement_experiment.py  # panel mean divergence by k
     vdem_config.py             # model configs, paths, constants
   data/

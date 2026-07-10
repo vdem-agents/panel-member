@@ -26,7 +26,7 @@ Prerequisites:
   - data/processed/panel_means.csv available for filtering
   - vLLM running with the adapter as described above
 
-Output slots directly into calibration_check.py alongside Conditions 1–3.
+Output slots directly into substitution_eval.py alongside Conditions 1–3.
 
 Usage:
     python3 -m pipeline.run_finetuned_batch \\

@@ -74,7 +74,7 @@ LLM_CONFIGS = {
 # without the few-shot block; it is handled as a separate model, not a condition.
 CONDITIONS = ["codebook", "evidence", "anonymized"]
 
-# Base models for the 3-condition calibration experiment
+# Base models for the 3-condition substitution experiment
 PRIMARY_MODELS = ["claude-sonnet", "llama-405b", "llama-70b", "llama-9b"]
 
 # All five models (base + fine-tuned); fine-tuned runs only under "anonymized" format
