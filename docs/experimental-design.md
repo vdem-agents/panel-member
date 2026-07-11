@@ -63,10 +63,12 @@ means). 2019 is the clean one-year temporal holdout after the fine-tuning traini
 test year: COVID-19 emergency restrictions systematically distort civil society, judicial,
 and media indicators, making the human panel mean itself a noisier target.
 
-Deployment robustness: **2024** — best-performing model only (Condition 4 or whichever
-wins calibration). Tests generalization to recent thin-panel years where AI augmentation
-is most needed. Panel size ~4,421 active coders by 2024 (vs. ~8,212 in 2018), so ground
-truth is uncertain; frame as deployment simulation, not primary validation.
+Robustness check: **2022** — best-performing model only. Falls outside the 2013–2018
+training window, has stable State Department and Freedom House report production, and
+is within the coding window for all retained modules. The originally planned year (2024)
+was set aside due to DOGE-related disruption to State Department operations in early
+2025 (see `initial-exploration/explore-indicators/05-section-mapping-and-coverage.qmd`
+section 5).
 
 ### Outcome
 
@@ -240,14 +242,13 @@ Lock all of the following before running any LLM calls or accessing v15 coder-le
 for the replacement pool:
 
 **Calibration pool**
-- [ ] Year(s): 2019 primary; 2020 robustness check (best model only — COVID anomaly, not primary validation)
+- [ ] Year(s): 2019 primary; 2022 robustness check (best model only)
 - [ ] Minimum ratings per country-indicator for inclusion
 - [ ] Final N per condition (confirm before running)
 
-**Deployment robustness**
-- [ ] Year: 2024 (best model only)
-- [ ] Source documents: download Freedom House and State Dept for 2024
-- [ ] Note: 2024 panel means from thin panels (~4–6 coders); frame as deployment simulation
+**Robustness check**
+- [ ] Year: 2022 (best model only)
+- [ ] Source documents: download Freedom House and State Dept for 2022
 
 **Replacement pool**
 - [ ] Eligibility: ≥8 distinct coders, 2019 only (same year as evaluation pool — AI ratings already exist)
@@ -255,7 +256,7 @@ for the replacement pool:
 - [ ] Pool saved to `data/processed/cy_pool.csv`
 
 **Fine-tuning**
-- [ ] Training window: 2013–2018 (rationale: post-lateral-coder drop; pre-attrition panels; no overlap with 2019 test year or 2024 deployment check)
+- [ ] Training window: 2013–2018 (rationale: post-lateral-coder drop; pre-attrition panels; no overlap with 2019 test year or 2022 robustness check)
 - [ ] Training data: individual coder ratings from V-Dem v15 coder-level dataset — one row
       per coder per CYI, covering all strong + partial Type C indicators (~174 indicators);
       training set saved to `data/processed/training_set.csv`

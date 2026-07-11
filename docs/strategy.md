@@ -64,11 +64,11 @@ exact match rate and adjacent-category agreement.
 primary: COVID-19 emergency restrictions distort civil society, media, and judicial
 indicators and make the human panel means noisier targets than usual.
 
-Secondary robustness: **2024** — best-performing model only. Tests generalization to
-the thin-panel recent years that are the paper's primary deployment target. Panel size
-~4,421 coders by 2024 (vs. 8,212 in 2018); frame as deployment simulation, not
-primary validation. Addresses the reviewer question "does it work for recent years?"
-while tying the answer directly to the paper's motivation.
+Secondary robustness: **2022** — best-performing model only. Falls outside the
+2013–2018 training window, has stable State Department and Freedom House report
+production, and is within the coding window for all retained modules. The originally
+planned year (2024) was set aside due to DOGE-related disruption to State Department
+operations in early 2025 (see `initial-exploration/explore-indicators/05-section-mapping-and-coverage.qmd` section 5).
 
 Pool: all countries with raw panel mean available in V-Dem v15 coder-level data for
 each indicator in the target year.
@@ -172,8 +172,7 @@ new LLM call inserted between section extraction and the coding model.
 | Stage | Years | Notes |
 |---|---|---|
 | Calibration (primary) | 2019 | Clean holdout; full panels; no COVID anomaly |
-| Calibration (robustness) | 2020 | Best model only; COVID stress test |
-| Deployment robustness | 2024 | Best model only; thin panels; reviewer generalization check |
+| Robustness check | 2022 | Best model only; outside training window; stable report production |
 | Replacement (k=1 check) | 2019 | All ≥8-coder CYs from evaluation pool; no extra ingestion needed |
 | Fine-tuning training | 2013–2018 | Post-lateral-coder; pre-attrition; 6 years |
 | Augmentation (attrition) | 2015 (ref) + 2022 (thin) | Post-2013 attrition window |
@@ -211,7 +210,7 @@ confirmed partition names, GRES strings, and run sequence.
       adjacent; update `config/indicator_sections.yaml` to cover all evaluation indicators;
       reference `initial-exploration/explore-indicators/02-indicator-selection.html`
 - [ ] Lock fine-tuning training window: 2013–2018 (post-lateral-coder drop; pre-attrition;
-      no overlap with 2019 test year or 2024 deployment check)
+      no overlap with 2019 test year or 2022 robustness check)
 - [ ] Confirm Llama 405B availability on GW Pegasus (may require allocation request)
 - [x] Decide scope of persona exploratory condition: **retained**. Narrow 2-condition test
       (strict / lenient framing) on the best fine-tuned model. If persona shifts produce
