@@ -239,6 +239,13 @@ multiple genuinely distinct AI coders.
 
 ## Paper / analysis (non-blocking)
 
+- [ ] **Revise paper framing artfully** (#7). `docs/overview.md` and `paper/outline.qmd`
+  have been updated with a quick reframe (July 2026) to lead with the learning question
+  and reposition V-Dem as the application. The current revision is intentionally rough —
+  prose, section titles, and contribution claims need a careful pass before submission or
+  pre-registration. Return to this after the pipeline is set up and the open design
+  issues (#1–#6) are resolved.
+
 - [ ] **Write `pipeline/select_cy_pool.py`**: filter `panel_means.csv` to 2019 rows
   with `n_coders ≥ 8` and save to `data/processed/cy_pool.csv`. No sampling, no cap —
   all eligible CYs from the evaluation pool. Run after Stage 1 to lock the pool.
