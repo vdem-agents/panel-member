@@ -14,10 +14,10 @@
   - GRES: `gpu:v100:1` (9B), `gpu:a100:1` (70B / fine-tuning), `gpu:a100:4` (405B)
   - TRES style: use `--cpus-per-gpu` and `--mem-per-gpu` for GPU jobs
 
-- [ ] **Claude API jobs: run from laptop, not HPC**.
-  Outbound internet access to `api.anthropic.com` from Pegasus compute nodes is
-  unconfirmed. Claude requires no GPU and JSONL checkpointing makes it safe to run
-  across sessions. Do not submit `run_coding_claude.sh` to Pegasus — run it locally.
+- [x] **Claude API internet access confirmed** (July 2026).
+  Outbound access to `api.anthropic.com` from Pegasus compute nodes is confirmed.
+  Still: Claude requires no GPU and running it from the laptop avoids HPC queue
+  latency. Run `run_coding_claude.sh` locally.
 
 - [ ] **Download model weights to Pegasus scratch storage** (run once on login node).
   Run `slurm/setup_models.sh` after setting `HF_TOKEN` in `.env`. Requires a
@@ -70,27 +70,40 @@
   before computing means to get one rating per coder per year, matching V-Dem's published
   end-of-year values. Omitting this filter doubles the effective N without adding signal.
 
-- [ ] **Select and lock 25–30 evaluation indicators** (3–4 per module, spanning coverage
-  tiers). Requires qualitative section-mapping review first — read sample report sections
-  to confirm section-to-indicator assignments are evidentiarily relevant. Must include at
-  least one weak-coverage module (e.g., Legislature, State bureaucracy) for the coverage-
-  tier gradient finding. Lock list in `config/indicator_sections.yaml` before any inference.
+- [ ] **Decide inference scope and lock evaluation indicator set** (#3). Two options:
+  25–30 selected indicators (3–4 per module, spanning coverage tiers) or all retained
+  indicators (~170). See issue for tradeoffs. Once resolved, confirm section-mapping
+  assignments before any inference runs.
+
+- [ ] **Populate section mappings in `config/indicator_sections.yaml`** (#1). Fill
+  `state-dept` and `freedom-house` fields for all retained indicators from
+  `initial-exploration/explore-indicators/section-mapping-notes.md`. Remove excluded
+  modules (`v2ed*`, `v2med*`, `v2reg*`). Codebook text is already generated; only
+  section keys need to be added manually.
+
+- [ ] **Decide on executive summary extraction for SD and FiW parsers** (#4). Both
+  sources have substantive preamble blocks (SD executive summary; FiW Overview and Key
+  Developments) currently discarded by the parser. Proposal: include as a baseline
+  context block in every evidence packet. Affects `pipeline/extract_sections.py` and
+  `pipeline/assemble_prompt.py`. Required before any evidence-condition coding runs.
+
+- [ ] **Verify SD Section 2c content in 2013–2018 training window** (#5). In 2020
+  reports, Section 2c universally redirects to the standalone IRFR with no inline text.
+  Check whether pre-2020 reports contain inline text; if the redirect is consistent
+  across years, consider ingesting the IRFR as a third source. Affects 9 indicators
+  currently mapped to `2c`.
+
+- [ ] **Decide on SD Section 6 / FiW G sub-parsing** (#6). Section 6 is an undivided
+  narrative covering multiple sub-populations; including it in full may introduce
+  cross-topic noise for indicators targeting a single group. Options: full inclusion,
+  sub-parse by prose headers, or indicator-level sub-topic tagging. Try full inclusion
+  first; revisit if pilot results show interference.
 
 - [ ] **Expand `data/fewshot_examples.json`** to cover all evaluation indicators (exact
-  set TBD, ~25–30). Current file covers: `v2csreprss`, `v2mecenefm`, `v2clkill`,
+  set TBD pending #3). Current file covers: `v2csreprss`, `v2mecenefm`, `v2clkill`,
   `v2juncind`. Each indicator needs 5 examples (one per ordinal level 0–4), globally
   distributed, with fields: `country`, `slug`, `country_name`, `year`, `level`,
   `raw_mean`, `region`. Evidence text is loaded on-the-fly; only the metadata goes here.
-
-- [ ] **Extend `config/indicator_sections.yaml`** to cover all ~174 training indicators
-  and all ~25–30 evaluation indicators. Many entries currently have approximate codebook
-  text marked `# TODO` — verify against V-Dem codebook (vdemdata::codebook in R or PDF)
-  before any coding or fine-tuning runs.
-
-- [ ] **Confirm section mappings for all evaluation indicators** against
-  `initial-exploration/explore-indicators/02-indicator-selection.html`.
-  Cross-check particularly for indicators spanning multiple sections and for weak-coverage
-  module indicators that were not part of the original 12-indicator mapping.
 
 ---
 
@@ -155,6 +168,12 @@ multiple genuinely distinct AI coders.
 - [x] **Write `slurm/run_inference_finetuned.sh`**. Done 2026-07-09.
   Starts vLLM with `--lora-modules`, runs `run_finetuned_batch.py`, archives output.
 
+- [ ] **Revise or remove `held_out` flag in `config/indicator_sections.yaml`** (#2).
+  The flag currently marks indicators with <6 median coders (a criterion that has been
+  dropped). Options: drop the flag entirely, repurpose it for coverage tier, or keep on
+  `lg`/`sv`/`st` modules with updated rationale. Affects `prepare_finetune_data.py`
+  training split only — does not suppress inference.
+
 - [ ] **Generate `data/processed/human_ratings.csv`** from V-Dem v15 coder-level data in R.
   Required columns: `country_text_id`, `iso3`, `year`, `indicator`, `coder_id`, `rating`.
   Include both training indicators (2013–2018) and all evaluation indicators (including
@@ -180,9 +199,8 @@ multiple genuinely distinct AI coders.
   Same script, one run per year. ~6 × 30 min. Can chip away across sessions — the
   download script checkpoints so interrupted runs resume cleanly.
 
-- [ ] **Download 2024 source documents** (deployment robustness check, best model only).
-  Run `download_reports.py --year 2024`. Note: State Dept 2024 report (covering 2024
-  events) was published early 2025; confirm URL pattern still holds.
+- [ ] **Download 2022 source documents** (robustness check year; best model only).
+  Run `download_reports.py --year 2022` on laptop.
 
 ---
 
