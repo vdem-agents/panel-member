@@ -96,15 +96,13 @@ format_category <- function(text, indent = "    ") {
   sprintf("%s- >-\n%s", indent, body)
 }
 
-make_entry <- function(indicator, name, question, clarification, categories,
-                       held_out = FALSE) {
+make_entry <- function(indicator, name, question, clarification, categories) {
   if (length(categories) == 0) {
     warning(sprintf("%s: no categories parsed — skipping", indicator))
     return(NULL)
   }
   lines <- c(
     sprintf("%s:", indicator),
-    if (held_out) "  held_out: true",
     format_scalar(name, "description"),
     format_scalar(question, "codebook_question"),
     format_clarification(clarification),
@@ -130,8 +128,7 @@ for (i in seq_len(nrow(df))) {
     name          = name,
     question      = row$question,
     clarification = row$clarification,
-    categories    = cats,
-    held_out      = row$coverage == "weak"
+    categories    = cats
   )
   if (is.null(entry)) { n_skipped <- n_skipped + 1L; next }
   blocks[[length(blocks) + 1L]] <- entry
@@ -148,14 +145,6 @@ header <- "# config/indicator_sections.yaml
 # (V-Dem v15). Do not edit the description, codebook_question, clarification, or
 # categories fields manually — re-run the script if corrections are needed.
 #
-# held_out: true — marks weak-coverage indicators (fewer than 6 median coders per
-# country in 2020). These are excluded from fine-tuning training data by
-# prepare_finetune_data.py but remain available for prompting experiments (evidence
-# and codebook conditions). They serve two evaluation purposes:
-#   1. Transfer test: does the fine-tuned model generalize to indicators it was not
-#      trained on?
-#   2. Prompting baseline: how does few-shot prompting perform on thin-coverage
-#      indicators compared to well-covered ones?
 #
 # Section mappings (state-dept, freedom-house) must be filled in manually.
 # See config/indicator_section_mapping.csv for module-level defaults as a starting

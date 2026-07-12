@@ -1,7 +1,7 @@
 # Panel Member: Experimental Design
 
 *Updated July 2026. Three prompt conditions, five models. Inference on a proportional
-stratified sample of ~80 indicators (one third per module, floor of 2; same set for all
+stratified sample of ~50–70 indicators (a quarter to a third per module, floor of 2; same set for all
 models), required for clean cross-model comparison. Training on all strong + partial Type C
 indicators (~174; ~1.95M coder-CYI examples from V-Dem v15). Coverage-tier gradient
 as within-study moderating variable. Raw panel means throughout.
@@ -14,7 +14,7 @@ See `notes/persona-prompting-design-archive.md` for archived persona design.*
 The experiment addresses two questions:
 
 **Question 1 (substitution)**: Which prompt condition and model scale produces AI ratings
-closest to the human expert panel's raw mean across the ~60–70 evaluation indicators, and
+closest to the human expert panel's raw mean across the ~52–69 evaluation indicators, and
 does this vary with coverage tier?
 
 **Question 2 (generalization)**: Does LOO MAE degrade as source-coverage tier weakens?
@@ -22,7 +22,7 @@ The evaluation indicator set spans strong, partial, and weak coverage, making co
 tier a within-study moderating variable rather than a separate experimental condition.
 
 The design is a **3 × 6 experiment** (3 prompt conditions × 6 models) on a proportional
-stratified sample of ~80 evaluation indicators (one third per module, floor of 2, spanning
+stratified sample of ~80 evaluation indicators (a quarter to a third per module, floor of 2, spanning
 all coverage tiers), with a **k=1 replacement check** as supplementary analysis. The same
 indicator set is used for all models: using different sets for small vs. large models
 would confound model scale with indicator selection in cross-model comparisons.
@@ -88,7 +88,7 @@ section 5).
 `mean(|rating_i − mean(panel \ {i})|)`. Bootstrap at the CYI level (B=500). Report as
 a forest plot (indicators as rows grouped by module, paired AI vs. human estimates or
 difference centered on zero) and a supplementary table (rows = condition × model, columns
-= 25–30 indicators with coverage tier noted). Secondary: signed deviation by democracy
+= ~50–70 indicators with coverage tier noted). Secondary: signed deviation by democracy
 quintile.
 
 ### What each comparison tells you
@@ -108,7 +108,7 @@ quintile.
 ### Design
 
 The fine-tuned Llama 70B adapter is trained on all strong + partial coverage Type C
-indicators (~174 indicators). The ~60–70 evaluation indicators are drawn from all
+indicators (~174 indicators). The ~52–69 evaluation indicators are drawn from all
 coverage tiers: strong (directly addressed by dedicated report sections), partial
 (addressed but not systematically), and weak (only tangentially covered).
 
@@ -116,9 +116,11 @@ Coverage tier is a within-study moderating variable, not a separate experimental
 condition. There is no training/held-out split: the model is trained on strong + partial
 indicators and we observe how well it codes across the coverage gradient.
 
-Exact evaluation indicators are TBD pending qualitative section-mapping review.
-Candidates from weak-coverage modules include Legislature (v2lg*), State bureaucracy
-(v2st*), Sovereignty (v2sv*), Education content (v2ed*), and Media curriculum (v2med*).
+Section mapping is complete (GitHub issue #1, closed 2026-07-11). The evaluation set
+will be locked by drawing a proportional stratified random sample — one third of each
+module's indicators, floor of 2 — from `config/indicator_sections.yaml` and populating
+`data/fewshot_examples.json` with 5 examples per selected indicator (one per ordinal
+level). See GitHub issue #8 for the population task.
 
 ### Evaluation
 
@@ -236,16 +238,16 @@ Academic freedom (strong); Civic activism, Executive, Political parties, Politic
 (partial). Weak and none coverage indicators excluded from training.
 Full list: `initial-exploration/explore-indicators/02-indicator-selection.html`.
 
-### Evaluation set (25–30 indicators, TBD)
+### Evaluation set (~50–70 indicators)
 
 Proportional stratified random sample: one third of each module's indicators, rounded to
 the nearest integer, with a floor of 2 per module. The floor prevents tiny modules (e.g.,
 Sovereignty with 3 total, Executive legitimation with 4) from contributing only 1 indicator
 while mid-size modules (Deliberation and State bureaucracy with 7 each) contribute 2. At
-this fraction the 16 retained modules yield approximately **78–82 indicators** total. Same
+this fraction the 16 retained modules yield approximately **50–70 indicators** total. Same
 set for all models — a prerequisite for clean cross-model comparison (different indicator
 sets for different models would confound model scale with indicator difficulty). Exact list
-locked after section-mapping completion (GitHub issue #1). Must span all three coverage
+locked when `data/fewshot_examples.json` is populated (issue #8; section mapping complete per issue #1, closed 2026-07-11). Must span all three coverage
 tiers to preserve the tier-gradient as a within-study moderating variable.
 
 Expect LOO MAE to vary with observability tier and coverage tier. Report calibration

@@ -139,8 +139,14 @@ def _build_fewshot_block(indicator: str, anonymized: bool = False) -> str:
     return "\n\n---\n\n".join(blocks)
 
 
+def _format_categories(categories: list[str]) -> str:
+    """Format response categories as a numbered markdown list."""
+    return "\n".join(f"- **{i}**: {cat}" for i, cat in enumerate(categories))
+
+
 def _codebook_user(country_name: str, year: int, indicator: str, ind: dict) -> str:
     categories = ind["categories"]
+    max_rating = len(categories) - 1
     clarification = ind.get("clarification") or ""
     clarification_block = f"**Clarification**: {clarification}" if clarification else ""
 
@@ -155,11 +161,7 @@ def _codebook_user(country_name: str, year: int, indicator: str, ind: dict) -> s
         f"",
         f"**Response categories**:",
         f"",
-        f"- **0**: {categories[0]}",
-        f"- **1**: {categories[1]}",
-        f"- **2**: {categories[2]}",
-        f"- **3**: {categories[3]}",
-        f"- **4**: {categories[4]}",
+        _format_categories(categories),
     ]
     if clarification_block:
         lines += ["", clarification_block]
@@ -171,18 +173,19 @@ def _codebook_user(country_name: str, year: int, indicator: str, ind: dict) -> s
         "",
         f"Respond with JSON only — no preamble, no code fences:",
         "",
-        '{"rating": <integer 0–4>, "justification": "<one sentence>"}',
+        f'{{"rating": <integer 0–{max_rating}>, "justification": "<one sentence>"}}',
     ]
     return "\n".join(lines)
 
 
-_CALIBRATION_HEADER = (
-    "## Calibration examples\n\n"
-    "The following examples show mean expert panel ratings from V-Dem's global coder pool,\n"
-    "reflecting globally anchored thresholds rather than regional standards. Panel means are\n"
-    "continuous; your task is to assign a single integer on the same 0–4 scale.\n\n"
-    "{fewshot_block}\n\n---"
-)
+def _calibration_header(max_rating: int) -> str:
+    return (
+        "## Calibration examples\n\n"
+        "The following examples show mean expert panel ratings from V-Dem's global coder pool,\n"
+        "reflecting globally anchored thresholds rather than regional standards. Panel means are\n"
+        f"continuous; your task is to assign a single integer on the same 0–{max_rating} scale.\n\n"
+        "{fewshot_block}\n\n---"
+    )
 
 
 def assemble_prompt(
@@ -225,6 +228,7 @@ def assemble_prompt(
     system_raw, user_raw = _load_template()
 
     categories = ind["categories"]
+    max_rating = len(categories) - 1
     clarification = ind.get("clarification") or ""
     clarification_block = (
         f"**Clarification**: {clarification}" if clarification else ""
@@ -239,7 +243,7 @@ def assemble_prompt(
             get_evidence(country_slug, year, indicator, "freedom-house")
             or "[No source document available for this country-year.]"
         )
-        calibration_section = _CALIBRATION_HEADER.format(
+        calibration_section = _calibration_header(max_rating).format(
             fewshot_block=_build_fewshot_block(indicator, anonymized=False)
         )
 
@@ -256,7 +260,7 @@ def assemble_prompt(
             )
         state_ev = anon_text
         fh_ev = "[Included in anonymized text above]"
-        calibration_section = _CALIBRATION_HEADER.format(
+        calibration_section = _calibration_header(max_rating).format(
             fewshot_block=_build_fewshot_block(indicator, anonymized=True)
         )
 
@@ -280,11 +284,8 @@ def assemble_prompt(
         .replace("{INDICATOR_CODE}", indicator)
         .replace("{INDICATOR_NAME}", ind["description"])
         .replace("{CODEBOOK_QUESTION}", ind["codebook_question"])
-        .replace("{CATEGORY_0}", categories[0])
-        .replace("{CATEGORY_1}", categories[1])
-        .replace("{CATEGORY_2}", categories[2])
-        .replace("{CATEGORY_3}", categories[3])
-        .replace("{CATEGORY_4}", categories[4])
+        .replace("{RESPONSE_CATEGORIES}", _format_categories(categories))
+        .replace("{MAX_RATING}", str(max_rating))
         .replace("{CLARIFICATION_BLOCK}", clarification_block)
         .replace("{CALIBRATION_SECTION}", calibration_section)
         .replace("{STATE_DEPT_EVIDENCE}", state_ev)

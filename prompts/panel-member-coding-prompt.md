@@ -28,11 +28,7 @@ You will rate **{FOCAL_COUNTRY}** in **{FOCAL_YEAR}** on the following V-Dem ind
 
 **Response categories**:
 
-- **0**: {CATEGORY_0}
-- **1**: {CATEGORY_1}
-- **2**: {CATEGORY_2}
-- **3**: {CATEGORY_3}
-- **4**: {CATEGORY_4}
+{RESPONSE_CATEGORIES}
 
 {CLARIFICATION_BLOCK}
 
@@ -60,4 +56,4 @@ Rate {FOCAL_COUNTRY} in {FOCAL_YEAR} on {INDICATOR_CODE}.
 
 Respond with JSON only — no preamble, no code fences:
 
-{"rating": <integer 0–4>, "justification": "<one sentence citing specific evidence above>"}
+{"rating": <integer 0–{MAX_RATING}>, "justification": "<one sentence citing specific evidence above>"}
