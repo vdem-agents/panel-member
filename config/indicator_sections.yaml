@@ -7,14 +7,6 @@
 # (V-Dem v15). Do not edit the description, codebook_question, clarification, or
 # categories fields manually — re-run the script if corrections are needed.
 #
-# held_out: true — marks weak-coverage indicators (fewer than 6 median coders per
-# country in 2020). These are excluded from fine-tuning training data by
-# prepare_finetune_data.py but remain available for prompting experiments (evidence
-# and codebook conditions). They serve two evaluation purposes:
-#   1. Transfer test: does the fine-tuned model generalize to indicators it was not
-#      trained on?
-#   2. Prompting baseline: how does few-shot prompting perform on thin-coverage
-#      indicators compared to well-covered ones?
 #
 # Section mappings (state-dept, freedom-house) must be filled in manually.
 # See config/indicator_section_mapping.csv for module-level defaults as a starting
@@ -73,8 +65,8 @@ v2cafexch:
     - >-
       Fully free. Academic exchange and dissemination is not subject to
       censorship, self-censorship or other restrictions.
-  state-dept: []
-  freedom-house: []
+  state-dept: ["2a"]
+  freedom-house: ["D"]
 
 v2cafres:
   description: "Freedom to research and teach"
@@ -113,8 +105,8 @@ v2cafres:
       Fully free. When determining their research agenda or teaching
       curricula, scholars are not subject to interference or incentivized
       to self-censor.
-  state-dept: []
-  freedom-house: []
+  state-dept: ["2a"]
+  freedom-house: ["D"]
 
 v2clacfree:
   description: "Freedom of academic and cultural expression"
@@ -142,8 +134,8 @@ v2clacfree:
     - >-
       Fully respected by public authorities. There are no restrictions on
       academic freedom or cultural expression.
-  state-dept: []
-  freedom-house: []
+  state-dept: ["2a"]
+  freedom-house: ["D"]
 
 v2clacjstm:
   description: "Access to justice for men"
@@ -170,8 +162,8 @@ v2clacjstm:
     - >-
       Secure and effective access to justice for men is almost always
       observed.
-  state-dept: []
-  freedom-house: []
+  state-dept: ["1d", "1e"]
+  freedom-house: ["F"]
 
 v2clacjstw:
   description: "Access to justice for women"
@@ -198,8 +190,8 @@ v2clacjstw:
     - >-
       Secure and effective access to justice for women is almost always
       observed.
-  state-dept: []
-  freedom-house: []
+  state-dept: ["1d", "1e", "6"]
+  freedom-house: ["F"]
 
 v2clacjust:
   description: "Social class equality in respect for civil liberty"
@@ -221,8 +213,8 @@ v2clacjust:
     - "Poor people enjoy moderately fewer civil liberties than rich people."
     - "Poor people enjoy slightly fewer civil liberties than rich people."
     - "Poor people enjoy the same level of civil liberties as rich people."
-  state-dept: []
-  freedom-house: []
+  state-dept: ["6"]
+  freedom-house: ["F", "G"]
 
 v2cldiscm:
   description: "Freedom of discussion for men"
@@ -260,8 +252,8 @@ v2cldiscm:
     - >-
       Fully respected. Freedom of speech for men in their homes and in
       public spaces is not restricted.
-  state-dept: []
-  freedom-house: []
+  state-dept: ["2a"]
+  freedom-house: ["D"]
 
 v2cldiscw:
   description: "Freedom of discussion for women"
@@ -299,8 +291,8 @@ v2cldiscw:
     - >-
       Fully respected. Freedom of speech by women in their homes and in
       public spaces is not restricted.
-  state-dept: []
-  freedom-house: []
+  state-dept: ["2a", "6"]
+  freedom-house: ["D"]
 
 v2cldmovem:
   description: "Freedom of domestic movement for men"
@@ -328,8 +320,8 @@ v2cldmovem:
       not. Alternatively all men enjoy partial freedom of movement.
     - "Most men enjoy full freedom of movement but a small minority does not."
     - "Virtually all men enjoy full freedom of movement."
-  state-dept: []
-  freedom-house: []
+  state-dept: ["2d"]
+  freedom-house: ["G"]
 
 v2cldmovew:
   description: "Freedom of domestic movement for women"
@@ -361,8 +353,8 @@ v2cldmovew:
       Most women enjoy full freedom of movement but a small minority does
       not.
     - "Virtually all women enjoy full freedom of movement."
-  state-dept: []
-  freedom-house: []
+  state-dept: ["2d", "6"]
+  freedom-house: ["G"]
 
 v2clfmove:
   description: "Freedom of foreign movement"
@@ -398,8 +390,8 @@ v2clfmove:
       Fully respected by the government. The freedom of citizens to travel
       from and to the country, and to emigrate and repatriate, is not
       restricted by public authorities.
-  state-dept: []
-  freedom-house: []
+  state-dept: ["2d"]
+  freedom-house: ["G"]
 
 v2clgencl:
   description: "Gender equality in respect for civil liberties"
@@ -414,8 +406,8 @@ v2clgencl:
     - "Women enjoy moderately fewer civil liberties than men."
     - "Women enjoy slightly fewer civil liberties than men."
     - "Women enjoy the same level of civil liberties as men."
-  state-dept: []
-  freedom-house: []
+  state-dept: ["6"]
+  freedom-house: ["G"]
 
 v2clgeocl:
   description: "Urban-rural location equality in respect for civil liberties"
@@ -449,8 +441,8 @@ v2clgeocl:
       Residents of rural areas enjoy the same level of civil liberties as
       those in urban areas.  5: Residents of rural areas enjoy more civil
       liberties than those in urban areas.
-  state-dept: []
-  freedom-house: []
+  state-dept: ["6"]
+  freedom-house: ["D", "G"]
 
 v2clkill:
   description: "Freedom from political killings"
@@ -481,8 +473,8 @@ v2clkill:
     - >-
       Fully respected by public authorities. Political killings are
       non-existent.
-  state-dept: []
-  freedom-house: []
+  state-dept: ["1a", "1b"]
+  freedom-house: ["F"]
 
 v2clpolcl:
   description: "Political group equality in respect for civil liberties"
@@ -511,8 +503,8 @@ v2clpolcl:
       Some political groups enjoy slightly fewer civil liberties than other
       political groups.
     - "All political groups enjoy the same level of civil liberties."
-  state-dept: []
-  freedom-house: []
+  state-dept: ["3"]
+  freedom-house: ["B", "E"]
 
 v2clprptym:
   description: "Property rights for men"
@@ -540,7 +532,7 @@ v2clprptym:
       Most men enjoy most private property rights but a small minority does
       not.  5: Virtually all men enjoy all, or almost all property rights.
   state-dept: []
-  freedom-house: []
+  freedom-house: ["F", "G"]
 
 v2clprptyw:
   description: "Property rights for women"
@@ -568,8 +560,8 @@ v2clprptyw:
       Most women enjoy most private property rights but a small minority
       does not.  5: Virtually all women enjoy all, or almost all, property
       rights.
-  state-dept: []
-  freedom-house: []
+  state-dept: ["6"]
+  freedom-house: ["F", "G"]
 
 v2clrelig:
   description: "Freedom of religion"
@@ -616,8 +608,8 @@ v2clrelig:
       authorities do not abuse the process to discriminate against a
       religion and do not constrain the right to worship before
       registration.
-  state-dept: []
-  freedom-house: []
+  state-dept: ["2c"]
+  freedom-house: ["D"]
 
 v2clrgunev:
   description: "Subnational civil liberties unevenness"
@@ -637,8 +629,8 @@ v2clrgunev:
     - >-
       No. Government officials in most or all areas of the country equally
       respect (or, alternatively, equally do not respect) civil liberties.
-  state-dept: []
-  freedom-house: []
+  state-dept: ["2a", "2b", "2c", "2d"]
+  freedom-house: ["D", "G"]
 
 v2clrspct:
   description: "Rigorous and impartial public administration"
@@ -669,8 +661,8 @@ v2clrspct:
     - >-
       The law is generally fully respected by the public officials.
       Arbitrary or biased administration of the law is very limited.
-  state-dept: []
-  freedom-house: []
+  state-dept: ["4"]
+  freedom-house: ["C", "F"]
 
 v2clslavef:
   description: "Freedom from forced labor for women"
@@ -705,8 +697,8 @@ v2clslavef:
     - >-
       Female servitude or other kinds of forced labor is virtually
       non-existent.
-  state-dept: []
-  freedom-house: []
+  state-dept: ["6", "7b"]
+  freedom-house: ["G"]
 
 v2clslavem:
   description: "Freedom from forced labor for men"
@@ -737,8 +729,8 @@ v2clslavem:
     - >-
       Male servitude or other kinds of forced labor is virtually
       non-existent.
-  state-dept: []
-  freedom-house: []
+  state-dept: ["6", "7b"]
+  freedom-house: ["G"]
 
 v2clsocgrp:
   description: "Social group equality in respect for civil liberties"
@@ -766,8 +758,8 @@ v2clsocgrp:
     - >-
       Members of all salient social groups enjoy the same level of civil
       liberties.
-  state-dept: []
-  freedom-house: []
+  state-dept: ["2a", "2b", "2c", "2d", "6"]
+  freedom-house: ["D", "G"]
 
 v2clstown:
   description: "State ownership of economy"
@@ -798,8 +790,8 @@ v2clstown:
     - >-
       Very little valuable capital belongs to the state or is directly
       controlled by the state.
-  state-dept: []
-  freedom-house: []
+  state-dept: ["4"]
+  freedom-house: ["C", "F"]
 
 v2cltort:
   description: "Freedom from torture"
@@ -829,8 +821,8 @@ v2cltort:
       isolated cases but is not incited or approved by top government
       leaders.
     - "Fully respected by public authorities. Torture is non-existent."
-  state-dept: []
-  freedom-house: []
+  state-dept: ["1c"]
+  freedom-house: ["F"]
 
 v2cltrnslw:
   description: "Transparent laws with predictable enforcement"
@@ -859,8 +851,8 @@ v2cltrnslw:
     - >-
       Transparency and predictability are very strong. The laws of the land
       are created and enforced in a non-arbitrary fashion.
-  state-dept: []
-  freedom-house: []
+  state-dept: ["1e", "4"]
+  freedom-house: ["C", "F"]
 
 v2csantimv:
   description: "CSO anti-system movements"
@@ -895,8 +887,8 @@ v2csantimv:
     - >-
       There is a very high level of anti-system movement activity, posing a
       real and present threat to the regime.
-  state-dept: []
-  freedom-house: []
+  state-dept: ["2b", "5"]
+  freedom-house: ["E"]
 
 v2cscnsult:
   description: "CSO consultation"
@@ -918,8 +910,8 @@ v2cscnsult:
       policy areas and given voice on such issues. This can be accomplished
       through formal corporatist arrangements or through less formal
       arrangements.
-  state-dept: []
-  freedom-house: []
+  state-dept: ["2b", "5"]
+  freedom-house: ["E"]
 
 v2cseeorgs:
   description: "CSO entry and exit"
@@ -961,8 +953,8 @@ v2cseeorgs:
       Unconstrained. Whether or not the government licenses CSOs, the
       government does not impede their formation and operation unless they
       are engaged in activities to violently overthrow the government.
-  state-dept: []
-  freedom-house: []
+  state-dept: ["2b", "5"]
+  freedom-house: ["E"]
 
 v2csgender:
   description: "CSO women's participation"
@@ -980,8 +972,8 @@ v2csgender:
     - "About half the time."
     - "Rarely."
     - "Almost never."
-  state-dept: []
-  freedom-house: []
+  state-dept: ["2b", "5", "6"]
+  freedom-house: ["E"]
 
 v2csprtcpt:
   description: "CSO participatory environment"
@@ -999,8 +991,8 @@ v2csprtcpt:
     - >-
       There are many diverse CSOs and it is considered normal for people to
       be at least occasionally active in at least one of them.
-  state-dept: []
-  freedom-house: []
+  state-dept: ["2b", "5"]
+  freedom-house: ["E"]
 
 v2csreprss:
   description: "CSO repression"
@@ -1045,8 +1037,8 @@ v2csreprss:
       No. Civil society organizations are free to organize, associate,
       strike, express themselves, and to criticize the government without
       fear of government sanctions or harassment.
-  state-dept: []
-  freedom-house: []
+  state-dept: ["2b", "5"]
+  freedom-house: ["E"]
 
 v2csrlgcon:
   description: "Religious organization consultation"
@@ -1069,8 +1061,8 @@ v2csrlgcon:
       in important policy areas and given voice on such issues. This can be
       accomplished through formal corporatist arrangements or through less
       formal arrangements.
-  state-dept: []
-  freedom-house: []
+  state-dept: ["2b", "2c", "5"]
+  freedom-house: ["E"]
 
 v2csrlgrep:
   description: "Religious organization repression"
@@ -1111,8 +1103,8 @@ v2csrlgrep:
       No. Religious civil society organizations are free to organize,
       associate, strike, express themselves, and to criticize the
       government without fear of government sanctions or harassment.
-  state-dept: []
-  freedom-house: []
+  state-dept: ["2b", "2c", "5"]
+  freedom-house: ["E"]
 
 v2smarrest:
   description: "Arrests for political content"
@@ -1126,8 +1118,8 @@ v2smarrest:
     - "Likely."
     - "Unlikely."
     - "Extremely unlikely."
-  state-dept: []
-  freedom-house: []
+  state-dept: ["1d", "2a"]
+  freedom-house: ["D"]
 
 v2smcamp:
   description: "Party/candidate use of social media in campaigns"
@@ -1149,8 +1141,8 @@ v2smcamp:
       Substantial. Major political parties and candidates frequently use
       social media during electoral campaigns to communicate with
       constituents.
-  state-dept: []
-  freedom-house: []
+  state-dept: ["2a", "3"]
+  freedom-house: ["A", "D", "E"]
 
 v2smdefabu:
   description: "Abuse of defamation and copyright law by elites"
@@ -1174,8 +1166,8 @@ v2smdefabu:
     - >-
       Never, or almost never. Elites do not abuse the legal system to
       remove political speech from the Internet.
-  state-dept: []
-  freedom-house: []
+  state-dept: ["2a"]
+  freedom-house: ["D"]
 
 v2smforads:
   description: "Foreign governments ads"
@@ -1201,8 +1193,8 @@ v2smforads:
     - >-
       Never, or almost never. Foreign governments never disseminate false
       information on key political issues.
-  state-dept: []
-  freedom-house: []
+  state-dept: ["2a"]
+  freedom-house: ["D"]
 
 v2smfordom:
   description: "Foreign governments dissemination of false information"
@@ -1227,8 +1219,8 @@ v2smfordom:
     - >-
       Never, or almost never. Foreign governments never disseminate false
       information on key political issues.
-  state-dept: []
-  freedom-house: []
+  state-dept: ["2a"]
+  freedom-house: ["D"]
 
 v2smgovab:
   description: "Government dissemination of false information abroad"
@@ -1253,8 +1245,8 @@ v2smgovab:
     - >-
       Never, or almost never. The government never disseminates false
       information on key political issues.
-  state-dept: []
-  freedom-house: []
+  state-dept: ["2a"]
+  freedom-house: ["D"]
 
 v2smgovcapsec:
   description: "Government cyber security capacity"
@@ -1278,8 +1270,8 @@ v2smgovcapsec:
     - >-
       Yes. The government has the resources to combat sophisticated cyber
       attacks, even those launched by highly skilled actors.
-  state-dept: []
-  freedom-house: []
+  state-dept: ["1f", "2a"]
+  freedom-house: ["D"]
 
 v2smgovdom:
   description: "Government dissemination of false information domestic"
@@ -1304,8 +1296,8 @@ v2smgovdom:
     - >-
       Never, or almost never. The government never disseminates false
       information on key political issues.
-  state-dept: []
-  freedom-house: []
+  state-dept: ["2a"]
+  freedom-house: ["D"]
 
 v2smgovfilcap:
   description: "Government Internet filtering capacity"
@@ -1328,8 +1320,8 @@ v2smgovfilcap:
     - >-
       The government has the capacity to block access to any sites on the
       Internet if it wanted to.
-  state-dept: []
-  freedom-house: []
+  state-dept: ["2a"]
+  freedom-house: ["D"]
 
 v2smgovfilprc:
   description: "Government Internet filtering in practice"
@@ -1355,8 +1347,8 @@ v2smgovfilprc:
       Never, or almost never. The government allows Internet access that is
       unrestricted, with the exceptions mentioned in the clarifications
       section.
-  state-dept: []
-  freedom-house: []
+  state-dept: ["2a"]
+  freedom-house: ["D"]
 
 v2smgovshut:
   description: "Government Internet shut down in practice"
@@ -1378,8 +1370,8 @@ v2smgovshut:
     - >-
       Never, or almost never. The government does not typically interfere
       with the domestic access to the Internet.
-  state-dept: []
-  freedom-house: []
+  state-dept: ["2a"]
+  freedom-house: ["D"]
 
 v2smgovshutcap:
   description: "Government Internet shut down capacity"
@@ -1409,8 +1401,8 @@ v2smgovshutcap:
     - >-
       The government has the capacity to shut down all, or almost all,
       domestic access to the Internet.
-  state-dept: []
-  freedom-house: []
+  state-dept: ["2a"]
+  freedom-house: ["D"]
 
 v2smgovsm:
   description: "Government social media shut down in practice"
@@ -1435,8 +1427,8 @@ v2smgovsm:
       Never, or almost never. The government does not interfere with the
       access to social media, except in the cases mentioned in the
       clarifications section.
-  state-dept: []
-  freedom-house: []
+  state-dept: ["2a"]
+  freedom-house: ["D"]
 
 v2smgovsmalt:
   description: "Government social media alternatives"
@@ -1458,8 +1450,8 @@ v2smgovsmalt:
       While some state-controlled social media platforms exist, their usage
       only represents a small share of social media usage in the country.
     - "Practically no one uses state-controlled social media platforms."
-  state-dept: []
-  freedom-house: []
+  state-dept: ["2a"]
+  freedom-house: ["D"]
 
 v2smgovsmcenprc:
   description: "Government social media censorship in practice"
@@ -1482,8 +1474,8 @@ v2smgovsmcenprc:
     - >-
       The government does not censor political social media content, with
       the exceptions mentioned in the clarifications section.
-  state-dept: []
-  freedom-house: []
+  state-dept: ["2a"]
+  freedom-house: ["D"]
 
 v2smgovsmmon:
   description: "Government social media monitoring"
@@ -1509,8 +1501,8 @@ v2smgovsmmon:
       Not at all, or almost not at all. The government does not surveil
       political content on social media, with the exceptions mentioned in
       the clarifications section.
-  state-dept: []
-  freedom-house: []
+  state-dept: ["1f", "2a"]
+  freedom-house: ["D"]
 
 v2smlawpr:
   description: "Defamation protection"
@@ -1535,8 +1527,8 @@ v2smlawpr:
     - >-
       Yes. The law provides comprehensive protection against Internet
       defamation and hate speech.
-  state-dept: []
-  freedom-house: []
+  state-dept: ["1e", "2a"]
+  freedom-house: ["D", "F"]
 
 v2smmefra:
   description: "Online media fractionalization"
@@ -1561,8 +1553,8 @@ v2smmefra:
       Yes. Although there are small differences in representation, the
       major domestic online media outlets give a similar presentation of
       major events.
-  state-dept: []
-  freedom-house: []
+  state-dept: ["2a"]
+  freedom-house: ["D"]
 
 v2smonex:
   description: "Online media existence"
@@ -1575,8 +1567,8 @@ v2smonex:
     - "Limited. Domestic online media consumption is limited."
     - "Relatively extensive. Domestic online media consumption is common."
     - "Extensive. Almost everyone consumes domestic online media."
-  state-dept: []
-  freedom-house: []
+  state-dept: ["2a"]
+  freedom-house: ["D"]
 
 v2smonper:
   description: "Online media perspectives"
@@ -1602,8 +1594,8 @@ v2smonper:
     - >-
       All perspectives that are important in this society are represented
       in many major domestic online media outlets.
-  state-dept: []
-  freedom-house: []
+  state-dept: ["2a"]
+  freedom-house: ["D"]
 
 v2smorgavgact:
   description: "Average people’s use of social media to organize offline action"
@@ -1627,8 +1619,8 @@ v2smorgavgact:
     - >-
       Regularly. There are numerous cases in which average people have used
       social media to organize offline political action.
-  state-dept: []
-  freedom-house: []
+  state-dept: ["2a", "2b"]
+  freedom-house: ["D", "E"]
 
 v2smorgelitact:
   description: "Elites’ use of social media to organize offline action"
@@ -1652,8 +1644,8 @@ v2smorgelitact:
     - >-
       Regularly. There are numerous cases in which elites have used social
       media to organize offline political action.
-  state-dept: []
-  freedom-house: []
+  state-dept: ["2a", "2b"]
+  freedom-house: ["D", "E"]
 
 v2smorgviol:
   description: "Use of social media to organize offline violence"
@@ -1669,8 +1661,8 @@ v2smorgviol:
     - >-
       Never. People have never used social media to organize offline
       violence.
-  state-dept: []
-  freedom-house: []
+  state-dept: ["2a", "2b"]
+  freedom-house: ["D", "E"]
 
 v2smparab:
   description: "Party dissemination of false information abroad"
@@ -1696,8 +1688,8 @@ v2smparab:
     - >-
       Never, or almost never. Major political parties and candidates never
       disseminate false information on key political issues.
-  state-dept: []
-  freedom-house: []
+  state-dept: ["2a"]
+  freedom-house: ["D"]
 
 v2smpardom:
   description: "Party dissemination of false information domestic"
@@ -1723,8 +1715,8 @@ v2smpardom:
     - >-
       Never, or almost never. Major political parties and candidates never
       disseminate false information on key political issues.
-  state-dept: []
-  freedom-house: []
+  state-dept: ["2a"]
+  freedom-house: ["D"]
 
 v2smpolcap:
   description: "Political parties cyber security capacity"
@@ -1749,8 +1741,8 @@ v2smpolcap:
     - >-
       Yes. The government has the resources to combat sophisticated cyber
       attacks, even those launched by highly skilled actors.
-  state-dept: []
-  freedom-house: []
+  state-dept: ["2a", "3"]
+  freedom-house: ["B", "D", "E"]
 
 v2smpolhate:
   description: "Political parties hate speech"
@@ -1767,8 +1759,8 @@ v2smpolhate:
     - "Sometimes."
     - "Rarely."
     - "Never, or almost never."
-  state-dept: []
-  freedom-house: []
+  state-dept: ["2a", "3"]
+  freedom-house: ["B", "D"]
 
 v2smpolsoc:
   description: "Polarization of society"
@@ -1799,8 +1791,8 @@ v2smpolsoc:
     - >-
       No polarization. There are differences in opinions but there is a
       general agreement on the direction for key political issues.
-  state-dept: []
-  freedom-house: []
+  state-dept: ["2a", "3"]
+  freedom-house: ["B", "D"]
 
 v2smprivex:
   description: "Privacy protection by law exists"
@@ -1811,8 +1803,8 @@ v2smprivex:
   categories:
     - "No. (Skip to v2smregcap)"
     - "Yes"
-  state-dept: []
-  freedom-house: []
+  state-dept: ["1e", "1f"]
+  freedom-house: ["D"]
 
 v2smregapp:
   description: "Government online content regulation approach"
@@ -1836,8 +1828,8 @@ v2smregapp:
     - >-
       The state off-loads all online content monitoring and regulation to
       private actors.
-  state-dept: []
-  freedom-house: []
+  state-dept: ["1f", "2a"]
+  freedom-house: ["D"]
 
 v2smregcap:
   description: "Government capacity to regulate online content"
@@ -1862,8 +1854,8 @@ v2smregcap:
     - >-
       Yes, the government has sufficient capacity to regulate all online
       content.
-  state-dept: []
-  freedom-house: []
+  state-dept: ["2a"]
+  freedom-house: ["D", "F"]
 
 v2smregcon:
   description: "Internet legal regulation content"
@@ -1885,8 +1877,8 @@ v2smregcon:
     - >-
       The law protects political speech, and the state can only remove
       content if it violates well-established legal criteria.
-  state-dept: []
-  freedom-house: []
+  state-dept: ["2a"]
+  freedom-house: ["D", "F"]
 
 v2elaccept:
   description: "Election losers accept results"
@@ -1909,8 +1901,8 @@ v2elaccept:
       Most. Many but not all opposition parties or candidates accepted the
       results and those who did not had little electoral support.
     - "All. All parties and candidates accepted the results."
-  state-dept: []
-  freedom-house: []
+  state-dept: ["3"]
+  freedom-house: ["A", "B"]
 
 v2elasmoff:
   description: "Election assume office"
@@ -1930,8 +1922,8 @@ v2elasmoff:
       Yes. Constitutional rules and norms were followed and the official
       winner/winning party or largest vote-getter assumed office
       accordingly (or continued in office).
-  state-dept: []
-  freedom-house: []
+  state-dept: ["3"]
+  freedom-house: ["A", "B", "C"]
 
 v2elboycot:
   description: "Election boycotts"
@@ -1954,8 +1946,8 @@ v2elboycot:
       Minor. A few opposition parties or candidates boycotted and they were
       relatively insignificant ones.
     - "Nonexistent. No parties or candidates boycotted the elections."
-  state-dept: []
-  freedom-house: []
+  state-dept: ["3"]
+  freedom-house: ["B"]
 
 v2eldonate:
   description: "Disclosure of campaign donations"
@@ -1978,8 +1970,8 @@ v2eldonate:
     - >-
       Yes. There are comprehensive requirements and they are observed and
       enforced almost all the time.
-  state-dept: []
-  freedom-house: []
+  state-dept: ["3"]
+  freedom-house: ["A", "C"]
 
 v2elembaut:
   description: "EMB autonomy"
@@ -2008,8 +2000,8 @@ v2elembaut:
     - >-
       Yes. The EMB is autonomous and impartially applies elections laws and
       administrative rules.
-  state-dept: []
-  freedom-house: []
+  state-dept: ["3"]
+  freedom-house: ["A"]
 
 v2elembcap:
   description: "EMB capacity"
@@ -2038,8 +2030,8 @@ v2elembcap:
     - >-
       Yes. The EMB has adequate staff and other resources to administer a
       well-run election.
-  state-dept: []
-  freedom-house: []
+  state-dept: ["3"]
+  freedom-house: ["A"]
 
 v2elffelr:
   description: "Subnational elections free and fair"
@@ -2078,8 +2070,8 @@ v2elffelr:
       Yes. There was some amount of human error and logistical restrictions
       but these were largely unintentional and without significant
       consequences.
-  state-dept: []
-  freedom-house: []
+  state-dept: ["3"]
+  freedom-house: ["A", "B"]
 
 v2elffelrbin:
   description: "Subnational elections held"
@@ -2088,8 +2080,8 @@ v2elffelrbin:
   categories:
     - "No."
     - "Yes."
-  state-dept: []
-  freedom-house: []
+  state-dept: ["3"]
+  freedom-house: ["A"]
 
 v2elfrcamp:
   description: "Election free campaign media"
@@ -2101,8 +2093,8 @@ v2elfrcamp:
     - "Either no parties or only the governing party receives free access."
     - "Some parties in addition to the governing party receive free access."
     - "All parties receive free access."
-  state-dept: []
-  freedom-house: []
+  state-dept: ["2a", "3"]
+  freedom-house: ["A", "D"]
 
 v2elfrfair:
   description: "Election free and fair"
@@ -2138,8 +2130,8 @@ v2elfrfair:
       Yes. There was some amount of human error and logistical restrictions
       but these were largely unintentional and without significant
       consequences.
-  state-dept: []
-  freedom-house: []
+  state-dept: ["3"]
+  freedom-house: ["A"]
 
 v2elintim:
   description: "Election government intimidation"
@@ -2172,8 +2164,8 @@ v2elintim:
       None. There was no harassment or intimidation of opposition by the
       government or its agents, during the election campaign period and
       polling day.
-  state-dept: []
-  freedom-house: []
+  state-dept: ["3"]
+  freedom-house: ["A", "B"]
 
 v2elirreg:
   description: "Election other voting irregularities"
@@ -2204,8 +2196,8 @@ v2elirreg:
       None. There was no evidence of intentional other irregularities.
       Unintentional irregularities resulting from human error and/or
       natural conditions may still have occurred.
-  state-dept: []
-  freedom-house: []
+  state-dept: ["3"]
+  freedom-house: ["A"]
 
 v2ellocpwr:
   description: "Local offices relative power"
@@ -2238,8 +2230,8 @@ v2ellocpwr:
     - >-
       All or nearly all non-elected offices are subordinate to elected
       offices at the local level.
-  state-dept: []
-  freedom-house: []
+  state-dept: ["3"]
+  freedom-house: ["A", "C"]
 
 v2elmulpar:
   description: "Elections multiparty"
@@ -2266,8 +2258,8 @@ v2elmulpar:
       Yes. Elections are multiparty, even though a few marginal parties may
       not be permitted to contest (e.g. far-right/left extremist parties,
       anti-democratic religious or ethnic parties).
-  state-dept: []
-  freedom-house: []
+  state-dept: ["3"]
+  freedom-house: ["A", "B"]
 
 v2elpaidig:
   description: "Election paid interest group media"
@@ -2284,8 +2276,8 @@ v2elpaidig:
     - >-
       It is permitted but regulated in ways that, in practice, foster
       representation of diverse perspectives.
-  state-dept: []
-  freedom-house: []
+  state-dept: ["2a", "3"]
+  freedom-house: ["A", "D"]
 
 v2elpdcamp:
   description: "Election paid campaign advertisements"
@@ -2302,8 +2294,8 @@ v2elpdcamp:
     - >-
       It is permitted but regulated in ways that, in practice, foster fair
       competition.
-  state-dept: []
-  freedom-house: []
+  state-dept: ["2a", "3"]
+  freedom-house: ["A", "D"]
 
 v2elpeace:
   description: "Election other electoral violence"
@@ -2333,8 +2325,8 @@ v2elpeace:
       Almost. There were only a few instances of isolated violent acts,
       involving only a few people; no one died and very few were injured.
     - "Peaceful. No election-related violence between civilians occurred."
-  state-dept: []
-  freedom-house: []
+  state-dept: ["3"]
+  freedom-house: ["A", "B"]
 
 v2elpubfin:
   description: "Public campaign finance"
@@ -2356,8 +2348,8 @@ v2elpubfin:
     - >-
       Yes. Public financing funds a significant share of expenditures by
       all, or nearly all parties.
-  state-dept: []
-  freedom-house: []
+  state-dept: ["3", "4"]
+  freedom-house: ["A", "C"]
 
 v2elrgpwr:
   description: "Regional offices relative power"
@@ -2390,8 +2382,8 @@ v2elrgpwr:
     - >-
       All or nearly all non-elected offices are subordinate to elected
       offices at the regional level.
-  state-dept: []
-  freedom-house: []
+  state-dept: ["3"]
+  freedom-house: ["A"]
 
 v2elrgstry:
   description: "Election voter registry"
@@ -2417,8 +2409,8 @@ v2elrgstry:
       Yes. The voter registry was reasonably accurate (less than 1% of
       voters were affected by any flaws) and it was applied in a reasonable
       fashion.
-  state-dept: []
-  freedom-house: []
+  state-dept: ["3"]
+  freedom-house: ["A"]
 
 v2elsnlsff:
   description: "Subnational election unevenness"
@@ -2442,8 +2434,8 @@ v2elsnlsff:
       No. Subnational elections in most or all areas of the country are
       equally free and fair (or, alternatively, equally not free and not
       fair).
-  state-dept: []
-  freedom-house: []
+  state-dept: ["3"]
+  freedom-house: ["A", "B"]
 
 v2elvotbuy:
   description: "Election vote buying"
@@ -2475,8 +2467,8 @@ v2elvotbuy:
       these attempts were limited to a few small areas of the country. In
       all, they probably affected less than a few percent of voters.
     - "None. There was no evidence of vote/turnout buying."
-  state-dept: []
-  freedom-house: []
+  state-dept: ["3"]
+  freedom-house: ["A"]
 
 v2juaccnt:
   description: "Judicial accountability"
@@ -2490,8 +2482,8 @@ v2juaccnt:
     - "About half of the time."
     - "Usually."
     - "Always."
-  state-dept: []
-  freedom-house: []
+  state-dept: ["1e", "4"]
+  freedom-house: ["F", "C"]
 
 v2jucomp:
   description: "Compliance with judiciary"
@@ -2508,8 +2500,8 @@ v2jucomp:
     - "About half of the time."
     - "Usually."
     - "Always."
-  state-dept: []
-  freedom-house: []
+  state-dept: ["1e", "4"]
+  freedom-house: ["F", "C"]
 
 v2jucorrdc:
   description: "Judicial corruption decision"
@@ -2524,8 +2516,8 @@ v2jucorrdc:
     - "About half of the time."
     - "Not usually."
     - "Never."
-  state-dept: []
-  freedom-house: []
+  state-dept: ["1e", "4"]
+  freedom-house: ["F", "C"]
 
 v2juhccomp:
   description: "Compliance with high court"
@@ -2539,8 +2531,8 @@ v2juhccomp:
     - "About half of the time."
     - "Usually."
     - "Always."
-  state-dept: []
-  freedom-house: []
+  state-dept: ["1e", "4"]
+  freedom-house: ["F", "C"]
 
 v2juhcind:
   description: "High court independence"
@@ -2565,8 +2557,8 @@ v2juhcind:
     - "About half of the time."
     - "Seldom."
     - "Never."
-  state-dept: []
-  freedom-house: []
+  state-dept: ["1e", "4"]
+  freedom-house: ["F", "C"]
 
 v2juncind:
   description: "Lower court independence"
@@ -2582,8 +2574,8 @@ v2juncind:
     - "About half of the time."
     - "Seldom."
     - "Never."
-  state-dept: []
-  freedom-house: []
+  state-dept: ["1e", "4"]
+  freedom-house: ["F", "C"]
 
 v2jupack:
   description: "Court packing"
@@ -2612,8 +2604,8 @@ v2jupack:
     - >-
       Judgeships were added to the judiciary, but there is no evidence that
       the increase was politically motivated; or there was no increase.
-  state-dept: []
-  freedom-house: []
+  state-dept: ["1e"]
+  freedom-house: ["F", "C"]
 
 v2jupoatck:
   description: "Government attacks on judiciary"
@@ -2630,8 +2622,8 @@ v2jupoatck:
     - "Attacks occurred more than once."
     - "There were attacks, but they were rare."
     - "There were no attacks on the judiciary's integrity."
-  state-dept: []
-  freedom-house: []
+  state-dept: ["1e"]
+  freedom-house: ["F", "C"]
 
 v2jupurge:
   description: "Judicial purges"
@@ -2655,8 +2647,8 @@ v2jupurge:
       Judges were removed from office, but there is no evidence that the
       removals were arbitrary.
     - "Judges were not removed from their posts."
-  state-dept: []
-  freedom-house: []
+  state-dept: ["1e"]
+  freedom-house: ["F", "C"]
 
 v2jureform:
   description: "Judicial reform"
@@ -2680,8 +2672,8 @@ v2jureform:
     - >-
       The judiciary's ability to control arbitrary power was enhanced via
       institutional reform.
-  state-dept: []
-  freedom-house: []
+  state-dept: ["1e"]
+  freedom-house: ["F", "C"]
 
 v2jureview:
   description: "Judicial review"
@@ -2694,8 +2686,8 @@ v2jureview:
   categories:
     - "No."
     - "Yes."
-  state-dept: []
-  freedom-house: []
+  state-dept: ["1e"]
+  freedom-house: ["F", "C"]
 
 v2mebias:
   description: "Media bias"
@@ -2727,8 +2719,8 @@ v2mebias:
       The print and broadcast media cover all newsworthy parties and
       candidates more or less impartially and in proportion to their
       newsworthiness.
-  state-dept: []
-  freedom-house: []
+  state-dept: ["2a"]
+  freedom-house: ["D", "B"]
 
 v2mecenefi:
   description: "Internet censorship effort"
@@ -2760,8 +2752,8 @@ v2mecenefi:
     - >-
       The government allows Internet access that is unrestricted, with the
       exceptions mentioned above.
-  state-dept: []
-  freedom-house: []
+  state-dept: ["2a"]
+  freedom-house: ["D"]
 
 v2mecenefibin:
   description: "Internet binary"
@@ -2770,8 +2762,8 @@ v2mecenefibin:
   categories:
     - "No."
     - "Yes."
-  state-dept: []
-  freedom-house: []
+  state-dept: ["2a"]
+  freedom-house: ["D"]
 
 v2mecenefm:
   description: "Government censorship effort --- Media"
@@ -2800,8 +2792,8 @@ v2mecenefm:
       The government rarely attempts to censor major media in any way, and
       when such exceptional attempts are discovered, the responsible
       officials are usually punished.
-  state-dept: []
-  freedom-house: []
+  state-dept: ["2a"]
+  freedom-house: ["D"]
 
 v2mecorrpt:
   description: "Media corrupt"
@@ -2828,8 +2820,8 @@ v2mecorrpt:
       Journalists, publishers, and broadcasters rarely alter news coverage
       in exchange for payments, and if it becomes known, someone is
       punished for it.
-  state-dept: []
-  freedom-house: []
+  state-dept: ["2a", "4"]
+  freedom-house: ["D", "C"]
 
 v2mecrit:
   description: "Print/broadcast media critical"
@@ -2846,8 +2838,8 @@ v2mecrit:
     - >-
       All major media outlets criticize the government at least
       occasionally.
-  state-dept: []
-  freedom-house: []
+  state-dept: ["2a"]
+  freedom-house: ["D"]
 
 v2meharjrn:
   description: "Harassment of journalists"
@@ -2877,8 +2869,8 @@ v2meharjrn:
       Journalists are never harassed by governmental or powerful
       nongovernmental actors while engaged in legitimate journalistic
       activities.
-  state-dept: []
-  freedom-house: []
+  state-dept: ["2a"]
+  freedom-house: ["D"]
 
 v2merange:
   description: "Print/broadcast media perspectives"
@@ -2898,8 +2890,8 @@ v2merange:
     - >-
       All perspectives that are important in this society are represented
       in at least one of the major media.
-  state-dept: []
-  freedom-house: []
+  state-dept: ["2a"]
+  freedom-house: ["D"]
 
 v2meslfcen:
   description: "Media self-censorship"
@@ -2914,8 +2906,8 @@ v2meslfcen:
       There is self-censorship on a few highly sensitive political issues
       but not on moderately sensitive issues.
     - "There is little or no self-censorship among journalists."
-  state-dept: []
-  freedom-house: []
+  state-dept: ["2a"]
+  freedom-house: ["D"]
 
 v2caassemb:
   description: "Freedom of peaceful assembly"
@@ -2953,8 +2945,8 @@ v2caassemb:
       Almost always. State authorities almost always allow and actively
       protect peaceful assemblies except in rare cases of lawful,
       necessary, and proportionate limitations.
-  state-dept: []
-  freedom-house: []
+  state-dept: ["2b"]
+  freedom-house: ["E"]
 
 v2caautmob:
   description: "Mobilization for autocracy"
@@ -2979,8 +2971,8 @@ v2caautmob:
     - "There have been many small-scale events."
     - "There have been several large-scale and small-scale events."
     - "There have been many large-scale and small-scale events."
-  state-dept: []
-  freedom-house: []
+  state-dept: ["2b"]
+  freedom-house: ["B", "E"]
 
 v2cacamps:
   description: "Political polarization"
@@ -3007,8 +2999,8 @@ v2cacamps:
     - >-
       Yes, to a large extent. Supporters of opposing political camps
       generally interact in a hostile manner.
-  state-dept: []
-  freedom-house: []
+  state-dept: ["3"]
+  freedom-house: ["B"]
 
 v2caconmob:
   description: "Mass mobilization concentration"
@@ -3034,8 +3026,8 @@ v2caconmob:
     - >-
       No. Events of mass mobilization were more common in cities other than
       the capital.
-  state-dept: []
-  freedom-house: []
+  state-dept: ["2b"]
+  freedom-house: ["E"]
 
 v2cacritic:
   description: "Academics as critics"
@@ -3069,8 +3061,8 @@ v2cacritic:
     - >-
       To a major extent. Scholars and university students publicly express
       fundamental criticism of government policies.
-  state-dept: []
-  freedom-house: []
+  state-dept: ["2a"]
+  freedom-house: ["D"]
 
 v2cademmob:
   description: "Mobilization for democracy"
@@ -3090,8 +3082,8 @@ v2cademmob:
     - "There have been many small-scale events."
     - "There have been several large-scale and small-scale events."
     - "There have been many large-scale and small-scale events."
-  state-dept: []
-  freedom-house: []
+  state-dept: ["2b"]
+  freedom-house: ["B", "E"]
 
 v2cagenmob:
   description: "Mass mobilization"
@@ -3110,8 +3102,8 @@ v2cagenmob:
     - "There have been many small-scale events."
     - "There have been several large-scale and small-scale events."
     - "There have been many large-scale and small-scale events."
-  state-dept: []
-  freedom-house: []
+  state-dept: ["2b"]
+  freedom-house: ["E"]
 
 v2cainsaut:
   description: "Institutional autonomy"
@@ -3147,8 +3139,8 @@ v2cainsaut:
     - >-
       Complete autonomy. Universities exercise complete institutional
       autonomy from non-academic actors.
-  state-dept: []
-  freedom-house: []
+  state-dept: ["2a"]
+  freedom-house: ["D"]
 
 v2canonpol:
   description: "Engagement in independent non-political associations"
@@ -3169,8 +3161,8 @@ v2canonpol:
     - "A moderate share of the population (about 5 to 15 %)."
     - "A large share of the population (about 16 % to 25%)."
     - "A very large share of the population (about 26% or more)."
-  state-dept: []
-  freedom-house: []
+  state-dept: ["2b"]
+  freedom-house: ["E"]
 
 v2capolit:
   description: "Engagement in independent political associations"
@@ -3191,8 +3183,8 @@ v2capolit:
     - "A moderate share of the population (about 5 to 15 %)."
     - "A large share of the population (about 16 % to 25%)."
     - "A very large share of the population (about 26% or more)."
-  state-dept: []
-  freedom-house: []
+  state-dept: ["2b"]
+  freedom-house: ["E"]
 
 v2castate:
   description: "Engagement in state-administered mass organizations"
@@ -3216,8 +3208,8 @@ v2castate:
     - "A moderate share of the population (about 5 to 15 %)."
     - "A large share of the population (about 16 % to 25%)."
     - "A very large share of the population (about 26% or more)."
-  state-dept: []
-  freedom-house: []
+  state-dept: ["2b"]
+  freedom-house: ["E"]
 
 v2casurv:
   description: "Campus integrity"
@@ -3255,8 +3247,8 @@ v2casurv:
     - >-
       Fully free. Campus integrity is comprehensively respected; there are
       no cases of surveillance or intimidation.
-  state-dept: []
-  freedom-house: []
+  state-dept: ["2a"]
+  freedom-house: ["D"]
 
 v2catrauni:
   description: "Engagement in independent trade unions"
@@ -3274,8 +3266,8 @@ v2catrauni:
     - "A moderate share of the population (about 5 to 15 %)."
     - "A large share of the population (about 16 % to 25%)."
     - "A very large share of the population (about 26% or more)."
-  state-dept: []
-  freedom-house: []
+  state-dept: ["7a"]
+  freedom-house: ["E"]
 
 v2caviol:
   description: "Political violence"
@@ -3298,8 +3290,8 @@ v2caviol:
     - "Occasionally. Non-state actors occasionally used political violence."
     - "Frequently. Non-state actors frequently used political violence."
     - "Often. Non-state actors often used political violence."
-  state-dept: []
-  freedom-house: []
+  state-dept: ["2b", "3"]
+  freedom-house: ["A", "B", "E"]
 
 v2exbribe:
   description: "Executive bribery and corrupt exchanges"
@@ -3316,8 +3308,8 @@ v2exbribe:
       find it hard to predict when an inducement will be necessary.
     - "It happens occasionally but is not expected."
     - "It never, or hardly ever, happens."
-  state-dept: []
-  freedom-house: []
+  state-dept: ["4"]
+  freedom-house: ["C"]
 
 v2excrptps:
   description: "Public sector corrupt exchanges"
@@ -3346,8 +3338,8 @@ v2excrptps:
       Scattered. A small minority of public sector employees engage in
       petty corruption from time to time.
     - "No. Never, or hardly ever."
-  state-dept: []
-  freedom-house: []
+  state-dept: ["4"]
+  freedom-house: ["C"]
 
 v2exdfcbhs:
   description: "HOS appoints cabinet in practice"
@@ -3376,7 +3368,7 @@ v2exdfcbhs:
       with respect to the head of the cabinet.
     - "Yes, without any need for confirmation by the legislature."
   state-dept: []
-  freedom-house: []
+  freedom-house: ["C"]
 
 v2exdfdmhs:
   description: "HOS dismisses ministers in practice"
@@ -3401,7 +3393,7 @@ v2exdfdmhs:
       dismissal'').
     - "Yes, at his/her own discretion and without restrictions."
   state-dept: []
-  freedom-house: []
+  freedom-house: ["C"]
 
 v2exdfdshg:
   description: "HOG dismisses ministers in practice"
@@ -3426,7 +3418,7 @@ v2exdfdshg:
       ''constructive dismissal'').
     - "Yes, at his/her own discretion and without restrictions."
   state-dept: []
-  freedom-house: []
+  freedom-house: ["C"]
 
 v2exdfdshs:
   description: "HOS dissolution in practice"
@@ -3453,8 +3445,8 @@ v2exdfdshs:
       term'', and by the requirement that the head of state must then
       himself/herself stand for election).
     - "Yes, at his/her own discretion and without restrictions."
-  state-dept: []
-  freedom-house: []
+  state-dept: ["3"]
+  freedom-house: ["C"]
 
 v2exdfpphg:
   description: "HOG proposes legislation in practice"
@@ -3475,7 +3467,7 @@ v2exdfpphg:
       legislature and perhaps with other bodies.
     - "No. The head of government cannot propose legislation."
   state-dept: []
-  freedom-house: []
+  freedom-house: ["C"]
 
 v2exdfpphs:
   description: "HOS proposes legislation in practice"
@@ -3496,7 +3488,7 @@ v2exdfpphs:
       legislature and perhaps with other bodies.
     - "No. The head of state cannot propose legislation."
   state-dept: []
-  freedom-house: []
+  freedom-house: ["C"]
 
 v2exdfvthg:
   description: "HOG veto power in practice"
@@ -3525,7 +3517,7 @@ v2exdfvthg:
       or 3/4 --- of those voting).
     - "Yes, with no possibility of override."
   state-dept: []
-  freedom-house: []
+  freedom-house: ["C"]
 
 v2exdfvths:
   description: "HOS veto power in practice"
@@ -3554,7 +3546,7 @@ v2exdfvths:
       or 3/4 --- of those voting).
     - "Yes, with no possibility of override."
   state-dept: []
-  freedom-house: []
+  freedom-house: ["C"]
 
 v2exdjcbhg:
   description: "HOG appoints cabinet in practice"
@@ -3577,7 +3569,7 @@ v2exdjcbhg:
       legislature.
     - "Yes, without any need for confirmation by the legislature."
   state-dept: []
-  freedom-house: []
+  freedom-house: ["C"]
 
 v2exdjdshg:
   description: "HOG dissolution in practice"
@@ -3604,8 +3596,8 @@ v2exdjdshg:
       government's term'', and by the requirement that the head of
       government must then himself/herself stand for election).
     - "Yes, at his/her own discretion and without restrictions."
-  state-dept: []
-  freedom-house: []
+  state-dept: ["3"]
+  freedom-house: ["C"]
 
 v2exembez:
   description: "Executive embezzlement and theft"
@@ -3634,8 +3626,8 @@ v2exembez:
       Never, or hardly ever. Members of the executive are almost always
       responsible stewards of public resources and keep them separate from
       personal or family property.
-  state-dept: []
-  freedom-house: []
+  state-dept: ["4"]
+  freedom-house: ["C"]
 
 v2exremhog:
   description: "HOG removal by legislature in practice"
@@ -3655,8 +3647,8 @@ v2exremhog:
     - "No, unlikely, but there is a chance it would happen."
     - "Yes, probably, but there is a chance it would fail."
     - "Yes, most likely."
-  state-dept: []
-  freedom-house: []
+  state-dept: ["3"]
+  freedom-house: ["C"]
 
 v2exremhsp:
   description: "HOS removal by legislature in practice"
@@ -3676,8 +3668,8 @@ v2exremhsp:
     - "No, unlikely, but there is a chance it would happen."
     - "Yes, probably, but there is a chance it would fail."
     - "Yes, most likely."
-  state-dept: []
-  freedom-house: []
+  state-dept: ["3"]
+  freedom-house: ["C"]
 
 v2exrescon:
   description: "Executive respects constitution"
@@ -3701,8 +3693,8 @@ v2exrescon:
       Members of the executive rarely violate the constitution, and when it
       happens they face legal charges.
     - "Members of the executive never violate the constitution."
-  state-dept: []
-  freedom-house: []
+  state-dept: ["3"]
+  freedom-house: ["C"]
 
 v2exthftps:
   description: "Public sector theft"
@@ -3736,8 +3728,8 @@ v2exthftps:
       Never, or hardly ever. Public sector employees are almost always
       responsible stewards of public resources and keep them separate from
       personal or family property.
-  state-dept: []
-  freedom-house: []
+  state-dept: ["4"]
+  freedom-house: ["C"]
 
 v2peapsecon:
   description: "Access to public services distributed by socio-economic position"
@@ -3773,8 +3765,8 @@ v2peapsecon:
     - >-
       Equal. Because of poverty or low income, less than 5 percent (%) of
       the population lack access to basic public services of good quality.
-  state-dept: []
-  freedom-house: []
+  state-dept: ["6"]
+  freedom-house: ["G"]
 
 v2peapsgen:
   description: "Access to public services distributed by gender"
@@ -3807,8 +3799,8 @@ v2peapsgen:
     - >-
       Equal. Because of their gender, less than 5 percent (%) of women lack
       access to basic public services of good quality.
-  state-dept: []
-  freedom-house: []
+  state-dept: ["6"]
+  freedom-house: ["G"]
 
 v2peapsgeo:
   description: "Access to public services distributed by urban-rural location"
@@ -3851,8 +3843,8 @@ v2peapsgeo:
       the population lack access to basic public services of good quality.
       5: Rural-Bias: Because they live in urban areas, 25% or more of the
       population lack access to basic public services of good quality.
-  state-dept: []
-  freedom-house: []
+  state-dept: ["6"]
+  freedom-house: ["G"]
 
 v2peapspol:
   description: "Access to public services distributed by political group"
@@ -3893,8 +3885,8 @@ v2peapspol:
       Equal. Because of their political group affiliation less than 5
       percent (%) of the population lack access to basic public services of
       good quality.
-  state-dept: []
-  freedom-house: []
+  state-dept: ["6"]
+  freedom-house: ["G", "B"]
 
 v2peapssoc:
   description: "Access to public services distributed by social group"
@@ -3930,8 +3922,8 @@ v2peapssoc:
     - >-
       Equal. Because of their social group, less than 5 percent (%) of the
       population lack access to basic public services of good quality.
-  state-dept: []
-  freedom-house: []
+  state-dept: ["6", "2c"]
+  freedom-house: ["G"]
 
 v2peasbecon:
   description: "Access to state business opportunities by socio-economic position"
@@ -3965,8 +3957,8 @@ v2peasbecon:
       Equal. Because of poverty or low income makes less than 5 percent (%)
       of the population, even if qualified, lack access to state business
       opportunities.
-  state-dept: []
-  freedom-house: []
+  state-dept: ["6", "4"]
+  freedom-house: ["G", "C"]
 
 v2peasbegeo:
   description: "Access to state business opportunities by urban-rural location"
@@ -4005,8 +3997,8 @@ v2peasbegeo:
       opportunities.  5: Rural-Bias. Because they live in urban areas, 25
       percent (%) of the population, even if qualified, lack access to
       state business opportunities.
-  state-dept: []
-  freedom-house: []
+  state-dept: ["6"]
+  freedom-house: ["G"]
 
 v2peasbepol:
   description: "Access to state business opportunities by political group"
@@ -4043,8 +4035,8 @@ v2peasbepol:
       Equal. Because of their political group affiliation less than 5
       percent (%) of the population, even if qualified, lack equal access
       to state business opportunities.
-  state-dept: []
-  freedom-house: []
+  state-dept: ["4", "3"]
+  freedom-house: ["C", "B"]
 
 v2peasbgen:
   description: "Access to state business opportunities by gender"
@@ -4073,8 +4065,8 @@ v2peasbgen:
     - >-
       Equal. Because of their gender, 5 percent (%) of women, even if
       qualified, lack access to state business opportunities.
-  state-dept: []
-  freedom-house: []
+  state-dept: ["6"]
+  freedom-house: ["G"]
 
 v2peasbsoc:
   description: "Access to state business opportunities by social group"
@@ -4110,8 +4102,8 @@ v2peasbsoc:
       Equal. Because of their social group, less than 5 percent (%) of the
       population, even if qualified, lack access to state business
       opportunities.
-  state-dept: []
-  freedom-house: []
+  state-dept: ["6", "2c"]
+  freedom-house: ["G"]
 
 v2peasjgen:
   description: "Access to state jobs by gender"
@@ -4135,8 +4127,8 @@ v2peasjgen:
     - >-
       Equal. Because of their gender, less than 5 percent (%) of women,
       even if qualified, lack access to state jobs.
-  state-dept: []
-  freedom-house: []
+  state-dept: ["6"]
+  freedom-house: ["G"]
 
 v2peasjgeo:
   description: "Access to state jobs by urban-rural location"
@@ -4168,8 +4160,8 @@ v2peasjgeo:
       the population, even if qualified, lack access to state jobs. 5:
       Rural-Bias. Because they live in urban areas, 25% or more of the
       population, even if qualified, lack access to state jobs.
-  state-dept: []
-  freedom-house: []
+  state-dept: ["6"]
+  freedom-house: ["G"]
 
 v2peasjpol:
   description: "Access to state jobs by political group"
@@ -4201,8 +4193,8 @@ v2peasjpol:
       Equal. Because of their political group affiliation, less than 5
       percent (%) of the population, even if qualified, lack access to
       state jobs.
-  state-dept: []
-  freedom-house: []
+  state-dept: ["4", "3"]
+  freedom-house: ["C", "B"]
 
 v2peasjsoc:
   description: "Access to state jobs by social group"
@@ -4232,8 +4224,8 @@ v2peasjsoc:
     - >-
       Equal. Because of their social group identity, less than 5 percent
       (%) of the population, even if qualified, lack access to state jobs.
-  state-dept: []
-  freedom-house: []
+  state-dept: ["6", "2c"]
+  freedom-house: ["G"]
 
 v2peasjsoecon:
   description: "Access to state jobs by socio-economic position"
@@ -4259,8 +4251,8 @@ v2peasjsoecon:
     - >-
       Equal. Because of poverty or low income, less than 5 percent (%) of
       the population, even if qualified, lack access to state jobs.
-  state-dept: []
-  freedom-house: []
+  state-dept: ["6", "4"]
+  freedom-house: ["G", "C"]
 
 v2peedueq:
   description: "Educational equality"
@@ -4297,8 +4289,8 @@ v2peedueq:
       (%) of children receive such low-quality education that probably
       undermines their ability to exercise their basic rights as adult
       citizens.
-  state-dept: []
-  freedom-house: []
+  state-dept: ["6"]
+  freedom-house: ["G"]
 
 v2pehealth:
   description: "Health equality"
@@ -4334,8 +4326,8 @@ v2pehealth:
       Equal. Basic health care is equal in quality and less than five
       percent (%) of citizens cannot exercise their basic political rights
       as adult citizens.
-  state-dept: []
-  freedom-house: []
+  state-dept: ["6"]
+  freedom-house: ["G"]
 
 v2pepwrgen:
   description: "Power distributed by gender"
@@ -4351,8 +4343,8 @@ v2pepwrgen:
       influence.
     - "Men have somewhat more political power than women."
     - "Men and women have roughly equal political power."
-  state-dept: []
-  freedom-house: []
+  state-dept: ["6"]
+  freedom-house: ["G", "B"]
 
 v2pepwrgeo:
   description: "Power distributed by urban-rural location"
@@ -4380,8 +4372,8 @@ v2pepwrgeo:
       those in urban areas.  5: People living in rural areas have much more
       political power but those living in urban areas have some areas of
       influence.
-  state-dept: []
-  freedom-house: []
+  state-dept: ["6"]
+  freedom-house: ["G"]
 
 v2pepwrort:
   description: "Power distributed by sexual orientation"
@@ -4417,8 +4409,8 @@ v2pepwrort:
       LGBTs enjoy somewhat more political power than heterosexuals by
       virtue of greater wealth, education, and high level of organization
       and mobilization.
-  state-dept: []
-  freedom-house: []
+  state-dept: ["6"]
+  freedom-house: ["G"]
 
 v2pepwrses:
   description: "Power distributed by socioeconomic position"
@@ -4451,8 +4443,8 @@ v2pepwrses:
       Wealthy people have no more political power than those whose economic
       status is average or poor. Political power is more or less equally
       distributed across economic groups.
-  state-dept: []
-  freedom-house: []
+  state-dept: ["6", "4"]
+  freedom-house: ["G", "B", "C"]
 
 v2pepwrsoc:
   description: "Power distributed by social group"
@@ -4492,8 +4484,8 @@ v2pepwrsoc:
       strong ethnic, caste, linguistic, racial, religious, or regional
       differences to speak of. Social group characteristics are not
       relevant to politics.
-  state-dept: []
-  freedom-house: []
+  state-dept: ["6", "2c"]
+  freedom-house: ["G", "B"]
 
 v2psbars:
   description: "Barriers to parties"
@@ -4513,8 +4505,8 @@ v2psbars:
       There are modest barriers (e.g. party leaders face occasional
       political harassment by authorities).
     - "There are no substantial barriers."
-  state-dept: []
-  freedom-house: []
+  state-dept: ["3"]
+  freedom-house: ["B"]
 
 v2pscnslnl:
   description: "Candidate selection-national/local"
@@ -4541,8 +4533,8 @@ v2pscnslnl:
       candidates are chosen by a small cadre of local or municipal level
       actors. 5: National legislative candidates are chosen by constituency
       groups or direct primaries.
-  state-dept: []
-  freedom-house: []
+  state-dept: ["3"]
+  freedom-house: ["B"]
 
 v2pscohesv:
   description: "Legislative party cohesion"
@@ -4559,8 +4551,8 @@ v2pscohesv:
       parties than against them, but defections are common.
     - "Mostly. Members vote with their parties most of the time."
     - "Yes, absolutely. Members vote with their parties almost all the time."
-  state-dept: []
-  freedom-house: []
+  state-dept: ["3"]
+  freedom-house: ["B", "C"]
 
 v2pscomprg:
   description: "Party competition across regions"
@@ -4578,8 +4570,8 @@ v2pscomprg:
       Most major parties are competitive in some regions of the country,
       but not in others.
     - "Most major parties are competitive in most regions of the country."
-  state-dept: []
-  freedom-house: []
+  state-dept: ["3"]
+  freedom-house: ["B"]
 
 v2psnatpar:
   description: "National party control"
@@ -4610,8 +4602,8 @@ v2psnatpar:
       legislative branches of the national government. (This is true almost
       by definition in a parliamentary system where a single party has a
       majority of seats.).
-  state-dept: []
-  freedom-house: []
+  state-dept: ["3"]
+  freedom-house: ["B", "C"]
 
 v2psoppaut:
   description: "Opposition parties autonomy"
@@ -4633,8 +4625,8 @@ v2psoppaut:
     - >-
       All opposition parties are autonomous and independent of the ruling
       regime.
-  state-dept: []
-  freedom-house: []
+  state-dept: ["3"]
+  freedom-house: ["A", "B"]
 
 v2psorgs:
   description: "Party organizations"
@@ -4651,8 +4643,8 @@ v2psorgs:
     - "About half of the parties."
     - "More than half of the parties."
     - "All parties."
-  state-dept: []
-  freedom-house: []
+  state-dept: ["3"]
+  freedom-house: ["B"]
 
 v2psparban:
   description: "Party ban"
@@ -4670,8 +4662,8 @@ v2psparban:
     - "Yes. Many parties are banned."
     - "Yes. But only a few parties are banned."
     - "No. No parties are officially banned."
-  state-dept: []
-  freedom-house: []
+  state-dept: ["3"]
+  freedom-house: ["B"]
 
 v2psplats:
   description: "Distinct party platforms"
@@ -4692,8 +4684,8 @@ v2psplats:
     - "About half."
     - "More than half."
     - "All, or nearly all."
-  state-dept: []
-  freedom-house: []
+  state-dept: ["3"]
+  freedom-house: ["B"]
 
 v2psprbrch:
   description: "Party branches"
@@ -4705,8 +4697,8 @@ v2psprbrch:
     - "About half."
     - "More than half."
     - "All."
-  state-dept: []
-  freedom-house: []
+  state-dept: ["3"]
+  freedom-house: ["B"]
 
 v2psprlnks:
   description: "Party linkages"
@@ -4730,8 +4722,8 @@ v2psprlnks:
     - >-
       Policy/programmatic. Constituents respond to a party's positions on
       national policies, general party programs, and visions for society.
-  state-dept: []
-  freedom-house: []
+  state-dept: ["3"]
+  freedom-house: ["B"]
 
 v2pssunpar:
   description: "Subnational party control"
@@ -4751,11 +4743,10 @@ v2pssunpar:
     - >-
       In few subnational units (less than 66%), a single party controls all
       or virtually all policymaking bodies.
-  state-dept: []
-  freedom-house: []
+  state-dept: ["3"]
+  freedom-house: ["B", "C"]
 
 v2lgcomslo:
-  held_out: true
   description: "Lower chamber committees"
   codebook_question: >-
     Does the lower (or unicameral) chamber of the legislature have a
@@ -4771,10 +4762,9 @@ v2lgcomslo:
       Yes, there are permanent committees that have strong influence on the
       course of policymaking.
   state-dept: []
-  freedom-house: []
+  freedom-house: ["C"]
 
 v2lgcrrpt:
-  held_out: true
   description: "Legislature corrupt activities"
   codebook_question: "Do members of the legislature abuse their position for financial gain?"
   clarification: >-
@@ -4793,11 +4783,10 @@ v2lgcrrpt:
       Very occasionally. There may be a few legislators who engage in these
       activities but the vast majority do not.
     - "Never, or hardly ever."
-  state-dept: []
-  freedom-house: []
+  state-dept: ["4"]
+  freedom-house: ["C"]
 
 v2lgdomchm:
-  held_out: true
   description: "Legislature dominant chamber"
   codebook_question: "If the legislature is bicameral, which chamber is dominant?"
   clarification: null
@@ -4808,10 +4797,9 @@ v2lgdomchm:
     - "The upper chamber is somewhat more powerful on most issues."
     - "The upper chamber is clearly dominant."
   state-dept: []
-  freedom-house: []
+  freedom-house: ["C"]
 
 v2lgdsadlo:
-  held_out: true
   description: "Representation of disadvantaged social groups"
   codebook_question: >-
     Considering all disadvantaged social groups in the country, how well
@@ -4835,11 +4823,10 @@ v2lgdsadlo:
     - >-
       They are over-represented relative to their proportion of the general
       population.
-  state-dept: []
-  freedom-house: []
+  state-dept: ["6"]
+  freedom-house: ["C", "B"]
 
 v2lgdsadlobin:
-  held_out: true
   description: "Representation of disadvantaged social groups binary"
   codebook_question: "Are there disadvantaged groups in the society?"
   clarification: >-
@@ -4850,11 +4837,10 @@ v2lgdsadlobin:
   categories:
     - "No."
     - "Yes."
-  state-dept: []
-  freedom-house: []
+  state-dept: ["6"]
+  freedom-house: ["C", "B"]
 
 v2lgfunds:
-  held_out: true
   description: "Legislature controls resources"
   codebook_question: >-
     In practice, does the legislature control the resources that finance
@@ -4867,10 +4853,9 @@ v2lgfunds:
       outside authority, such as the executive.
     - "Yes."
   state-dept: []
-  freedom-house: []
+  freedom-house: ["C"]
 
 v2lginvstp:
-  held_out: true
   description: "Legislature investigates in practice"
   codebook_question: >-
     If the executive were engaged in unconstitutional, illegal, or
@@ -4885,11 +4870,10 @@ v2lginvstp:
     - "As likely as not."
     - "Likely."
     - "Certain or nearly certain."
-  state-dept: []
-  freedom-house: []
+  state-dept: ["3", "4"]
+  freedom-house: ["C"]
 
 v2lglegplo:
-  held_out: true
   description: "Lower chamber legislates in practice"
   codebook_question: >-
     In practice, is the approval of the lower (or unicameral) chamber of
@@ -4907,10 +4891,9 @@ v2lglegplo:
       Yes, always. Legislation of any consequence is always approved by the
       lower (or unicameral) chamber of the legislature.
   state-dept: []
-  freedom-house: []
+  freedom-house: ["C"]
 
 v2lglegpup:
-  held_out: true
   description: "Upper chamber legislates in practice"
   codebook_question: >-
     In practice, is the approval of the upper chamber of the legislature
@@ -4928,10 +4911,9 @@ v2lglegpup:
       Yes, always. Legislation of any consequence is always approved by the
       upper chamber of the legislature.
   state-dept: []
-  freedom-house: []
+  freedom-house: ["C"]
 
 v2lgoppart:
-  held_out: true
   description: "Legislature opposition parties"
   codebook_question: >-
     Are opposition parties (those not in the ruling party or coalition)
@@ -4942,11 +4924,10 @@ v2lgoppart:
     - "No, not at all."
     - "Occasionally."
     - "Yes, for the most part."
-  state-dept: []
-  freedom-house: []
+  state-dept: ["3"]
+  freedom-house: ["B", "C"]
 
 v2lgotovst:
-  held_out: true
   description: "Executive oversight"
   codebook_question: >-
     If executive branch officials were engaged in unconstitutional,
@@ -4961,11 +4942,10 @@ v2lgotovst:
     - "Very uncertain."
     - "Likely."
     - "Certain or nearly certain."
-  state-dept: []
-  freedom-house: []
+  state-dept: ["4"]
+  freedom-house: ["C", "F"]
 
 v2lgqstexp:
-  held_out: true
   description: "Legislature questions officials in practice"
   codebook_question: >-
     In practice, does the legislature routinely question executive branch
@@ -4977,11 +4957,10 @@ v2lgqstexp:
   categories:
     - "No --- never or very rarely."
     - "Yes --- routinely."
-  state-dept: []
-  freedom-house: []
+  state-dept: ["3"]
+  freedom-house: ["C"]
 
 v2lgsrvlo:
-  held_out: true
   description: "Lower chamber members serve in government"
   codebook_question: >-
     In practice, are members of the lower (or unicameral) chamber of the
@@ -4992,10 +4971,9 @@ v2lgsrvlo:
     - "No."
     - "Yes."
   state-dept: []
-  freedom-house: []
+  freedom-house: ["C"]
 
 v2lgstafflo:
-  held_out: true
   description: "Lower chamber staff"
   codebook_question: >-
     Does each member of the lower (or unicameral) chamber of the
@@ -5005,10 +4983,9 @@ v2lgstafflo:
     - "No."
     - "Yes."
   state-dept: []
-  freedom-house: []
+  freedom-house: ["C"]
 
 v2svdomaut:
-  held_out: true
   description: "Domestic autonomy"
   codebook_question: >-
     Is the state autonomous from the control of other states with respect
@@ -5047,10 +5024,9 @@ v2svdomaut:
       Autonomous. Domestic political actors exercise political authority
       free of the direct control of external political actors.
   state-dept: []
-  freedom-house: []
+  freedom-house: ["C"]
 
 v2svinlaut:
-  held_out: true
   description: "International autonomy"
   codebook_question: >-
     Is the state autonomous from the control of other states with respect
@@ -5085,10 +5061,9 @@ v2svinlaut:
       organization voluntarily, and from which there is a possibility of
       exit should not be interpreted as a violation of autonomy.
   state-dept: []
-  freedom-house: []
+  freedom-house: ["C"]
 
 v2stcritapparm:
-  held_out: true
   description: "Criteria for appointment decisions in the armed forces"
   codebook_question: >-
     To what extent are appointment decisions in the armed forces based on
@@ -5120,10 +5095,9 @@ v2stcritapparm:
       None of the appointment decisions in the armed forces are based on
       personal or political connections. All are based on skills and merit.
   state-dept: []
-  freedom-house: []
+  freedom-house: ["C"]
 
 v2stcritrecadm:
-  held_out: true
   description: "Criteria for appointment decisions in the state administration"
   codebook_question: >-
     To what extent are appointment decisions in the state administration
@@ -5158,11 +5132,10 @@ v2stcritrecadm:
       None of the appointment decisions in the state administration are
       based on personal or political connections. All are based on skills
       and merit.
-  state-dept: []
-  freedom-house: []
+  state-dept: ["4"]
+  freedom-house: ["C"]
 
 v2stfisccap:
-  held_out: true
   description: "State fiscal source of revenue"
   codebook_question: >-
     On which of the following sources of revenue does the central
@@ -5184,10 +5157,9 @@ v2stfisccap:
       The state primarily relies on taxes on economic transactions (such as
       sales taxes) and/or taxes on income, corporate profits and capital.
   state-dept: []
-  freedom-house: []
+  freedom-house: ["C"]
 
 v2strenadm:
-  held_out: true
   description: "Bureaucratic remuneration"
   codebook_question: "To what extent are state administrators salaried employees?"
   clarification: >-
@@ -5208,10 +5180,9 @@ v2strenadm:
     - "A substantial number are salaried state employees."
     - "All or almost all are salaried state employees."
   state-dept: []
-  freedom-house: []
+  freedom-house: ["C"]
 
 v2strenarm:
-  held_out: true
   description: "Remuneration in the Armed Forces"
   codebook_question: "To what extent are members of the armed forces salaried employees?"
   clarification: >-
@@ -5228,5 +5199,327 @@ v2strenarm:
     - "A substantial number are salaried employees"
     - "All or almost all are salaried employees"
   state-dept: []
+  freedom-house: ["C"]
+
+v2dlcommon:
+  description: "Common good"
+  codebook_question: >-
+    When important policy changes are being considered, to what extent do
+    political elites justify their positions in terms of the common good?
+  clarification: >-
+    Because discourse varies greatly from person to person, base your
+    answer on the style that is most typical of prominent national
+    political leaders.
+  categories:
+    - >-
+      Little or no justification in terms of the common good is usually
+      offered.
+    - >-
+      Specific business, geographic, group, party, or constituency
+      interests are for the most part offered as justifications.
+    - >-
+      Justifications are for the most part a mix of specific interests and
+      the common good and it is impossible to say which justification is
+      more common than the other.
+    - >-
+      Justifications are based on a mixture of references to
+      constituency/party/group interests and on appeals to the common good.
+    - >-
+      Justifications are for the most part almost always based on explicit
+      statements of the common good for society, understood either as the
+      greatest good for the greatest number or as helping the least
+      advantaged in a society.
+  state-dept: []
   freedom-house: []
+
+v2dlconslt:
+  description: "Range of consultation"
+  codebook_question: >-
+    When important policy changes are being considered, how wide is the
+    range of consultation at elite levels?
+  clarification: >-
+    Because practices vary greatly from policy to policy, base your answer
+    on the style that is most typical of policymaking.
+  categories:
+    - >-
+      No consultation. The leader or a very small group (e.g. military
+      council) makes authoritative decisions on their own.
+    - >-
+      Very little and narrow. Consultation with only a narrow circle of
+      loyal party/ruling elites.
+    - >-
+      Consultation includes the former plus a larger group that is loyal to
+      the government, such as the ruling party's or parties' local
+      executives and/or women, youth and other branches.
+    - "Consultation includes the former plus leaders of other parties."
+    - >-
+      Consultation includes the former plus a select range of
+      society/labor/business representatives. 5: Consultation engages
+      elites from essentially all parts of the political spectrum and all
+      politically relevant sectors of society and business.
+  state-dept: []
+  freedom-house: ["C"]
+
+v2dlcountr:
+  description: "Respect counterarguments"
+  codebook_question: >-
+    When important policy changes are being considered, to what extent do
+    political elites acknowledge and respect counterarguments?
+  clarification: >-
+    Because discourse varies greatly from person to person, base your
+    answer on the style that is most typical of prominent national
+    political leaders.
+  categories:
+    - "Counterarguments are not allowed or if articulated, punished."
+    - >-
+      Counterarguments are allowed at least from some parties, but almost
+      always are ignored.
+    - >-
+      Elites tend to acknowledge counterarguments but then explicitly
+      degrade them by making a negative statement about them or the
+      individuals and groups that propose them.
+    - >-
+      Elites tend to acknowledge counterarguments without making explicit
+      negative or positive statements about them.
+    - >-
+      Elites almost always acknowledge counterarguments and explicitly
+      value them, even if they ultimately reject them for the most part. 5:
+      Elites almost always acknowledge counterarguments and explicitly
+      value them, and frequently also even accept them and change their
+      position.
+  state-dept: []
+  freedom-house: []
+
+v2dlencmps:
+  description: "Particularistic or public goods"
+  codebook_question: >-
+    Considering the profile of social and infrastructural spending in the
+    national budget, how "particularistic" or "public goods" are most
+    expenditures?
+  clarification: >-
+    Particularistic spending is narrowly targeted on a specific
+    corporation, sector, social group, region, party, or set of
+    constituents. Such spending may be referred to as "pork",
+    "clientelistic", or "private goods." Public-goods spending is intended
+    to benefit all communities within a society, though it may be
+    means-tested so as to target poor, needy, or otherwise underprivileged
+    constituents. The key point is that all who satisfy the means-test are
+    allowed to receive the benefit.  Your answer should consider the entire
+    budget of social and infrastructural spending. We are interested in the
+    relative value of particularistic and public-goods spending, not the
+    number of bills or programs that fall into either category.
+  categories:
+    - >-
+      Almost all of the social and infrastructure expenditures are
+      particularistic.
+    - >-
+      Most social and infrastructure expenditures are particularistic, but
+      a significant portion (e.g. 1/4 or 1/3) is public-goods.
+    - >-
+      Social and infrastructure expenditures are evenly divided between
+      particularistic and public-goods programs.
+    - >-
+      Most social and infrastructure expenditures are public-goods but a
+      significant portion (e.g., 1/4 or 1/3) is particularistic.
+    - >-
+      Almost all social and infrastructure expenditures are public-goods in
+      character. Only a small portion is particularistic.
+  state-dept: ["4"]
+  freedom-house: ["C"]
+
+v2dlengage:
+  description: "Engaged society"
+  codebook_question: >-
+    When important policy changes are being considered, how wide and how
+    independent are public deliberations?
+  clarification: >-
+    This question refers to deliberation as manifested in discussion,
+    debate, and other public forums such as popular media.
+  categories:
+    - "Public deliberation is never, or almost never allowed."
+    - >-
+      Some limited public deliberations are allowed but the public below
+      the elite levels is almost always either unaware of major policy
+      debates or unable to take part in them.
+    - >-
+      Public deliberation is not repressed but nevertheless infrequent and
+      non-elite actors are typically controlled and/or constrained by the
+      elites.
+    - >-
+      Public deliberation is actively encouraged and some autonomous
+      non-elite groups participate, but it is confined to a small slice of
+      specialized groups that tends to be the same across issue-areas.
+    - >-
+      Public deliberation is actively encouraged and a relatively broad
+      segment of non-elite groups often participate and vary with different
+      issue-areas. 5: Large numbers of non-elite groups as well as ordinary
+      people tend to discuss major policies among themselves, in the media,
+      in associations or neighborhoods, or in the streets. Grass-roots
+      deliberation is common and unconstrained.
+  state-dept: ["5"]
+  freedom-house: ["E"]
+
+v2dlreason:
+  description: "Reasoned justification"
+  codebook_question: >-
+    When important policy changes are being considered, i.e. before a
+    decision has been made, to what extent do political elites give public
+    and reasoned justifications for their positions?
+  clarification: >-
+    Because discourse varies greatly from person to person, base your
+    answer on the style that is most typical of prominent national
+    political leaders.
+  categories:
+    - >-
+      No justification. Elites almost always only dictate that something
+      should or should not be done, but no reasoning about justification is
+      given. For example, "We must cut spending."
+    - >-
+      Inferior justification. Elites tend to give reasons why someone
+      should or should not be for doing or not doing something, but the
+      reasons tend to be illogical or false, although they may appeal to
+      many voters. For example, "We must cut spending. The state is
+      inefficient." [The inference is incomplete because addressing
+      inefficiencies would not necessarily reduce spending and it might
+      undermine essential services.]
+    - >-
+      Qualified justification. Elites tend to offer a single simple reason
+      justifying why the proposed policies contribute to or detract from an
+      outcome. For example, "We must cut spending because taxpayers cannot
+      afford to pay for current programs."
+    - >-
+      Sophisticated justification. Elites tend to offer more than one or
+      more complex, nuanced and complete justification. For example, "We
+      must cut spending because taxpayers cannot afford to pay for current
+      government programs. Raising taxes would hurt economic growth, and
+      deficit spending would lead to inflation."
+  state-dept: []
+  freedom-house: ["C"]
+
+v2dlunivl:
+  description: "Means-tested v. universalistic policy"
+  codebook_question: >-
+    How many welfare programs are means-tested and how many benefit all (or
+    virtually all) members of the polity?
+  clarification: >-
+    A means-tested program targets poor, needy, or otherwise
+    underprivileged constituents. Cash-transfer programs are normally
+    means-tested. A universal (non-means tested) program potentially
+    benefits everyone. This includes free education, national health care
+    schemes, and retirement programs. Granted, some may benefit more than
+    others from these programs (e.g., when people with higher salaries get
+    higher unemployment benefits). The key point is that practically
+    everyone is a beneficiary, or potential beneficiary. The purpose of
+    this question is not to gauge the size of the welfare state but rather
+    its quality. So, your answer should be based on whatever programs
+    exist.
+  categories:
+    - >-
+      There are no, or extremely limited, welfare state policies
+      (education, health, retirement, unemployment, poverty programs).
+    - "Almost all of the welfare state policies are means-tested."
+    - >-
+      Most welfare state policies means-tested, but a significant portion
+      (e.g. 1/4 or 1/3) is universalistic and potentially benefits everyone
+      in the population.
+    - >-
+      The welfare state policies are roughly evenly divided between
+      means-tested and universalistic.
+    - >-
+      Most welfare state policies are universalistic, but a significant
+      portion (e.g., 1/4 or 1/3) are means-tested.  5: Almost all welfare
+      state policies are universal in character. Only a small portion is
+      means-tested.
+  state-dept: ["4"]
+  freedom-house: ["C"]
+
+v2exl_legitideol:
+  description: "Ideology"
+  codebook_question: >-
+    To what extent does the current government promote a specific ideology
+    or societal model (an officially codified set of beliefs used to
+    justify a particular set of social, political, and economic relations;
+    for example, socialism, nationalism, religious traditionalism, etc.) in
+    order to justify the regime in place?
+  clarification: null
+  categories:
+    - "Not at all."
+    - "To a small extent."
+    - "To some extent but it is not the most important component."
+    - "To a large extent but not exclusively."
+    - "Almost exclusively."
+  state-dept: ["2a"]
+  freedom-house: ["D"]
+
+v2exl_legitideolcr:
+  description: "Ideology character"
+  codebook_question: >-
+    How would you characterize the ideology/ideologies identified in the
+    previous question?
+  clarification: "Check all that apply."
+  categories:
+    - "Nationalist (0=No, 1=Yes) [v2exl_legitideolcr_0]"
+    - "Socialist or communist. (0=No, 1=Yes) [v2exl_legitideolcr _1]"
+    - "Restorative or conservative. (0=No, 1=Yes) [v2exl_legitideolcr _2]"
+    - "Separatist or autonomist. (0=No, 1=Yes) [v2exl_legitideolcr _3]"
+    - "Religious. (0=No, 1=Yes) [v2exl_legitideolcr _4]"
+  state-dept: ["2a"]
+  freedom-house: ["D"]
+
+v2exl_legitlead:
+  description: "Person of the Leader"
+  codebook_question: >-
+    To what extent is the Chief Executive portrayed as being endowed with
+    extraordinary personal characteristics and/or leadership skills (e.g.
+    as father or mother of the nation, exceptionally heroic, moral, pious,
+    or wise, or any other extraordinary attribute valued by the society)?
+  clarification: >-
+    The Chief Executive refers to the Head of State or the Head of
+    Government, depending on the relative power of each office. We are
+    interested in the key leadership figure.
+  categories:
+    - "Not at all."
+    - "To a small extent."
+    - "To some extent but it is not the most important component."
+    - "To a large extent but not exclusively."
+    - "Almost exclusively."
+  state-dept: []
+  freedom-house: []
+
+v2exl_legitperf:
+  description: "Performance legitimation"
+  codebook_question: >-
+    To what extent does the government refer to performance (such as
+    providing economic growth, poverty reduction, effective and non-corrupt
+    governance, and/or providing security) in order to justify the regime
+    in place?
+  clarification: null
+  categories:
+    - "Not at all."
+    - "To a small extent."
+    - "To some extent but it is not the most important component."
+    - "To a large extent but not exclusively."
+    - "Almost exclusively."
+  state-dept: []
+  freedom-house: ["C"]
+
+v2exl_legitratio:
+  description: "Rational-legal legitimation"
+  codebook_question: >-
+    To what extent does the current government refer to the legal norms and
+    regulations in order to justify the regime in place?
+  clarification: >-
+    This question pertains to legal norms and regulations as laid out for
+    instance in the constitution regarding access to power (e.g. elections)
+    as well as exercise of power (e.g. rule of law). Electoral regimes may
+    score high on this question as well as non-electoral regimes that
+    emphasize their rule-boundedness.
+  categories:
+    - "Not at all."
+    - "To a small extent."
+    - "To some extent but it is not the most important component."
+    - "To a large extent but not exclusively."
+    - "Almost exclusively."
+  state-dept: []
+  freedom-house: ["C"]
 

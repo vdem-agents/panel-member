@@ -60,32 +60,29 @@
   mappings), so independent copies are intentional. Update `PROCESSED_DIR` path constant
   if needed once ingestion is tested.
 
-- [ ] **Generate `data/processed/panel_means.csv`** from V-Dem v15 coder-level data.
-  Required columns: `country_text_id`, `year`, `indicator`, `raw_mean`, `n_coders`,
-  `theta_quintile` (1–5 from v15 `v2x_polyarchy` quintiles).
-  The `theta_quintile` column is used by `substitution_eval.py` for compression diagnostics
-  and by the pool stratification. If not available, set to 0 (disables quintile analysis).
-  **Date filter**: The coder-level dataset has two rows per coder-country-year (Jan 1 and
-  Dec 31) as a structural feature. Filter to `format(historical_date, "%m-%d") == "12-31"`
-  before computing means to get one rating per coder per year, matching V-Dem's published
-  end-of-year values. Omitting this filter doubles the effective N without adding signal.
+- [x] **Generate `data/processed/panel_means.csv`** from V-Dem v15 coder-level data. **Done** — file exists at `shared/vdem-data/panel_means.csv`.
 
-- [ ] **Decide inference scope and lock evaluation indicator set** (#3). Two options:
-  25–30 selected indicators (3–4 per module, spanning coverage tiers) or all retained
-  indicators (~170). See issue for tradeoffs. Once resolved, confirm section-mapping
-  assignments before any inference runs.
+- [x] **Decide inference scope** (#3 — closed). **Training**: all indicators meeting
+  filtering criteria and present in `config/indicator_sections.yaml` (~174 indicators,
+  2013–2018). **Inference/evaluation**: proportional stratified sample of ~1/4 to 1/3 of
+  retained indicators (~50–80), drawn proportionally across modules with floor of 2 per
+  module, spanning all coverage tiers. Same evaluation set for all conditions and models.
+  Exact list locked after section-mapping completion (#1).
 
-- [ ] **Populate section mappings in `config/indicator_sections.yaml`** (#1). Fill
-  `state-dept` and `freedom-house` fields for all retained indicators from
-  `initial-exploration/explore-indicators/section-mapping-notes.md`. Remove excluded
-  modules (`v2ed*`, `v2med*`, `v2reg*`). Codebook text is already generated; only
-  section keys need to be added manually.
+- [x] **Populate section mappings in `config/indicator_sections.yaml`** (#1 — closed).
+  All 206 retained indicators now have `state-dept` and `freedom-house` fields filled
+  from `section-mapping-notes.md`. Excluded modules (`v2ed*`, `v2med*`, `v2reg*`) absent
+  from YAML; `v2svstterr` excluded as interval scale (0–100). `v2dl*` and `v2exl*`
+  (deliberation, executive legitimation) added to YAML; indicators with no section
+  mapping use empty lists and will receive the default executive-summary evidence packet.
+  `held_out` flag removed from all entries (design holdover). Script:
+  `pipeline/populate_section_mappings.py`.
 
-- [ ] **Decide on executive summary extraction for SD and FiW parsers** (#4). Both
-  sources have substantive preamble blocks (SD executive summary; FiW Overview and Key
-  Developments) currently discarded by the parser. Proposal: include as a baseline
-  context block in every evidence packet. Affects `pipeline/extract_sections.py` and
-  `pipeline/assemble_prompt.py`. Required before any evidence-condition coding runs.
+- [x] **Executive summary extraction for SD and FiW parsers** (#4 — closed 2026-07-11).
+  Both parsers now capture the preamble as `exec_summary`: SD text before `Section 1.`,
+  FiW text before `## A` (Overview + Key Developments). `extract_sections()` always
+  prepends it; indicators with empty section mappings receive the exec summary alone
+  as their baseline context block. No prompt-template changes needed.
 
 - [ ] **Verify SD Section 2c content in 2013–2018 training window** (#5). In 2020
   reports, Section 2c universally redirects to the standalone IRFR with no inline text.
@@ -99,11 +96,14 @@
   sub-parse by prose headers, or indicator-level sub-topic tagging. Try full inclusion
   first; revisit if pilot results show interference.
 
-- [ ] **Expand `data/fewshot_examples.json`** to cover all evaluation indicators (exact
-  set TBD pending #3). Current file covers: `v2csreprss`, `v2mecenefm`, `v2clkill`,
-  `v2juncind`. Each indicator needs 5 examples (one per ordinal level 0–4), globally
-  distributed, with fields: `country`, `slug`, `country_name`, `year`, `level`,
-  `raw_mean`, `region`. Evidence text is loaded on-the-fly; only the metadata goes here.
+- [ ] **Populate `data/fewshot_examples.json`** for all evaluation indicators (#8).
+  Draw proportional stratified sample: one third of each module's indicators, floor of 2
+  per module (~50–70 total). Write `pipeline/select_eval_indicators.py` (fixed seed) to
+  produce `data/eval_indicators.txt`. For each selected indicator: 5 examples (one per
+  ordinal level), globally distributed, drawn from 2013–2018 training window.
+  Fields: `country`, `slug`, `country_name`, `year`, `level`, `raw_mean`, `region`.
+  Evidence text loaded on-the-fly; only metadata here.
+  **Blocked on**: source documents downloaded and ingested (#9).
 
 ---
 
@@ -168,11 +168,9 @@ multiple genuinely distinct AI coders.
 - [x] **Write `slurm/run_inference_finetuned.sh`**. Done 2026-07-09.
   Starts vLLM with `--lora-modules`, runs `run_finetuned_batch.py`, archives output.
 
-- [ ] **Revise or remove `held_out` flag in `config/indicator_sections.yaml`** (#2).
-  The flag currently marks indicators with <6 median coders (a criterion that has been
-  dropped). Options: drop the flag entirely, repurpose it for coverage tier, or keep on
-  `lg`/`sv`/`st` modules with updated rationale. Affects `prepare_finetune_data.py`
-  training split only — does not suppress inference.
+- [x] **Revise or remove `held_out` flag in `config/indicator_sections.yaml`** (#2 — closed).
+  Flag removed entirely from all YAML entries and from `generate_indicator_yaml.R`.
+  Done as part of #1 resolution (2026-07-11).
 
 - [ ] **Generate `data/processed/human_ratings.csv`** from V-Dem v15 coder-level data in R.
   Required columns: `country_text_id`, `iso3`, `year`, `indicator`, `coder_id`, `rating`.
@@ -188,19 +186,20 @@ multiple genuinely distinct AI coders.
 
 ---
 
-## Source documents: download locally (do before any coding runs)
+## Source documents: download locally (do before any coding runs) (#9)
 
-- [ ] **Download 2019 Freedom House and State Dept reports** (primary test year).
-  Run `bridge-coder/pipeline/download_reports.py --year 2019` on laptop. Store in
-  `bridge-coder/data/raw/{state-dept,freedom-house}/2019/`. Symlink or copy to
-  panel-member as needed. ~170 countries, ~30 min on home internet.
+- [ ] **Download 2019 Freedom House and State Dept reports** (primary test year — do first).
+  Run `bridge-coder/pipeline/download_reports.py --year 2019` on laptop. Lands in
+  `shared/source-docs/{state-dept,freedom-house}/2019/`. ~170 countries, ~30 min.
+  Then run `python3 -m pipeline.ingest --year 2019` to extract plain text.
 
 - [ ] **Download 2013–2018 source documents** (fine-tuning training window).
   Same script, one run per year. ~6 × 30 min. Can chip away across sessions — the
-  download script checkpoints so interrupted runs resume cleanly.
+  download script checkpoints so interrupted runs resume cleanly. Ingest each year
+  after downloading.
 
 - [ ] **Download 2022 source documents** (robustness check year; best model only).
-  Run `download_reports.py --year 2022` on laptop.
+  Run `download_reports.py --year 2022` on laptop. Ingest after downloading.
 
 ---
 

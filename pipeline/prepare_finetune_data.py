@@ -27,7 +27,7 @@ import csv
 import json
 import sys
 from pathlib import Path
-from statistics import median, quantiles
+from statistics import quantiles
 
 import yaml
 
@@ -104,15 +104,14 @@ def build_training_record(
         "messages": [
             {"role": "system",    "content": system_text},
             {"role": "user",      "content": user_text},
-            {"role": "assistant", "content": str(rating)},
+            {"role": "assistant", "content": json.dumps({"rating": rating})},
         ]
     }
 
 
 def main() -> None:
     config = _load_config()
-    training_indicators = [k for k, v in config.items() if not v.get("held_out", False)]
-    held_out_indicators = [k for k, v in config.items() if v.get("held_out", False)]
+    all_indicators = list(config.keys())
 
     parser = argparse.ArgumentParser(
         description="Build fine-tuning training JSONL from V-Dem v15 coder-level ratings"
@@ -122,8 +121,8 @@ def main() -> None:
         help=f"Training years (default: 2013–2018)",
     )
     parser.add_argument(
-        "--indicators", nargs="+", default=training_indicators,
-        help="Indicators to include (default: all non-held-out indicators in config)",
+        "--indicators", nargs="+", default=all_indicators,
+        help="Indicators to include (default: all indicators in config)",
     )
     parser.add_argument(
         "--output", default=str(OUTPUT_DIR / "finetune_train.jsonl"),
@@ -140,8 +139,7 @@ def main() -> None:
     except ImportError:
         raise ImportError("pycountry required: pip install pycountry")
 
-    print(f"Training indicators ({len(args.indicators)}): {args.indicators}")
-    print(f"Held-out indicators ({len(held_out_indicators)}) — excluded: {held_out_indicators}")
+    print(f"Training indicators: {len(args.indicators)}")
     print(f"Loading human ratings: years={args.years}")
     ratings = load_human_ratings(args.years, args.indicators)
     print(f"  {len(ratings):,} coder-CYI rows loaded")

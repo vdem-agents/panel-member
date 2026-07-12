@@ -42,7 +42,7 @@ def _load_config() -> dict:
     return _config_cache
 
 
-def _parse_response(raw: str) -> tuple[int, str]:
+def _parse_response(raw: str, max_rating: int = 4) -> tuple[int, str]:
     """Parse model output into (rating, justification). JSON first, regex fallback."""
     text = raw.strip()
 
@@ -54,14 +54,17 @@ def _parse_response(raw: str) -> tuple[int, str]:
         data = json.loads(text_clean)
         rating = int(data["rating"])
         justification = str(data["justification"]).strip()
-        if rating not in range(5):
-            raise ValueError(f"rating {rating} outside 0–4")
+        if rating not in range(max_rating + 1):
+            raise ValueError(f"rating {rating} outside 0–{max_rating}")
         return rating, justification
     except (json.JSONDecodeError, KeyError, TypeError, ValueError):
         pass
 
-    # Regex fallback
-    rating_m = re.search(r'"?rating"?\s*[":=]\s*([0-4])', text, re.IGNORECASE)
+    # Regex fallback — match any digit in the valid range
+    rating_pat = f"[0-{max_rating}]"
+    rating_m = re.search(
+        rf'"?rating"?\s*[":=]\s*({rating_pat})', text, re.IGNORECASE
+    )
     just_m = re.search(
         r'"justification"\s*:\s*"(.+?)(?<!\\)"', text, re.IGNORECASE | re.DOTALL
     )
@@ -116,6 +119,9 @@ def code_country_year(
         slug, country_name, year, indicator, condition, iso=iso
     )
 
+    config = _load_config()
+    max_rating = len(config[indicator]["categories"]) - 1
+
     client = OpenAI(base_url=cfg["base_url"], api_key=api_key)
     response = client.chat.completions.create(
         model=cfg["model"],
@@ -128,7 +134,7 @@ def code_country_year(
     )
 
     raw = response.choices[0].message.content or ""
-    rating, justification = _parse_response(raw)
+    rating, justification = _parse_response(raw, max_rating=max_rating)
 
     usage = response.usage
     tokens = {

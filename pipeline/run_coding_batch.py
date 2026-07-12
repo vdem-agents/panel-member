@@ -72,6 +72,7 @@ from pathlib import Path
 import yaml
 
 from pipeline.code_country_year import code_country_year
+from pipeline.extract_sections import configure_extraction_log
 from pipeline.vdem_config import LLM_CONFIGS, CONDITIONS, PRIMARY_MODELS
 
 try:
@@ -194,6 +195,7 @@ def run_batch(
     workers: int = 1,
 ) -> None:
     output_path.parent.mkdir(parents=True, exist_ok=True)
+    configure_extraction_log(output_path.with_suffix(".extraction.log"))
 
     print(f"Building country map for {year}...")
     country_map = build_country_map(year)
