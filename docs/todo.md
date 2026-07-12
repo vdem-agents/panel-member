@@ -205,6 +205,18 @@ multiple genuinely distinct AI coders.
 
 ## Infrastructure
 
+- [ ] **Audit country name harmonization between V-Dem and source-doc slugs** (#10).
+  `build_country_map()` in `run_coding_batch.py` matches processed-text slugs to V-Dem
+  ISO-3 codes via two stages: (1) `SLUG_OVERRIDES` hardcoded dict, (2) pycountry fuzzy
+  match. Two known risks: (a) unusual 2018 slugs like
+  `china-includes-tibet-hong-kong-and-macau-china` and `israel-golan-heights-west-bank-and-gaza`
+  may not fuzzy-match correctly; (b) `SLUG_OVERRIDES` is duplicated in both
+  `run_coding_batch.py` and `run_anonymize_batch.py` and must be kept in sync manually.
+  Verify all slugs across 2016–2021 resolve to the correct ISO-3 codes; consolidate
+  `SLUG_OVERRIDES` into a shared module.
+
+
+
 - [ ] **Set up vLLM on GW Pegasus** for Llama 405B, 70B, 9B.
   - 405B: 8×A100 80GB node (needs ~200GB at 4-bit). May require allocation request.
   - 70B: single A100 80GB node (~35GB at 4-bit).
