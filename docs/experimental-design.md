@@ -1,9 +1,10 @@
 # Panel Member: Experimental Design
 
-*Updated July 2026. IRT replaced by panel-mean deviation test. Three prompt conditions,
-five models. Training on all strong + partial Type C indicators (~174); inference on
-25–30 selected evaluation indicators spanning all coverage tiers. Coverage-tier gradient
-replaces separate generalization test. Raw panel means throughout.
+*Updated July 2026. Three prompt conditions, five models. Inference on a proportional
+stratified sample of ~80 indicators (one third per module, floor of 2; same set for all
+models), required for clean cross-model comparison. Training on all strong + partial Type C
+indicators (~174; ~1.95M coder-CYI examples from V-Dem v15). Coverage-tier gradient
+as within-study moderating variable. Raw panel means throughout.
 See `notes/persona-prompting-design-archive.md` for archived persona design.*
 
 ---
@@ -13,16 +14,22 @@ See `notes/persona-prompting-design-archive.md` for archived persona design.*
 The experiment addresses two questions:
 
 **Question 1 (substitution)**: Which prompt condition and model scale produces AI ratings
-closest to the human expert panel's raw mean across the 25–30 evaluation indicators?
+closest to the human expert panel's raw mean across the ~60–70 evaluation indicators, and
+does this vary with coverage tier?
 
 **Question 2 (generalization)**: Does LOO MAE degrade as source-coverage tier weakens?
 The evaluation indicator set spans strong, partial, and weak coverage, making coverage
 tier a within-study moderating variable rather than a separate experimental condition.
 
-The design is a **3 × 5 substitution experiment** (3 prompt conditions × 5 models) on
-25–30 evaluation indicators (3–4 per module, spanning coverage tiers), with a **k=1
-replacement check** as supplementary analysis. Fine-tuned Llama 70B is trained on all
-strong + partial indicators (~174) but evaluated on the same 25–30 indicator set.
+The design is a **3 × 6 experiment** (3 prompt conditions × 6 models) on a proportional
+stratified sample of ~80 evaluation indicators (one third per module, floor of 2, spanning
+all coverage tiers), with a **k=1 replacement check** as supplementary analysis. The same
+indicator set is used for all models: using different sets for small vs. large models
+would confound model scale with indicator selection in cross-model comparisons.
+The two fine-tuned variants (FT-raw, trained on non-anonymized evidence; FT-anon, trained
+on anonymized evidence) are both trained on all strong + partial indicators (~174; ~1.95M
+coder-CYI training examples from V-Dem v15 2013–2018) and evaluated on the same
+stratified set as all other models.
 
 ---
 
@@ -46,14 +53,19 @@ few-shot examples.
 |---|---|---|---|
 | Claude Sonnet 4.6 | Frontier | Claude API | Codebook, Evidence, Anonymized |
 | Llama 405B Instruct | 405B open | GW 8×A100 80GB | Codebook, Evidence, Anonymized |
-| Llama 3.3 70B Instruct | 70B open | GW A100 80GB | Codebook, Evidence, Anonymized |
-| Llama 3.2 9B Instruct | 9B open | GW V100 16GB | Codebook, Evidence, Anonymized |
-| Llama 3.3 70B (fine-tuned) | 70B ft | GW A100 80GB | Anonymized format, no few-shot |
+| Llama 3.3 70B Instruct | 70B open | GW GH200 (preferred) or A100 80GB | Codebook, Evidence, Anonymized |
+| Llama 3.2 9B Instruct | 9B open | GW GH200 or V100 16GB | Codebook, Evidence, Anonymized |
+| Llama 3.3 70B (FT-raw) | 70B ft | GW GH200 (preferred) or A100 80GB | All 3 conditions; no few-shot block; trained on raw evidence |
+| Llama 3.3 70B (FT-anon) | 70B ft | GW GH200 (preferred) or A100 80GB | All 3 conditions; no few-shot block; trained on anonymized evidence |
 
-Fine-tuned Llama 70B uses the anonymized prompt format without the few-shot calibration
-block; calibration is embedded in the adapter weights. Trained on all strong + partial
-Type C indicators (~174) from 2013–2018. Comparing it to the base 70B under Anonymized
-shows what fine-tuning adds over few-shot prompting on the same model and evidence format.
+Both fine-tuned variants participate in all three conditions with the same codebook, evidence,
+and anonymization structure as the base models, but without a few-shot calibration block in
+any condition — calibration is embedded in the adapter weights. **FT-raw** is trained on
+non-anonymized evidence text; **FT-anon** on anonymized evidence text. Both are trained on
+all strong + partial Type C indicators (~174) from 2013–2018 (~1.95M coder-CYI training
+examples each). The key comparisons: FT-raw vs. base 70B isolates what fine-tuning adds
+over few-shot; FT-anon vs. FT-raw shows whether anonymization during training changes
+calibration — independent of the anonymization manipulation at inference.
 
 ### Country-year pool (calibration)
 
@@ -96,7 +108,7 @@ quintile.
 ### Design
 
 The fine-tuned Llama 70B adapter is trained on all strong + partial coverage Type C
-indicators (~174 indicators). The 25–30 evaluation indicators are drawn from all
+indicators (~174 indicators). The ~60–70 evaluation indicators are drawn from all
 coverage tiers: strong (directly addressed by dedicated report sections), partial
 (addressed but not systematically), and weak (only tangentially covered).
 
@@ -208,8 +220,8 @@ Report as a diagnostic in the supplementary materials.
 LOO MAE is the primary metric. Human LOO MAE is the baseline: the error of a randomly
 held-out human coder against the rest of their panel. Bootstrap resampling at the CYI
 level (B=500) yields CIs and a paired significance test. Primary display is a forest
-plot; supplementary display is a model × indicator table (5 models × 25–30 indicators +
-aggregate column, with coverage tier noted). See `notes/evaluation-metrics.md` for
+plot; supplementary display is a model × indicator table (5 models × ~60–70 indicators
+grouped by module, with coverage tier noted). See `notes/evaluation-metrics.md` for
 full rationale and CS background.
 
 ---
@@ -226,10 +238,15 @@ Full list: `initial-exploration/explore-indicators/02-indicator-selection.html`.
 
 ### Evaluation set (25–30 indicators, TBD)
 
-3–4 indicators per module, spanning strong, partial, and weak coverage tiers. Exact list
-locked after qualitative section-mapping review. Must include at least one weak-coverage
-module (e.g., Legislature, State bureaucracy) to provide a meaningful coverage-tier
-gradient for the generalization finding.
+Proportional stratified random sample: one third of each module's indicators, rounded to
+the nearest integer, with a floor of 2 per module. The floor prevents tiny modules (e.g.,
+Sovereignty with 3 total, Executive legitimation with 4) from contributing only 1 indicator
+while mid-size modules (Deliberation and State bureaucracy with 7 each) contribute 2. At
+this fraction the 16 retained modules yield approximately **78–82 indicators** total. Same
+set for all models — a prerequisite for clean cross-model comparison (different indicator
+sets for different models would confound model scale with indicator difficulty). Exact list
+locked after section-mapping completion (GitHub issue #1). Must span all three coverage
+tiers to preserve the tier-gradient as a within-study moderating variable.
 
 Expect LOO MAE to vary with observability tier and coverage tier. Report calibration
 results by both dimensions.

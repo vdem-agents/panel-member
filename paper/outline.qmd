@@ -156,12 +156,13 @@ bias (rating autocracies too high, democracies too low).
 
 ### Evaluation indicator set
 
-25–30 indicators selected for inference (3–4 per module), spanning coverage tiers from
-strong to weak. Coverage tier (strong / partial / weak) enters as a moderating variable
-in the results: the gradient from strong to weak coverage indicators is the within-study
-test of how well the model generalizes beyond the evidence its prompts can anchor.
-Exact indicator list determined after qualitative review of section-to-indicator
-assignments; locked before any inference runs.
+Approximately 80 indicators selected via proportional stratified random sample: one third
+of each module's indicators, rounded to the nearest integer, with a floor of 2 per module.
+The same set is used for all models (prerequisite for clean cross-model comparison). Coverage
+tier (strong / partial / weak) enters as a moderating variable in the results: the gradient
+from strong to weak coverage indicators is the within-study test of how well the model
+generalizes beyond the evidence its prompts can anchor. Exact indicator list locked after
+section-mapping completion (GitHub issue #1) and before any inference runs.
 
 ### Country-year pool
 
