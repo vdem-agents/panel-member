@@ -1,10 +1,11 @@
 # Panel Member: Experimental Design
 
-*Updated July 2026. Three prompt conditions, five models. Inference on a proportional
-stratified sample of ~50–70 indicators (a quarter to a third per module, floor of 2; same set for all
-models), required for clean cross-model comparison. Training on all strong + partial Type C
-indicators (~174; ~1.95M coder-CYI examples from V-Dem v15). Coverage-tier gradient
-as within-study moderating variable. Raw panel means throughout.
+*Updated July 2026. Three prompt conditions, five models. Inference on the full universe of
+~205 mapped Type C indicators (primary); proportional stratified sample (one third per module,
+floor of 2, ~60–70 total) pre-registered as computational fallback — see
+`notes/evaluation-indicator-scope.md`. Training on all strong + partial Type C indicators
+(~174; ~1.95M coder-CYI examples from V-Dem v15). Coverage-tier gradient as within-study
+moderating variable. Raw panel means throughout.
 See `notes/persona-prompting-design-archive.md` for archived persona design.*
 
 ---
@@ -21,11 +22,13 @@ does this vary with coverage tier?
 The evaluation indicator set spans strong, partial, and weak coverage, making coverage
 tier a within-study moderating variable rather than a separate experimental condition.
 
-The design is a **3 × 6 experiment** (3 prompt conditions × 6 models) on a proportional
-stratified sample of ~80 evaluation indicators (a quarter to a third per module, floor of 2, spanning
-all coverage tiers), with a **k=1 replacement check** as supplementary analysis. The same
-indicator set is used for all models: using different sets for small vs. large models
-would confound model scale with indicator selection in cross-model comparisons.
+The design is a **3 × 6 experiment** (3 prompt conditions × 6 models) on the full universe
+of ~205 mapped Type C indicators, with a **k=1 replacement check** as supplementary analysis.
+The same indicator set is used for all models: using different sets for small vs. large models
+would confound model scale with indicator selection in cross-model comparisons. A proportional
+stratified sample (one third per module, floor of 2, ~60–70 total, fixed seed) is pre-registered
+as a computational fallback if 405B inference cannot complete within 3 job submissions; see
+`notes/evaluation-indicator-scope.md` for rationale and compute implications.
 The two fine-tuned variants (FT-raw, trained on non-anonymized evidence; FT-anon, trained
 on anonymized evidence) are both trained on all strong + partial indicators (~174; ~1.95M
 coder-CYI training examples from V-Dem v15 2013–2018) and evaluated on the same
@@ -51,7 +54,6 @@ few-shot examples.
 
 | Model | Scale | Platform | Conditions |
 |---|---|---|---|
-| Claude Sonnet 4.6 | Frontier | Claude API | Codebook, Evidence, Anonymized |
 | Llama 405B Instruct | 405B open | GW 8×A100 80GB | Codebook, Evidence, Anonymized |
 | Llama 3.3 70B Instruct | 70B open | GW GH200 (preferred) or A100 80GB | Codebook, Evidence, Anonymized |
 | Llama 3.2 9B Instruct | 9B open | GW GH200 or V100 16GB | Codebook, Evidence, Anonymized |
@@ -75,12 +77,11 @@ means). 2019 is the clean one-year temporal holdout after the fine-tuning traini
 test year: COVID-19 emergency restrictions systematically distort civil society, judicial,
 and media indicators, making the human panel mean itself a noisier target.
 
-Robustness check: **2022** — best-performing model only. Falls outside the 2013–2018
-training window, has stable State Department and Freedom House report production, and
-is within the coding window for all retained modules. The originally planned year (2024)
-was set aside due to DOGE-related disruption to State Department operations in early
-2025 (see `initial-exploration/explore-indicators/05-section-mapping-and-coverage.qmd`
-section 5).
+Robustness check: **2023** — best-performing model only. Falls outside the 2013–2018
+training window; the last year of intact SD and Freedom House reporting before the 2024
+format restructuring. Source documents already ingested and confirmed clean. Panel sizes
+by 2023 are smaller on average due to continued post-2013 attrition, making this a harder
+test of the replacement scenario.
 
 ### Outcome
 
@@ -88,7 +89,7 @@ section 5).
 `mean(|rating_i − mean(panel \ {i})|)`. Bootstrap at the CYI level (B=500). Report as
 a forest plot (indicators as rows grouped by module, paired AI vs. human estimates or
 difference centered on zero) and a supplementary table (rows = condition × model, columns
-= ~50–70 indicators with coverage tier noted). Secondary: signed deviation by democracy
+= all evaluation indicators with coverage tier noted). Secondary: signed deviation by democracy
 quintile.
 
 ### What each comparison tells you
@@ -117,10 +118,9 @@ condition. There is no training/held-out split: the model is trained on strong +
 indicators and we observe how well it codes across the coverage gradient.
 
 Section mapping is complete (GitHub issue #1, closed 2026-07-11). The evaluation set
-will be locked by drawing a proportional stratified random sample — one third of each
-module's indicators, floor of 2 — from `config/indicator_sections.yaml` and populating
-`data/fewshot_examples.json` with 5 examples per selected indicator (one per ordinal
-level). See GitHub issue #8 for the population task.
+is the full universe of ~205 indicators in `config/indicator_sections.yaml`.
+`data/fewshot_examples.json` will be populated with 5 examples per indicator (one per
+ordinal level). See GitHub issue #8 for the population task.
 
 ### Evaluation
 
@@ -222,8 +222,8 @@ Report as a diagnostic in the supplementary materials.
 LOO MAE is the primary metric. Human LOO MAE is the baseline: the error of a randomly
 held-out human coder against the rest of their panel. Bootstrap resampling at the CYI
 level (B=500) yields CIs and a paired significance test. Primary display is a forest
-plot; supplementary display is a model × indicator table (5 models × ~60–70 indicators
-grouped by module, with coverage tier noted). See `notes/evaluation-metrics.md` for
+plot; supplementary display is a model × indicator table (5 models × all evaluation
+indicators grouped by module, with coverage tier noted). See `notes/evaluation-metrics.md` for
 full rationale and CS background.
 
 ---
@@ -238,17 +238,24 @@ Academic freedom (strong); Civic activism, Executive, Political parties, Politic
 (partial). Weak and none coverage indicators excluded from training.
 Full list: `initial-exploration/explore-indicators/02-indicator-selection.html`.
 
-### Evaluation set (~50–70 indicators)
+### Evaluation set (~205 indicators)
 
-Proportional stratified random sample: one third of each module's indicators, rounded to
-the nearest integer, with a floor of 2 per module. The floor prevents tiny modules (e.g.,
-Sovereignty with 3 total, Executive legitimation with 4) from contributing only 1 indicator
-while mid-size modules (Deliberation and State bureaucracy with 7 each) contribute 2. At
-this fraction the 16 retained modules yield approximately **50–70 indicators** total. Same
-set for all models — a prerequisite for clean cross-model comparison (different indicator
-sets for different models would confound model scale with indicator difficulty). Exact list
-locked when `data/fewshot_examples.json` is populated (issue #8; section mapping complete per issue #1, closed 2026-07-11). Must span all three coverage
-tiers to preserve the tier-gradient as a within-study moderating variable.
+The full universe of all mapped Type C indicators in `config/indicator_sections.yaml`
+(~205 total). Same set for all models — a prerequisite for clean cross-model comparison
+(different indicator sets for different models would confound model scale with indicator
+difficulty). Spans all three coverage tiers, preserving the tier-gradient as a within-study
+moderating variable. Section mapping complete per issue #1 (closed 2026-07-11). Few-shot
+examples locked when `data/fewshot_examples.json` is populated (issue #8).
+
+**Pre-registered fallback**: if 405B inference cannot complete within 3 job submissions
+(the binding HPC constraint — only 2 eight-A100 nodes cluster-wide), the evaluation set
+falls back to a proportional stratified random sample: one third of each module's
+indicators, rounded to the nearest integer, with a floor of 2 per module (~60–70 total).
+The floor prevents small modules (e.g., Sovereignty with 3 indicators, Executive
+legitimation with 4) from being underrepresented. The sampling rule, random seed, and
+trigger condition are all fixed at pre-registration, before any inference runs. See
+`notes/evaluation-indicator-scope.md` for the full rationale and per-model compute
+comparison.
 
 Expect LOO MAE to vary with observability tier and coverage tier. Report calibration
 results by both dimensions.
@@ -261,13 +268,13 @@ Lock all of the following before running any LLM calls or accessing v15 coder-le
 for the replacement pool:
 
 **Calibration pool**
-- [ ] Year(s): 2019 primary; 2022 robustness check (best model only)
+- [ ] Year(s): 2019 primary; 2023 robustness check (best model only)
 - [ ] Minimum ratings per country-indicator for inclusion
 - [ ] Final N per condition (confirm before running)
 
 **Robustness check**
-- [ ] Year: 2022 (best model only)
-- [ ] Source documents: download Freedom House and State Dept for 2022
+- [x] Year: 2023 (best model only)
+- [x] Source documents: 2023 SD and FH already ingested and confirmed clean (issue #14)
 
 **Replacement pool**
 - [ ] Eligibility: ≥8 distinct coders, 2019 only (same year as evaluation pool — AI ratings already exist)
@@ -275,7 +282,7 @@ for the replacement pool:
 - [ ] Pool saved to `data/processed/cy_pool.csv`
 
 **Fine-tuning**
-- [ ] Training window: 2013–2018 (rationale: post-lateral-coder drop; pre-attrition panels; no overlap with 2019 test year or 2022 robustness check)
+- [ ] Training window: 2013–2018 (rationale: post-lateral-coder drop; pre-attrition panels; no overlap with 2019 test year or 2023 robustness check)
 - [ ] Training data: individual coder ratings from V-Dem v15 coder-level dataset — one row
       per coder per CYI, covering all strong + partial Type C indicators (~174 indicators);
       training set saved to `data/processed/training_set.csv`
@@ -284,7 +291,6 @@ for the replacement pool:
       agreement (secondary); coverage-tier gradient analysis
 
 **Models**
-- [ ] Claude Sonnet 4.6 API version pinned
 - [ ] Llama 405B commit hash (HuggingFace)
 - [ ] Llama 3.3 70B Instruct commit hash
 - [ ] Llama 3.2 9B commit hash

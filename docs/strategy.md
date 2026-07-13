@@ -3,13 +3,15 @@
 *Updated July 2026. IRT dropped — panel-mean deviation test replaces the sequential
 replacement experiment. Three prompt conditions across five models. Raw panel means replace
 calibration-weighted means. Training on all strong + partial Type C indicators (~174);
-evaluation on 25–30 selected indicators spanning all coverage tiers. Persona prompting
+evaluation on the full universe of ~205 mapped Type C indicators (primary), with a
+proportional stratified sample (one third per module, floor of 2, ~60–70 total) pre-registered
+as a computational fallback — see `notes/evaluation-indicator-scope.md`. Persona prompting
 retained as exploratory condition; see `notes/persona-prompting-design-archive.md`.*
 
 ## Research questions
 
 1. Which prompt condition and model scale produces AI ratings closest to the human expert
-   panel's raw mean across the 25–30 evaluation indicators?
+   panel's raw mean across all ~205 evaluation indicators?
 2. Does LOO MAE degrade as source-coverage tier weakens — and if not, how many human
    coders can AI replace before the raw panel mean shifts detectably?
 
@@ -45,7 +47,6 @@ the adapter weights.
 
 | Model | Scale | Platform | Conditions |
 |---|---|---|---|
-| Claude Sonnet 4.6 | Frontier | Claude API | Codebook, Evidence, Anonymized |
 | Llama 405B Instruct | 405B open | GW 8×A100 80GB | Codebook, Evidence, Anonymized |
 | Llama 3.3 70B Instruct | 70B open | GW A100 80GB | Codebook, Evidence, Anonymized |
 | Llama 3.2 9B Instruct | 9B open | GW V100 16GB | Codebook, Evidence, Anonymized |
@@ -54,7 +55,7 @@ the adapter weights.
 Fine-tuning uses QLoRA on (anonymized section text, individual coder rating) pairs from
 V-Dem v15 — one row per coder per CYI, not panel means. Training window: 2013–2018.
 Training covers all strong + partial coverage Type C indicators (~174 indicators). Primary
-evaluation: LOO MAE against panel mean on the 25–30 evaluation indicators. Secondary:
+evaluation: LOO MAE against panel mean on all ~205 evaluation indicators. Secondary:
 exact match rate and adjacent-category agreement.
 
 ### Country-year pool (calibration)
@@ -64,11 +65,13 @@ exact match rate and adjacent-category agreement.
 primary: COVID-19 emergency restrictions distort civil society, media, and judicial
 indicators and make the human panel means noisier targets than usual.
 
-Secondary robustness: **2022** — best-performing model only. Falls outside the
-2013–2018 training window, has stable State Department and Freedom House report
-production, and is within the coding window for all retained modules. The originally
-planned year (2024) was set aside due to DOGE-related disruption to State Department
-operations in early 2025 (see `initial-exploration/explore-indicators/05-section-mapping-and-coverage.qmd` section 5).
+Secondary robustness: **2023** — best-performing model only. Falls outside the
+2013–2018 training window; 2023 is the last year of intact State Department and Freedom
+House reporting before the 2024 format restructuring, making it the natural ceiling for
+the current pipeline. Source documents already ingested and confirmed clean (all 16 SD
+sections present in 193 files; all 7 FH sections present in 210 files). Panel sizes by
+2023 are also smaller on average due to continued post-2013 attrition, making this a
+harder test of the replacement scenario than 2022 would have been.
 
 Pool: all countries with raw panel mean available in V-Dem v15 coder-level data for
 each indicator in the target year.
@@ -84,7 +87,7 @@ baseline `mean(|rating_i − mean(panel \ {i})|)` — the typical error of a hel
 coder against the rest of their panel. Bootstrap at the CYI level (B=500) for CIs and a
 paired significance test. Primary display: forest plot, indicators as rows grouped by
 module, paired AI vs. human LOO MAE estimates (or difference centered on zero).
-Supplementary: model × indicator table (5 models × 25–30 indicators, with coverage tier noted).
+Supplementary: model × indicator table (5 models × all evaluation indicators, with coverage tier noted).
 
 **Exact match rate and adjacent-category agreement** (secondary): proportion of AI ratings
 equal to, or within ±1 of, the rounded panel mean. Readable calibration summaries for a
@@ -102,9 +105,9 @@ democracies too harshly. Report as a figure. See `notes/evaluation-metrics.md`.
 ### Design
 
 The fine-tuned Llama 70B adapter is trained on all strong + partial coverage Type C
-indicators (~174 indicators). The 25–30 evaluation indicators are selected to span all
-three source-coverage tiers (strong, partial, weak), providing a within-study
-generalization test without requiring a separate held-out training split.
+indicators (~174 indicators). The full ~205 evaluation indicators span all three
+source-coverage tiers (strong, partial, weak), providing a within-study generalization
+test without requiring a separate held-out training split.
 
 Coverage tier enters as a moderating variable in the main results. The gradient from
 strong to weak coverage indicators tests whether calibration quality degrades as source
@@ -172,7 +175,7 @@ new LLM call inserted between section extraction and the coding model.
 | Stage | Years | Notes |
 |---|---|---|
 | Calibration (primary) | 2019 | Clean holdout; full panels; no COVID anomaly |
-| Robustness check | 2022 | Best model only; outside training window; stable report production |
+| Robustness check | 2023 | Best model only; outside training window; last year of intact SD/FH reporting |
 | Replacement (k=1 check) | 2019 | All ≥8-coder CYs from evaluation pool; no extra ingestion needed |
 | Fine-tuning training | 2013–2018 | Post-lateral-coder; pre-attrition; 6 years |
 | Augmentation (attrition) | 2015 (ref) + 2022 (thin) | Post-2013 attrition window |
@@ -182,35 +185,43 @@ new LLM call inserted between section extraction and the coding model.
 
 ## Compute
 
-| Task | Platform | Est. cost / time |
-|---|---|---|
-| Calibration, Claude (3 cond × ~28 ind × ~180 CY) | Claude API (laptop) | ~$600–800 |
-| Calibration, Llama 405B (3 cond × ~28 ind × ~180 CY) | Pegasus `gpu`, `gpu:a100:4` | Free, ~10–14 hr |
-| Calibration, Llama 70B (3 cond × ~28 ind × ~180 CY) | Pegasus `gpu`, `gpu:a100:1` | Free, ~4–6 hr |
-| Calibration, Llama 9B (3 cond × ~28 ind × ~180 CY) | Pegasus `gpu`, `gpu:v100:1` | Free, ~2 hr |
-| Fine-tuning 70B (~174 ind, QLoRA 4-bit, 2013–2018) | Pegasus `gpu`, `gpu:a100:1` | Free, ~10–18 hr |
-| Inference, fine-tuned 70B (~28 ind × ~180 CY) | Pegasus `gpu`, `gpu:a100:1` | Free, ~4 hr |
-| Replacement experiment (best model, k=1, B=500) | Claude API or Pegasus | ~$30 or free |
+Full estimates are in `notes/hpc-execution-strategy.md`. Summary for the two scenarios:
 
-Claude runs from laptop (no HPC queue, no internet firewall uncertainty). All Llama
-models run on Pegasus using TRES resource requests. Llama 405B requires 4× A100 80GB
-(320 GB; 405B at 4-bit needs ~200 GB). Llama 70B and fine-tuning fit on a single A100
-80GB. Llama 9B fits on any V100 16GB node. See `notes/hpc-sequencing-strategy.md` for
-confirmed partition names, GRES strings, and run sequence.
+**Primary (all ~205 indicators, ~32,800 calls per condition per model)**
+
+| Model | Total (3 conditions) | Notes |
+|---|---|---|
+| Llama 405B | ~20–38 hrs | 4–8× A100; binding HPC constraint |
+| Llama 70B base | ~10–20 hrs | 1× GH200 preferred |
+| Llama 9B | ~5–10 hrs | 1× GH200 or V100 |
+| FT-anon 70B | ~4–8 hrs | Anonymized condition only |
+| Fine-tuning 70B (×2 runs) | ~75–80 hrs each | QLoRA, 2013–2018, GH200 |
+
+**Fallback (~60–70 indicators, ~11,200 calls per condition per model)**
+
+| Model | Total (3 conditions) | Notes |
+|---|---|---|
+| Llama 405B | ~8–15 hrs | Fits comfortably in one overnight job |
+| Llama 70B base | ~4–8 hrs | |
+| Llama 9B | ~2–4 hrs | |
+| FT-anon 70B | ~1.5–3 hrs | |
+
+All Llama models run on Pegasus via TRES resource requests.
+See `notes/hpc-execution-strategy.md` for confirmed partition names, GRES strings,
+per-condition breakdown, and full run sequence.
 
 ---
 
 ## Key open questions
 
 - [ ] Lock evaluation pool: year(s), minimum ratings per country-indicator, confirmed N
-- [ ] Select and lock 25–30 evaluation indicators (3–4 per module, spanning coverage
-      tiers); verify section mappings and codebook text before any inference runs
+- [ ] Verify section mappings and codebook text for all ~205 indicators before any inference runs
 - [ ] Qualitative section-mapping review: read sample report sections to confirm
       section-to-indicator assignments are evidentiarily relevant, not just thematically
       adjacent; update `config/indicator_sections.yaml` to cover all evaluation indicators;
       reference `initial-exploration/explore-indicators/02-indicator-selection.html`
 - [ ] Lock fine-tuning training window: 2013–2018 (post-lateral-coder drop; pre-attrition;
-      no overlap with 2019 test year or 2022 robustness check)
+      no overlap with 2019 test year or 2023 robustness check)
 - [ ] Confirm Llama 405B availability on GW Pegasus (may require allocation request)
 - [x] Decide scope of persona exploratory condition: **retained**. Narrow 2-condition test
       (strict / lenient framing) on the best fine-tuned model. If persona shifts produce

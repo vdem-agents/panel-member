@@ -82,11 +82,11 @@ democracies (rated too low).
 **Conditions (3)**: codebook-only; evidence (raw section text + few-shot calibration
 examples); anonymized (country identity stripped + anonymized few-shot examples).
 
-**Models (5)**: Claude Sonnet 4.6 (frontier API); Llama 405B, 70B, 9B (open weights,
-GW Pegasus); Llama 70B fine-tuned on V-Dem v15 coder ratings 2013–2018 (~174 strong +
-partial coverage Type C indicators; ~1–2M training examples).
+**Models (4)**: Llama 405B, 70B, 9B (open weights, GW Pegasus); Llama 70B fine-tuned
+on V-Dem v15 coder ratings 2013–2018 (~174 strong + partial coverage Type C indicators;
+~1–2M training examples).
 
-**Evaluation**: 2019 (primary); 2022 (robustness check, best model only). LOO MAE with
+**Evaluation**: 2019 (primary); 2023 (robustness check, best model only). LOO MAE with
 bootstrap CIs; signed deviation by quintile; exact match and adjacent-category agreement.
 Coverage tier (strong / partial / weak) as a moderating variable in the results.
 

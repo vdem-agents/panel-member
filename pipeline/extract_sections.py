@@ -145,6 +145,11 @@ def get_evidence(country: str, year: int, indicator: str, source: str) -> str | 
     file doesn't exist. Indicators with no section mapping receive the executive
     summary alone as a baseline context block.
 
+    State Dept section "2c" is handled specially: that section universally redirects
+    to the IRFR (International Religious Freedom Report) with no inline content.
+    When "2c" is in the section keys, the IRFR executive summary from
+    processed-text/irfr/{year}/{country}.txt is loaded instead.
+
     Missing sections are logged at WARNING level with full context. Attach a file
     handler via configure_extraction_log() before running a batch to capture these.
     """
@@ -166,7 +171,20 @@ def get_evidence(country: str, year: int, indicator: str, source: str) -> str | 
     else:
         raise ValueError(f"Unknown source: {source!r}")
 
-    missing = [k for k in section_keys if k not in parsed]
+    # "2c" redirects to IRFR in all years — load IRFR exec summary instead.
+    irfr_text: str | None = None
+    if source == "state-dept" and "2c" in section_keys:
+        irfr_path = PROCESSED_DIR / "irfr" / str(year) / f"{country}.txt"
+        if irfr_path.exists():
+            irfr_text = irfr_path.read_text(encoding="utf-8")
+        else:
+            logger.warning(
+                "irfr_missing country=%s year=%s indicator=%s",
+                country, year, indicator,
+            )
+
+    effective_keys = [k for k in section_keys if k != "2c"]
+    missing = [k for k in effective_keys if k not in parsed]
     if missing:
         available = sorted(k for k in parsed if k != "exec_summary")
         logger.warning(
@@ -178,9 +196,11 @@ def get_evidence(country: str, year: int, indicator: str, source: str) -> str | 
     chunks = []
     if "exec_summary" in parsed:
         chunks.append(parsed["exec_summary"])
-    for key in section_keys:
+    for key in effective_keys:
         if key in parsed:
             chunks.append(parsed[key])
+    if irfr_text:
+        chunks.append(irfr_text)
 
     return "\n\n---\n\n".join(chunks) if chunks else None
 
