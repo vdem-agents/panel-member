@@ -14,11 +14,6 @@
   - GRES: `gpu:v100:1` (9B), `gpu:a100:1` (70B / fine-tuning), `gpu:a100:4` (405B)
   - TRES style: use `--cpus-per-gpu` and `--mem-per-gpu` for GPU jobs
 
-- [x] **Claude API internet access confirmed** (July 2026).
-  Outbound access to `api.anthropic.com` from Pegasus compute nodes is confirmed.
-  Still: Claude requires no GPU and running it from the laptop avoids HPC queue
-  latency. Run `run_coding_claude.sh` locally.
-
 - [ ] **Download model weights to Pegasus scratch storage** (run once on login node).
   Run `slurm/setup_models.sh` after setting `HF_TOKEN` in `.env`. Requires a
   HuggingFace account with Meta Llama access approved. Approximate sizes:
@@ -64,10 +59,11 @@
 
 - [x] **Decide inference scope** (#3 — closed). **Training**: all indicators meeting
   filtering criteria and present in `config/indicator_sections.yaml` (~174 indicators,
-  2013–2018). **Inference/evaluation**: proportional stratified sample of ~1/4 to 1/3 of
-  retained indicators (~50–80), drawn proportionally across modules with floor of 2 per
-  module, spanning all coverage tiers. Same evaluation set for all conditions and models.
-  Exact list locked after section-mapping completion (#1).
+  2013–2018). **Inference/evaluation**: full universe of ~205 mapped Type C indicators
+  (primary). Pre-registered fallback: proportional stratified sample, one third per module,
+  floor of 2 (~60–70 total, fixed seed), triggered if 405B cannot complete within 3 job
+  submissions. Same evaluation set for all conditions and models.
+  See `notes/evaluation-indicator-scope.md`.
 
 - [x] **Populate section mappings in `config/indicator_sections.yaml`** (#1 — closed).
   All 206 retained indicators now have `state-dept` and `freedom-house` fields filled
@@ -97,12 +93,13 @@
   first; revisit if pilot results show interference.
 
 - [ ] **Populate `data/fewshot_examples.json`** for all evaluation indicators (#8).
-  Draw proportional stratified sample: one third of each module's indicators, floor of 2
-  per module (~50–70 total). Write `pipeline/select_eval_indicators.py` (fixed seed) to
-  produce `data/eval_indicators.txt`. For each selected indicator: 5 examples (one per
-  ordinal level), globally distributed, drawn from 2013–2018 training window.
-  Fields: `country`, `slug`, `country_name`, `year`, `level`, `raw_mean`, `region`.
-  Evidence text loaded on-the-fly; only metadata here.
+  Covers all ~205 indicators in `config/indicator_sections.yaml`. For each indicator:
+  5 examples (one per ordinal level), globally distributed, drawn from 2013–2018 training
+  window. Fields: `country`, `slug`, `country_name`, `year`, `level`, `raw_mean`, `region`.
+  Evidence text loaded on-the-fly; only metadata here. If the pre-registered fallback is
+  triggered (see `notes/evaluation-indicator-scope.md`), write
+  `pipeline/select_eval_indicators.py` (fixed seed) to produce `data/eval_indicators.txt`
+  from the stratified sample before populating examples.
   **Blocked on**: source documents downloaded and ingested (#9).
 
 ---
@@ -198,8 +195,9 @@ multiple genuinely distinct AI coders.
   download script checkpoints so interrupted runs resume cleanly. Ingest each year
   after downloading.
 
-- [ ] **Download 2022 source documents** (robustness check year; best model only).
-  Run `download_reports.py --year 2022` on laptop. Ingest after downloading.
+- [x] **Download 2023 source documents** (robustness check year; best model only).
+  Already ingested and confirmed clean — all 16 SD sections in 193 files; all 7 FH
+  sections in 210 files (confirmed via issue #14, closed 2026-07-12).
 
 ---
 

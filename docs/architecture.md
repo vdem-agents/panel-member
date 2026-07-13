@@ -129,8 +129,8 @@ format consistent between training and evaluation.
   "country":       "HTI",
   "year":          2018,
   "indicator":     "v2csreprss",
-  "model":         "claude-sonnet-4-6",
-  "model_key":     "claude-sonnet",
+  "model":         "llama-3.3-70b-instruct",
+  "model_key":     "llama-70b",
   "condition":     "evidence",
   "rating":        1,
   "justification": "...",
@@ -245,8 +245,8 @@ for cy in eval_pool:
         record(cy, k, divergences)
 ```
 
-For k > 1, AI ratings come from k distinct models (e.g., k=2: Claude + Llama 70B;
-k=3: Claude + Llama 405B + Llama 70B). The assignment rule is pre-registered before
+For k > 1, AI ratings come from k distinct models (e.g., k=2: Llama 405B + Llama 70B;
+k=3: Llama 405B + Llama 70B + Llama 9B). The assignment rule is pre-registered before
 running.
 
 Output: divergence curve by k (mean ± 95% CI), stratified by democracy quintile.
