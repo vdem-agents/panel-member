@@ -40,55 +40,61 @@ PDFs (State Dept) + plain text (Freedom House)
 
 ## Stage 1: Ingestion
 
-**Shared with bridge-coder**. `pipeline/ingest.py` (symlink or copy from bridge-coder).
+`pipeline/ingest.py`. Source documents and processed text are stored in `shared/` and
+used by both panel-member and bridge-coder — do not re-download or re-process a year
+that already exists there.
 
+Download scripts live in `shared/pipeline/` (`download_reports.py`, `download_reports_pdf.py`).
 State Dept PDFs → plain text via PyPDF2. Freedom House plain text copied directly.
-Output:
-```
-data/raw/
-  state-dept/{year}/{country_code}.pdf
-  freedom-house/{year}/{country_code}.txt
+Output lands in `shared/`. `pipeline/extract_sections.py` accesses it via symlinks under
+`data/processed-text/`:
 
+```
 data/processed-text/
-  state-dept/{year}/{country_code}.txt
-  freedom-house/{year}/{country_code}.txt
+  state-dept    → symlink → shared/processed-text/state-dept/
+  freedom-house → symlink → shared/processed-text/freedom-house/
+  irfr          → symlink → shared/processed-text/irfr/
+  anonymized/   (local — panel-member output only, not in shared/)
 ```
-
-If bridge-coder has already downloaded and processed a year, do not re-download.
 
 ---
 
 ## Stage 2a: Section Extraction
 
-**Shared with bridge-coder**. `pipeline/extract_sections.py` + `config/indicator_sections.yaml`.
+`pipeline/extract_sections.py` + `config/indicator_sections.yaml`.
 
 Regex parsing of document structure, pulling indicator-relevant sections. The YAML config
-must be expanded from the 4-indicator bridge-coder version to cover all ~174 training
-indicators and the ~25–30 evaluation indicators. Current confirmed section mappings for
-the original 12 indicators (to be extended; lock before running):
+covers all ~206 retained Type C indicators with `state-dept` and `freedom-house` section
+keys (populated 2026-07-11; see issue #1).
+
+Two State Dept sections receive special handling:
+
+- **Section 2c** universally redirects to the IRFR (International Religious Freedom
+  Report) with no inline text. The IRFR executive summary is loaded from
+  `processed-text/irfr/{year}/{country}.txt` instead.
+
+- **Section 6** (Discrimination, Societal Abuses, and Trafficking in Persons) is
+  sub-parsed for the 20 indicators that target a specific population. An optional
+  `sec6_subsections` field in the YAML selects the relevant prose sub-section
+  (`"women"`, `"minorities"`, `"trafficking"`, `"other_societal"`). The minorities
+  header is year-aware (changed in 2020 and again in 2021). The 13 cross-cutting
+  Section 6 indicators receive the full block. Example entries:
 
 ```yaml
-# High observability
-v2clkill:    {state-dept: ["1a", "1b"], freedom-house: ["F"]}
-v2cltort:    {state-dept: ["1c"],       freedom-house: ["F"]}
-v2mecenefm:  {state-dept: ["2a"],       freedom-house: ["D"]}
-v2csreprss:  {state-dept: ["2b", "5"],  freedom-house: ["E"]}
-v2jupoatck:  {state-dept: ["1e"],       freedom-house: ["F"]}
+v2clacjstw:   # Access to justice for women
+  state-dept: ["1d", "1e", "6"]
+  freedom-house: ["F"]
+  sec6_subsections: "women"
 
-# Medium observability
-v2mecenefi:  {state-dept: ["2a"],       freedom-house: ["D"]}
-v2juhcind:   {state-dept: ["1e"],       freedom-house: ["F"]}
-v2clacfree:  {state-dept: ["2b"],       freedom-house: ["D"]}
-v2clslavef:  {state-dept: ["7b"],       freedom-house: ["F"]}
-v2psoppaut:  {state-dept: ["3"],        freedom-house: ["B"]}
-v2excrptps:  {state-dept: ["4"],        freedom-house: ["C"]}
+v2clslavef:   # Freedom from forced labor for women
+  state-dept: ["6", "7b"]
+  freedom-house: ["G"]
+  sec6_subsections: "trafficking"
 
-# Low observability
-v2pepwrsoc:  {freedom-house: ["B"]}
+v2clgeocl:    # Urban-rural equality in civil liberties (cross-cutting)
+  state-dept: ["6"]
+  freedom-house: ["D", "G"]
 ```
-
-Section mappings derived from `02-indicator-selection.html` (Section 8). Confirm against
-the source map before locking.
 
 ---
 

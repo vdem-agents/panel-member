@@ -88,11 +88,16 @@
   others). `extract_sections.py` now intercepts `2c` and loads `processed-text/irfr/{year}/{slug}.txt`
   instead; falls back to SD exec summary if IRFR file is missing. Affects 9 indicators mapped to `2c`.
 
-- [ ] **Decide on SD Section 6 / FiW G sub-parsing** (#6). Section 6 is an undivided
-  narrative covering multiple sub-populations; including it in full may introduce
-  cross-topic noise for indicators targeting a single group. Options: full inclusion,
-  sub-parse by prose headers, or indicator-level sub-topic tagging. Try full inclusion
-  first; revisit if pilot results show interference.
+- [x] **Decide on SD Section 6 / FiW G sub-parsing** (#6 — closed 2026-07-13).
+  Section 6 sub-parsed by indicator target population via a year-aware prose-header
+  parser. 20 of 33 Section 6 indicators now extract a targeted sub-section (Women,
+  Minorities, Trafficking in Persons, or Other Societal Violence or Discrimination);
+  13 cross-cutting indicators receive the full block. Minorities header is year-aware
+  (changed 2020, again 2021). FH Section G is 2–6K chars and requires no sub-parsing.
+  Sections 3, 4, 5 are short undivided narratives; Section 7 is already sub-keyed
+  (7a–7e) and forced-labor indicators already reference 7b specifically. Implementation:
+  sec6_subsections field in indicator_sections.yaml; _resolve_sec6_header() and
+  _parse_sec6_subsection() in pipeline/extract_sections.py.
 
 - [ ] **Populate `data/fewshot_examples.json`** for all evaluation indicators (#8).
   Covers all ~205 indicators in `config/indicator_sections.yaml`. For each indicator:
@@ -245,6 +250,18 @@ multiple genuinely distinct AI coders.
 
 - [ ] **Temperature sensitivity**: lock the temperature=0.7 exploratory plan — which
   model, which indicators, full pool or subset — before running.
+
+---
+
+## Documentation
+
+- [ ] **Add pipeline flow diagram to `docs/`** (#17). Mermaid diagram in
+  `docs/pipeline-flow.md` showing inputs, outputs, and data flow across all pipeline
+  stages and modules. Should cover ingest → section extraction (incl. 2c and Section 6
+  sub-parsing) → prompt assembly (four conditions) → anonymization → coding →
+  fine-tuning → evaluation. Include config and data file dependencies
+  (`indicator_sections.yaml`, `fewshot_examples.json`, `panel_means.csv`,
+  `human_ratings.csv`).
 
 ---
 

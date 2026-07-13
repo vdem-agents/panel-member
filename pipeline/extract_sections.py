@@ -6,6 +6,19 @@ State Dept reports follow a consistent numbered structure (Section 1., subsectio
 Freedom House reports use markdown lettered headers (## A through ## G).
 config/indicator_sections.yaml maps each indicator to its relevant section keys.
 
+Two State Dept sections receive special handling in get_evidence():
+
+  Section 2c — redirects to the IRFR (International Religious Freedom Report) in all
+  years; the section contains no inline text. The IRFR executive summary is loaded from
+  processed-text/irfr/{year}/{country}.txt instead.
+
+  Section 6 — sub-parsed for indicators with a sec6_subsections field in
+  indicator_sections.yaml. Section 6 covers discrimination and societal abuses across
+  multiple populations (Women, Minorities, Trafficking, etc.); sub-parsing extracts
+  only the sub-section relevant to the indicator rather than the full block. The
+  minorities sub-header is year-aware (changed in 2020 and again in 2021).
+  Indicators without sec6_subsections receive the full Section 6 block.
+
 Extracted text is passed directly to the coding prompt — no LLM call, no cached files.
 
 Usage:
@@ -25,6 +38,65 @@ CONFIG_PATH = Path(__file__).parent.parent / "config" / "indicator_sections.yaml
 logger = logging.getLogger(__name__)
 
 _section_config: dict | None = None
+
+# All known Section 6 prose sub-headers across report years 2016–2023.
+# Used to split the section block before extracting a targeted sub-section.
+_SEC6_ALL_HEADERS: list[str] = [
+    "Women",
+    "Children",
+    "Anti-Semitism",
+    "Antisemitism",
+    "Trafficking in Persons",
+    "Organ Harvesting",
+    "Forced Organ Harvesting",
+    "Persons with Disabilities",
+    "National/Racial/Ethnic Minorities",
+    "Members of National/Racial/Ethnic Minority Groups",
+    "Systemic Racial or Ethnic Violence and Discrimination",
+    "Indigenous People",
+    "Indigenous Peoples",
+    "HIV and AIDS Social Stigma",
+    "Other Societal Violence or Discrimination",
+    "Promotion of Acts of Discrimination",
+    "Discrimination and Societal Abuses",
+    "Discrimination, Societal Abuses, and Trafficking in Persons",
+]
+
+_SEC6_SPLIT_RE = re.compile(
+    r"(?m)^(" + "|".join(re.escape(h) for h in _SEC6_ALL_HEADERS) + r")$"
+)
+
+
+def _resolve_sec6_header(subsection_key: str, year: int) -> str:
+    """Return the prose header string for a sec6_subsections key and report year."""
+    if subsection_key == "minorities":
+        if year <= 2019:
+            return "National/Racial/Ethnic Minorities"
+        elif year == 2020:
+            return "Members of National/Racial/Ethnic Minority Groups"
+        else:
+            return "Systemic Racial or Ethnic Violence and Discrimination"
+    return {
+        "women":         "Women",
+        "trafficking":   "Trafficking in Persons",
+        "other_societal": "Other Societal Violence or Discrimination",
+    }[subsection_key]
+
+
+def _parse_sec6_subsection(sec6_text: str, subsection_key: str, year: int) -> str | None:
+    """
+    Extract one named sub-section from a Section 6 text block.
+    Returns None if the target header is not present.
+    """
+    target = _resolve_sec6_header(subsection_key, year)
+    chunks = _SEC6_SPLIT_RE.split(sec6_text)
+    # chunks layout: [preamble, header, content, header, content, ...]
+    i = 1
+    while i < len(chunks) - 1:
+        if chunks[i] == target:
+            return chunks[i + 1].strip()
+        i += 2
+    return None
 
 
 def configure_extraction_log(log_path: Path) -> None:
@@ -150,6 +222,13 @@ def get_evidence(country: str, year: int, indicator: str, source: str) -> str | 
     When "2c" is in the section keys, the IRFR executive summary from
     processed-text/irfr/{year}/{country}.txt is loaded instead.
 
+    State Dept section "6" is sub-parsed for indicators with a sec6_subsections field
+    in indicator_sections.yaml. The field value ("women", "minorities", "trafficking",
+    "other_societal") selects the relevant prose sub-section rather than returning all
+    of Section 6. The minorities header is year-aware (it changed in 2020 and again in
+    2021). Indicators without sec6_subsections receive the full Section 6 block.
+    Falls back to full Section 6 with a WARNING if the expected sub-header is absent.
+
     Missing sections are logged at WARNING level with full context. Attach a file
     handler via configure_extraction_log() before running a batch to capture these.
     """
@@ -193,11 +272,28 @@ def get_evidence(country: str, year: int, indicator: str, source: str) -> str | 
             country, year, indicator, source, missing, available,
         )
 
+    sec6_subsection_key = (
+        config[indicator].get("sec6_subsections")
+        if source == "state-dept"
+        else None
+    )
+
     chunks = []
     if "exec_summary" in parsed:
         chunks.append(parsed["exec_summary"])
     for key in effective_keys:
-        if key in parsed:
+        if key == "6" and sec6_subsection_key and "6" in parsed:
+            sub = _parse_sec6_subsection(parsed["6"], sec6_subsection_key, year)
+            if sub:
+                chunks.append(sub)
+            else:
+                logger.warning(
+                    "sec6_subsection_missing country=%s year=%s indicator=%s "
+                    "subsection=%s — falling back to full section",
+                    country, year, indicator, sec6_subsection_key,
+                )
+                chunks.append(parsed["6"])
+        elif key in parsed:
             chunks.append(parsed[key])
     if irfr_text:
         chunks.append(irfr_text)
