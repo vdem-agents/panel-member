@@ -192,6 +192,7 @@ v2clacjstw:
       observed.
   state-dept: ["1d", "1e", "6"]
   freedom-house: ["F"]
+  sec6_subsections: "women"
 
 v2clacjust:
   description: "Social class equality in respect for civil liberty"
@@ -293,6 +294,7 @@ v2cldiscw:
       public spaces is not restricted.
   state-dept: ["2a", "6"]
   freedom-house: ["D"]
+  sec6_subsections: "women"
 
 v2cldmovem:
   description: "Freedom of domestic movement for men"
@@ -355,6 +357,7 @@ v2cldmovew:
     - "Virtually all women enjoy full freedom of movement."
   state-dept: ["2d", "6"]
   freedom-house: ["G"]
+  sec6_subsections: "women"
 
 v2clfmove:
   description: "Freedom of foreign movement"
@@ -408,6 +411,7 @@ v2clgencl:
     - "Women enjoy the same level of civil liberties as men."
   state-dept: ["6"]
   freedom-house: ["G"]
+  sec6_subsections: "women"
 
 v2clgeocl:
   description: "Urban-rural location equality in respect for civil liberties"
@@ -562,6 +566,7 @@ v2clprptyw:
       rights.
   state-dept: ["6"]
   freedom-house: ["F", "G"]
+  sec6_subsections: "women"
 
 v2clrelig:
   description: "Freedom of religion"
@@ -699,6 +704,7 @@ v2clslavef:
       non-existent.
   state-dept: ["6", "7b"]
   freedom-house: ["G"]
+  sec6_subsections: "trafficking"
 
 v2clslavem:
   description: "Freedom from forced labor for men"
@@ -731,6 +737,7 @@ v2clslavem:
       non-existent.
   state-dept: ["6", "7b"]
   freedom-house: ["G"]
+  sec6_subsections: "trafficking"
 
 v2clsocgrp:
   description: "Social group equality in respect for civil liberties"
@@ -760,6 +767,7 @@ v2clsocgrp:
       liberties.
   state-dept: ["2a", "2b", "2c", "2d", "6"]
   freedom-house: ["D", "G"]
+  sec6_subsections: "minorities"
 
 v2clstown:
   description: "State ownership of economy"
@@ -974,6 +982,7 @@ v2csgender:
     - "Almost never."
   state-dept: ["2b", "5", "6"]
   freedom-house: ["E"]
+  sec6_subsections: "women"
 
 v2csprtcpt:
   description: "CSO participatory environment"
@@ -3801,6 +3810,7 @@ v2peapsgen:
       access to basic public services of good quality.
   state-dept: ["6"]
   freedom-house: ["G"]
+  sec6_subsections: "women"
 
 v2peapsgeo:
   description: "Access to public services distributed by urban-rural location"
@@ -3924,6 +3934,7 @@ v2peapssoc:
       population lack access to basic public services of good quality.
   state-dept: ["6", "2c"]
   freedom-house: ["G"]
+  sec6_subsections: "minorities"
 
 v2peasbecon:
   description: "Access to state business opportunities by socio-economic position"
@@ -4067,6 +4078,7 @@ v2peasbgen:
       qualified, lack access to state business opportunities.
   state-dept: ["6"]
   freedom-house: ["G"]
+  sec6_subsections: "women"
 
 v2peasbsoc:
   description: "Access to state business opportunities by social group"
@@ -4104,6 +4116,7 @@ v2peasbsoc:
       opportunities.
   state-dept: ["6", "2c"]
   freedom-house: ["G"]
+  sec6_subsections: "minorities"
 
 v2peasjgen:
   description: "Access to state jobs by gender"
@@ -4129,6 +4142,7 @@ v2peasjgen:
       even if qualified, lack access to state jobs.
   state-dept: ["6"]
   freedom-house: ["G"]
+  sec6_subsections: "women"
 
 v2peasjgeo:
   description: "Access to state jobs by urban-rural location"
@@ -4226,6 +4240,7 @@ v2peasjsoc:
       (%) of the population, even if qualified, lack access to state jobs.
   state-dept: ["6", "2c"]
   freedom-house: ["G"]
+  sec6_subsections: "minorities"
 
 v2peasjsoecon:
   description: "Access to state jobs by socio-economic position"
@@ -4345,6 +4360,7 @@ v2pepwrgen:
     - "Men and women have roughly equal political power."
   state-dept: ["6"]
   freedom-house: ["G", "B"]
+  sec6_subsections: "women"
 
 v2pepwrgeo:
   description: "Power distributed by urban-rural location"
@@ -4411,6 +4427,7 @@ v2pepwrort:
       and mobilization.
   state-dept: ["6"]
   freedom-house: ["G"]
+  sec6_subsections: "other_societal"
 
 v2pepwrses:
   description: "Power distributed by socioeconomic position"
@@ -4486,6 +4503,7 @@ v2pepwrsoc:
       relevant to politics.
   state-dept: ["6", "2c"]
   freedom-house: ["G", "B"]
+  sec6_subsections: "minorities"
 
 v2psbars:
   description: "Barriers to parties"
@@ -4825,6 +4843,7 @@ v2lgdsadlo:
       population.
   state-dept: ["6"]
   freedom-house: ["C", "B"]
+  sec6_subsections: "minorities"
 
 v2lgdsadlobin:
   description: "Representation of disadvantaged social groups binary"
@@ -4839,6 +4858,7 @@ v2lgdsadlobin:
     - "Yes."
   state-dept: ["6"]
   freedom-house: ["C", "B"]
+  sec6_subsections: "minorities"
 
 v2lgfunds:
   description: "Legislature controls resources"
