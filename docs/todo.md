@@ -80,11 +80,13 @@
   prepends it; indicators with empty section mappings receive the exec summary alone
   as their baseline context block. No prompt-template changes needed.
 
-- [ ] **Verify SD Section 2c content in 2013–2018 training window** (#5). In 2020
-  reports, Section 2c universally redirects to the standalone IRFR with no inline text.
-  Check whether pre-2020 reports contain inline text; if the redirect is consistent
-  across years, consider ingesting the IRFR as a third source. Affects 9 indicators
-  currently mapped to `2c`.
+- [x] **Verify SD Section 2c content in 2013–2018 training window** (#5 — closed 2026-07-13).
+  Section 2c universally redirects to the IRFR with no inline text across all years
+  (2016–2023, 915 files confirmed). IRFR executive summaries downloaded for all years
+  2016–2023 (~194 countries/year) via `shared/pipeline/download_reports.py --source irfr`.
+  PDF fallback added for countries without HTML exec summary (Colombia, Romania, Côte d'Ivoire,
+  others). `extract_sections.py` now intercepts `2c` and loads `processed-text/irfr/{year}/{slug}.txt`
+  instead; falls back to SD exec summary if IRFR file is missing. Affects 9 indicators mapped to `2c`.
 
 - [ ] **Decide on SD Section 6 / FiW G sub-parsing** (#6). Section 6 is an undivided
   narrative covering multiple sub-populations; including it in full may introduce
