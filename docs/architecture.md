@@ -188,13 +188,10 @@ Output path: `data/output/{model_key}_anonymized_{indicator}_{year}.jsonl`
 ```
 
 One row per coder per country-year-indicator — individual coder ratings from the V-Dem
-v15 coder-level dataset, not panel means. Training window: **2013–2018** (post-lateral-coder
+v15 coder-level dataset, not panel means. Training window: **2016–2018** (post-lateral-coder
 drop; pre-attrition panels; no overlap with 2019 test year or 2024 deployment check).
-Expected scale: ~6 years × ~150 CYs × ~174 indicators × ~11 coders ≈ ~1–2M training
-examples (exact count pending data generation). The ~174 indicator count is derived from
-the 2020 coder-level cross-section in `02-indicator-selection.qmd`; the actual count for
-the 2013–2018 training window may differ if some indicators have sparse early-year
-coverage. Save training CYI list to `data/processed/training_set.csv`.
+Expected scale: ~3 years × ~179 CYs × 206 indicators × ~11 coders ≈ ~1.22M training
+examples (exact count pending data generation). Save training CYI list to `data/processed/training_set.csv`.
 
 **Evaluation design**:
 - Primary: MAE/MSE/exact match against held-out individual coder ratings — standard

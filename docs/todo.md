@@ -58,8 +58,8 @@
 - [x] **Generate `data/processed/panel_means.csv`** from V-Dem v15 coder-level data. **Done** — file exists at `shared/vdem-data/panel_means.csv`.
 
 - [x] **Decide inference scope** (#3 — closed). **Training**: all indicators meeting
-  filtering criteria and present in `config/indicator_sections.yaml` (~174 indicators,
-  2013–2018). **Inference/evaluation**: full universe of ~205 mapped Type C indicators
+  filtering criteria and present in `config/indicator_sections.yaml` (206 indicators,
+  2016–2018). **Inference/evaluation**: full universe of ~205 mapped Type C indicators
   (primary). Pre-registered fallback: proportional stratified sample, one third per module,
   floor of 2 (~60–70 total, fixed seed), triggered if 405B cannot complete within 3 job
   submissions. Same evaluation set for all conditions and models.
@@ -80,7 +80,7 @@
   prepends it; indicators with empty section mappings receive the exec summary alone
   as their baseline context block. No prompt-template changes needed.
 
-- [x] **Verify SD Section 2c content in 2013–2018 training window** (#5 — closed 2026-07-13).
+- [x] **Verify SD Section 2c content in 2016–2018 training window** (#5 — closed 2026-07-13).
   Section 2c universally redirects to the IRFR with no inline text across all years
   (2016–2023, 915 files confirmed). IRFR executive summaries downloaded for all years
   2016–2023 (~194 countries/year) via `shared/pipeline/download_reports.py --source irfr`.
@@ -101,7 +101,7 @@
 
 - [ ] **Populate `data/fewshot_examples.json`** for all evaluation indicators (#8).
   Covers all ~205 indicators in `config/indicator_sections.yaml`. For each indicator:
-  5 examples (one per ordinal level), globally distributed, drawn from 2013–2018 training
+  5 examples (one per ordinal level), globally distributed, drawn from 2016–2018 training
   window. Fields: `country`, `slug`, `country_name`, `year`, `level`, `raw_mean`, `region`.
   Evidence text loaded on-the-fly; only metadata here. If the pre-registered fallback is
   triggered (see `notes/evaluation-indicator-scope.md`), write
@@ -154,7 +154,7 @@ multiple genuinely distinct AI coders.
 
 - [x] **Write `pipeline/prepare_finetune_data.py`**. Done 2026-07-09.
   Builds training JSONL from (Condition 4 prompt, individual coder rating) pairs.
-  Training window 2013–2018. Outputs `finetune_train.jsonl` and `training_set.csv`.
+  Training window 2016–2018. Outputs `finetune_train.jsonl` and `training_set.csv`.
 
 - [x] **Write `pipeline/finetune_llama.py`**. Done 2026-07-09.
   QLoRA fine-tune on Pegasus A100 80GB. Base: `meta-llama/Llama-3.3-70B-Instruct`.
@@ -178,7 +178,7 @@ multiple genuinely distinct AI coders.
 
 - [ ] **Generate `data/processed/human_ratings.csv`** from V-Dem v15 coder-level data in R.
   Required columns: `country_text_id`, `iso3`, `year`, `indicator`, `coder_id`, `rating`.
-  Include both training indicators (2013–2018) and all evaluation indicators (including
+  Include both training indicators (2016–2018) and all evaluation indicators (including
   weak-coverage). Used by `prepare_finetune_data.py` (training) and `substitution_eval.py`
   (LOO MAE evaluation). The `iso3` column is required by `prepare_finetune_data.py` for
   anonymized text lookup.
@@ -197,7 +197,7 @@ multiple genuinely distinct AI coders.
   `shared/source-docs/{state-dept,freedom-house}/2019/`. ~170 countries, ~30 min.
   Then run `python3 -m pipeline.ingest --year 2019` to extract plain text.
 
-- [ ] **Download 2013–2018 source documents** (fine-tuning training window).
+- [ ] **Download 2016–2018 source documents** (fine-tuning training window).
   Same script, one run per year. ~6 × 30 min. Can chip away across sessions — the
   download script checkpoints so interrupted runs resume cleanly. Ingest each year
   after downloading.
