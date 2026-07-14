@@ -51,19 +51,24 @@ LLM_CONFIGS = {
         "api_key_env": "VLLM_API_KEY",
     },
 
-    # ── Fine-tuned model (Condition 4) ─────────────────────────────────────────
-    # Served via local vLLM with --lora-modules pointing at QLoRA adapter weights.
-    # The model name below must match the --served-model-name argument at vLLM launch.
-    "llama-70b-finetuned": {
+    # ── Fine-tuned models (FT-raw and FT-anon) ────────────────────────────────
+    # Two QLoRA adapters, served via local vLLM with --lora-modules.
+    # The "model" value must match the alias given to --lora-modules at vLLM launch.
+    # FT-raw: trained on raw section text; FT-anon: trained on anonymized section text.
+    # Both run under codebook, evidence-zeroshot, and anonymized-zeroshot at inference.
+    "llama-70b-ft-raw": {
         "base_url": _VLLM_URL,
-        "model": "llama-70b-vdem-ft",
+        "model": "llama-70b-vdem-ft-raw",
+        "api_key_env": "VLLM_API_KEY",
+    },
+    "llama-70b-ft-anon": {
+        "base_url": _VLLM_URL,
+        "model": "llama-70b-vdem-ft-anon",
         "api_key_env": "VLLM_API_KEY",
     },
 }
 
 # Valid prompt conditions for the 3-condition primary experiment.
-# Fine-tuned Llama 70B (llama-70b-finetuned) uses the "anonymized" prompt format
-# without the few-shot block; it is handled as a separate model, not a condition.
 CONDITIONS = ["codebook", "evidence", "anonymized"]
 
 # Zero-shot ablation conditions (2023 robustness only, best base model only).
@@ -71,14 +76,20 @@ CONDITIONS = ["codebook", "evidence", "anonymized"]
 # Run only after the best base model is identified from the primary 3×5 results.
 CONDITIONS_ZEROSHOT = ["evidence-zeroshot", "anonymized-zeroshot"]
 
+# Conditions for fine-tuned model inference.
+# FT-raw and FT-anon run under all three; calibration is in the adapter weights.
+# "finetuned" and "finetuned-raw" are training-data-assembly shorthands only —
+# they are accepted by assemble_prompt.py but rejected by code_country_year.py.
+FT_CONDITIONS = ["codebook", "evidence-zeroshot", "anonymized-zeroshot"]
+
 # All runnable conditions (primary + ablation)
 ALL_CONDITIONS = CONDITIONS + CONDITIONS_ZEROSHOT
 
 # Base models for the 3-condition substitution experiment (405B contingent on HPC availability)
 PRIMARY_MODELS = ["llama-405b", "llama-70b", "llama-9b"]
 
-# All models (base + fine-tuned); fine-tuned runs only under "anonymized" format
-ALL_MODELS = ["llama-405b", "llama-70b", "llama-9b", "llama-70b-finetuned"]
+# All models (base + fine-tuned)
+ALL_MODELS = ["llama-405b", "llama-70b", "llama-9b", "llama-70b-ft-raw", "llama-70b-ft-anon"]
 
 # On GW Pegasus, swap in local variants:
 # PRIMARY_MODELS_LOCAL = ["llama-405b-local", "llama-70b-local", "llama-9b-local"]

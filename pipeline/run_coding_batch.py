@@ -52,7 +52,8 @@ Parameters:
                     llama-405b-local    — vLLM on Pegasus 8×A100 (requires VLLM_BASE_URL)
                     llama-70b-local     — vLLM on Pegasus A100 (requires VLLM_BASE_URL)
                     llama-9b-local      — vLLM on Pegasus V100 (requires VLLM_BASE_URL)
-                    llama-70b-finetuned — fine-tuned adapter via vLLM --lora-modules
+                    llama-70b-ft-raw    — FT-raw adapter via vLLM --lora-modules (use run_finetuned_batch.py)
+                    llama-70b-ft-anon   — FT-anon adapter via vLLM --lora-modules (use run_finetuned_batch.py)
     --output      Output JSONL path (appended to if exists; default: timestamped file).
     --workers     Concurrent requests sent to the inference server (default: 1).
                   Values > 1 let vLLM batch requests together and improve GPU utilization.

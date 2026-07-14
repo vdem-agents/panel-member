@@ -2,7 +2,7 @@
 """
 Prompt assembly for the panel-member coding pipeline.
 
-Handles four prompt conditions:
+Handles seven prompt conditions:
 
   "codebook"   — global framing + codebook text only; no evidence; no few-shot examples.
                  Measures the baseline calibration signal from model pretraining alone.
@@ -15,15 +15,22 @@ Handles four prompt conditions:
                  Requires prior anonymize_section.py run for focal country-year AND for
                  all few-shot example countries.
 
-  "finetuned"          — same as "anonymized" but with no few-shot calibration block. Used
-                         for fine-tuning training data and adapter inference. Calibration
-                         is in the model weights rather than the prompt.
+  "finetuned"          — anonymized section text, no few-shot block. Used by
+                         prepare_finetune_data.py to build FT-anon training records.
+                         Calibration is in the model weights rather than the prompt.
+
+  "finetuned-raw"      — raw section text, no few-shot block. Used by
+                         prepare_finetune_data.py to build FT-raw training records.
+                         Kept separate from "evidence-zeroshot" so inference ablations
+                         and training data assembly can evolve independently.
 
   "evidence-zeroshot"  — same as "evidence" but with the calibration block omitted.
-                         Used for the few-shot ablation in the 2023 robustness section.
+                         Used for FT-raw/FT-anon inference and for the few-shot ablation
+                         in the 2023 robustness section.
 
   "anonymized-zeroshot" — same as "anonymized" but with the calibration block omitted.
-                          Used for the few-shot ablation in the 2023 robustness section.
+                          Used for FT-raw/FT-anon inference and for the few-shot ablation
+                          in the 2023 robustness section.
 
 Usage:
     python3 -m pipeline.assemble_prompt \\
@@ -219,7 +226,7 @@ def assemble_prompt(
     Returns:
         (system_text, user_text) ready for the API messages list
     """
-    _VALID = ("codebook", "evidence", "anonymized", "finetuned",
+    _VALID = ("codebook", "evidence", "anonymized", "finetuned", "finetuned-raw",
               "evidence-zeroshot", "anonymized-zeroshot")
     if condition not in _VALID:
         raise ValueError(
@@ -245,7 +252,7 @@ def assemble_prompt(
         f"**Clarification**: {clarification}" if clarification else ""
     )
 
-    if condition in ("evidence", "evidence-zeroshot"):
+    if condition in ("evidence", "evidence-zeroshot", "finetuned-raw"):
         state_ev = (
             get_evidence(country_slug, year, indicator, "state-dept")
             or "[No source document available for this country-year.]"
@@ -314,7 +321,7 @@ if __name__ == "__main__":
     parser.add_argument("--indicator", required=True)
     parser.add_argument(
         "--condition",
-        choices=["codebook", "evidence", "anonymized", "finetuned",
+        choices=["codebook", "evidence", "anonymized", "finetuned", "finetuned-raw",
                  "evidence-zeroshot", "anonymized-zeroshot"],
         default="evidence",
     )
