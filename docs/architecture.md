@@ -3,7 +3,7 @@
 ## Pipeline overview
 
 ```mermaid
-flowchart LR
+flowchart TD
     subgraph SRC["Raw sources"]
         SD["State Dept PDFs"]
         FH["Freedom House text"]
