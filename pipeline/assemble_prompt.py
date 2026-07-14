@@ -15,10 +15,15 @@ Handles four prompt conditions:
                  Requires prior anonymize_section.py run for focal country-year AND for
                  all few-shot example countries.
 
-  "finetuned"  — same as "anonymized" but with no few-shot calibration block. Used for
-                 both fine-tuning training data (prepare_finetune_data.py) and inference
-                 with the fine-tuned adapter (run_finetuned_batch.py). Calibration is in
-                 the model weights rather than the prompt.
+  "finetuned"          — same as "anonymized" but with no few-shot calibration block. Used
+                         for fine-tuning training data and adapter inference. Calibration
+                         is in the model weights rather than the prompt.
+
+  "evidence-zeroshot"  — same as "evidence" but with the calibration block omitted.
+                         Used for the few-shot ablation in the 2023 robustness section.
+
+  "anonymized-zeroshot" — same as "anonymized" but with the calibration block omitted.
+                          Used for the few-shot ablation in the 2023 robustness section.
 
 Usage:
     python3 -m pipeline.assemble_prompt \\
@@ -106,12 +111,16 @@ def _load_template() -> tuple[str, str]:
     return _template_cache
 
 
-def _build_fewshot_block(indicator: str, anonymized: bool = False) -> str:
+def _build_fewshot_block(
+    indicator: str, anonymized: bool = False, exclude_iso: str | None = None
+) -> str:
     examples = _load_fewshot(anonymized=anonymized).get(indicator, [])
+    if exclude_iso:
+        examples = [ex for ex in examples if ex["country"] != exclude_iso]
     if not examples:
         raise ValueError(
             f"No {'anonymized ' if anonymized else ''}few-shot examples for {indicator!r}.\n"
-            "See docs/todo.md: fewshot_examples.json must cover all 12 indicators."
+            "See docs/todo.md: fewshot_examples.json must cover all indicators."
         )
 
     blocks = []
@@ -210,10 +219,12 @@ def assemble_prompt(
     Returns:
         (system_text, user_text) ready for the API messages list
     """
-    if condition not in ("codebook", "evidence", "anonymized", "finetuned"):
+    _VALID = ("codebook", "evidence", "anonymized", "finetuned",
+              "evidence-zeroshot", "anonymized-zeroshot")
+    if condition not in _VALID:
         raise ValueError(
             f"Invalid condition {condition!r}. "
-            "Use codebook, evidence, anonymized, or finetuned."
+            f"Use one of: {', '.join(_VALID)}"
         )
 
     config = _load_config()
@@ -234,7 +245,7 @@ def assemble_prompt(
         f"**Clarification**: {clarification}" if clarification else ""
     )
 
-    if condition == "evidence":
+    if condition in ("evidence", "evidence-zeroshot"):
         state_ev = (
             get_evidence(country_slug, year, indicator, "state-dept")
             or "[No source document available for this country-year.]"
@@ -243,13 +254,19 @@ def assemble_prompt(
             get_evidence(country_slug, year, indicator, "freedom-house")
             or "[No source document available for this country-year.]"
         )
-        calibration_section = _calibration_header(max_rating).format(
-            fewshot_block=_build_fewshot_block(indicator, anonymized=False)
+        calibration_section = (
+            _calibration_header(max_rating).format(
+                fewshot_block=_build_fewshot_block(
+                    indicator, anonymized=False, exclude_iso=iso
+                )
+            )
+            if condition == "evidence"
+            else ""
         )
 
-    elif condition == "anonymized":
+    elif condition in ("anonymized", "anonymized-zeroshot", "finetuned"):
         if iso is None:
-            raise ValueError("iso is required for condition='anonymized'")
+            raise ValueError(f"iso is required for condition='{condition}'")
         anon_text = load_anonymized(iso, year, indicator)
         if anon_text is None:
             raise FileNotFoundError(
@@ -260,22 +277,15 @@ def assemble_prompt(
             )
         state_ev = anon_text
         fh_ev = "[Included in anonymized text above]"
-        calibration_section = _calibration_header(max_rating).format(
-            fewshot_block=_build_fewshot_block(indicator, anonymized=True)
-        )
-
-    else:  # finetuned — anonymized evidence, no few-shot block
-        if iso is None:
-            raise ValueError("iso is required for condition='finetuned'")
-        anon_text = load_anonymized(iso, year, indicator)
-        if anon_text is None:
-            raise FileNotFoundError(
-                f"No anonymized text for {iso} {year} {indicator}. "
-                f"Run anonymize_section.py before prepare_finetune_data.py."
+        calibration_section = (
+            _calibration_header(max_rating).format(
+                fewshot_block=_build_fewshot_block(
+                    indicator, anonymized=True, exclude_iso=iso
+                )
             )
-        state_ev = anon_text
-        fh_ev = "[Included in anonymized text above]"
-        calibration_section = ""
+            if condition == "anonymized"
+            else ""
+        )
 
     user_text = (
         user_raw
@@ -304,7 +314,8 @@ if __name__ == "__main__":
     parser.add_argument("--indicator", required=True)
     parser.add_argument(
         "--condition",
-        choices=["codebook", "evidence", "anonymized", "finetuned"],
+        choices=["codebook", "evidence", "anonymized", "finetuned",
+                 "evidence-zeroshot", "anonymized-zeroshot"],
         default="evidence",
     )
     parser.add_argument("--chars", type=int, default=4000,

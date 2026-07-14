@@ -1,0 +1,3989 @@
+{
+  "v2cafexch": [
+    {
+      "country": "PRK",
+      "year": 2017
+    },
+    {
+      "country": "SSD",
+      "year": 2018
+    },
+    {
+      "country": "MRT",
+      "year": 2018
+    },
+    {
+      "country": "COL",
+      "year": 2017
+    },
+    {
+      "country": "DNK",
+      "year": 2018
+    }
+  ],
+  "v2cafres": [
+    {
+      "country": "ERI",
+      "year": 2018
+    },
+    {
+      "country": "TUR",
+      "year": 2016
+    },
+    {
+      "country": "KHM",
+      "year": 2017
+    },
+    {
+      "country": "HTI",
+      "year": 2018
+    },
+    {
+      "country": "AUT",
+      "year": 2017
+    }
+  ],
+  "v2clacfree": [
+    {
+      "country": "PRK",
+      "year": 2016
+    },
+    {
+      "country": "IRN",
+      "year": 2018
+    },
+    {
+      "country": "GIN",
+      "year": 2016
+    },
+    {
+      "country": "MLT",
+      "year": 2016
+    },
+    {
+      "country": "URY",
+      "year": 2018
+    }
+  ],
+  "v2clacjstm": [
+    {
+      "country": "PRK",
+      "year": 2017
+    },
+    {
+      "country": "TKM",
+      "year": 2016
+    },
+    {
+      "country": "HND",
+      "year": 2017
+    },
+    {
+      "country": "CPV",
+      "year": 2018
+    },
+    {
+      "country": "CHE",
+      "year": 2016
+    }
+  ],
+  "v2clacjstw": [
+    {
+      "country": "PRK",
+      "year": 2016
+    },
+    {
+      "country": "SYR",
+      "year": 2017
+    },
+    {
+      "country": "ETH",
+      "year": 2016
+    },
+    {
+      "country": "BRB",
+      "year": 2017
+    },
+    {
+      "country": "BEL",
+      "year": 2017
+    }
+  ],
+  "v2clacjust": [
+    {
+      "country": "PRK",
+      "year": 2016
+    },
+    {
+      "country": "AGO",
+      "year": 2018
+    },
+    {
+      "country": "TUR",
+      "year": 2018
+    },
+    {
+      "country": "TUN",
+      "year": 2016
+    },
+    {
+      "country": "LUX",
+      "year": 2017
+    }
+  ],
+  "v2cldiscm": [
+    {
+      "country": "PRK",
+      "year": 2017
+    },
+    {
+      "country": "SSD",
+      "year": 2018
+    },
+    {
+      "country": "LBY",
+      "year": 2017
+    },
+    {
+      "country": "GTM",
+      "year": 2016
+    },
+    {
+      "country": "LVA",
+      "year": 2018
+    }
+  ],
+  "v2cldiscw": [
+    {
+      "country": "PRK",
+      "year": 2017
+    },
+    {
+      "country": "GNQ",
+      "year": 2017
+    },
+    {
+      "country": "DZA",
+      "year": 2018
+    },
+    {
+      "country": "SYC",
+      "year": 2016
+    },
+    {
+      "country": "CHL",
+      "year": 2018
+    }
+  ],
+  "v2cldmovem": [
+    {
+      "country": "PRK",
+      "year": 2017
+    },
+    {
+      "country": "ERI",
+      "year": 2018
+    },
+    {
+      "country": "SYR",
+      "year": 2016
+    },
+    {
+      "country": "AFG",
+      "year": 2017
+    },
+    {
+      "country": "PRT",
+      "year": 2017
+    }
+  ],
+  "v2cldmovew": [
+    {
+      "country": "PRK",
+      "year": 2017
+    },
+    {
+      "country": "SAU",
+      "year": 2017
+    },
+    {
+      "country": "SOM",
+      "year": 2016
+    },
+    {
+      "country": "IND",
+      "year": 2016
+    },
+    {
+      "country": "EST",
+      "year": 2018
+    }
+  ],
+  "v2clfmove": [
+    {
+      "country": "PRK",
+      "year": 2017
+    },
+    {
+      "country": "BDI",
+      "year": 2016
+    },
+    {
+      "country": "AZE",
+      "year": 2016
+    },
+    {
+      "country": "QAT",
+      "year": 2016
+    },
+    {
+      "country": "ISL",
+      "year": 2017
+    }
+  ],
+  "v2clgencl": [
+    {
+      "country": "YEM",
+      "year": 2017
+    },
+    {
+      "country": "SOM",
+      "year": 2016
+    },
+    {
+      "country": "HTI",
+      "year": 2017
+    },
+    {
+      "country": "UZB",
+      "year": 2016
+    },
+    {
+      "country": "LUX",
+      "year": 2017
+    }
+  ],
+  "v2clgeocl": [
+    {
+      "country": "AFG",
+      "year": 2018
+    },
+    {
+      "country": "PNG",
+      "year": 2017
+    },
+    {
+      "country": "QAT",
+      "year": 2017
+    },
+    {
+      "country": "SVN",
+      "year": 2016
+    }
+  ],
+  "v2clkill": [
+    {
+      "country": "PRK",
+      "year": 2017
+    },
+    {
+      "country": "TJK",
+      "year": 2016
+    },
+    {
+      "country": "NGA",
+      "year": 2017
+    },
+    {
+      "country": "PRY",
+      "year": 2017
+    },
+    {
+      "country": "AUT",
+      "year": 2016
+    }
+  ],
+  "v2clpolcl": [
+    {
+      "country": "GNQ",
+      "year": 2017
+    },
+    {
+      "country": "KHM",
+      "year": 2017
+    },
+    {
+      "country": "PAK",
+      "year": 2017
+    },
+    {
+      "country": "DOM",
+      "year": 2017
+    },
+    {
+      "country": "DEU",
+      "year": 2016
+    }
+  ],
+  "v2clprptym": [
+    {
+      "country": "PRK",
+      "year": 2016
+    },
+    {
+      "country": "TKM",
+      "year": 2018
+    },
+    {
+      "country": "CUB",
+      "year": 2018
+    },
+    {
+      "country": "ZWE",
+      "year": 2018
+    }
+  ],
+  "v2clprptyw": [
+    {
+      "country": "PRK",
+      "year": 2016
+    },
+    {
+      "country": "SWZ",
+      "year": 2017
+    },
+    {
+      "country": "XKX",
+      "year": 2017
+    },
+    {
+      "country": "QAT",
+      "year": 2017
+    },
+    {
+      "country": "PAK",
+      "year": 2017
+    }
+  ],
+  "v2clrelig": [
+    {
+      "country": "MRT",
+      "year": 2017
+    },
+    {
+      "country": "SOM",
+      "year": 2016
+    },
+    {
+      "country": "KAZ",
+      "year": 2018
+    },
+    {
+      "country": "LKA",
+      "year": 2017
+    },
+    {
+      "country": "NOR",
+      "year": 2017
+    }
+  ],
+  "v2clrgunev": [
+    {
+      "country": "TCD",
+      "year": 2017
+    },
+    {
+      "country": "PNG",
+      "year": 2016
+    },
+    {
+      "country": "PRT",
+      "year": 2017
+    }
+  ],
+  "v2clrspct": [
+    {
+      "country": "SSD",
+      "year": 2017
+    },
+    {
+      "country": "HTI",
+      "year": 2018
+    },
+    {
+      "country": "MDA",
+      "year": 2017
+    },
+    {
+      "country": "CYP",
+      "year": 2018
+    },
+    {
+      "country": "KOR",
+      "year": 2017
+    }
+  ],
+  "v2clslavef": [
+    {
+      "country": "PRK",
+      "year": 2017
+    },
+    {
+      "country": "UZB",
+      "year": 2016
+    },
+    {
+      "country": "QAT",
+      "year": 2016
+    },
+    {
+      "country": "SLE",
+      "year": 2018
+    },
+    {
+      "country": "DNK",
+      "year": 2017
+    }
+  ],
+  "v2clslavem": [
+    {
+      "country": "PRK",
+      "year": 2017
+    },
+    {
+      "country": "UZB",
+      "year": 2016
+    },
+    {
+      "country": "SWZ",
+      "year": 2017
+    },
+    {
+      "country": "IRQ",
+      "year": 2018
+    },
+    {
+      "country": "BEL",
+      "year": 2018
+    }
+  ],
+  "v2clsocgrp": [
+    {
+      "country": "SYR",
+      "year": 2016
+    },
+    {
+      "country": "ERI",
+      "year": 2018
+    },
+    {
+      "country": "LKA",
+      "year": 2018
+    },
+    {
+      "country": "TWN",
+      "year": 2017
+    },
+    {
+      "country": "DEU",
+      "year": 2017
+    }
+  ],
+  "v2clstown": [
+    {
+      "country": "PRK",
+      "year": 2016
+    },
+    {
+      "country": "CUB",
+      "year": 2017
+    },
+    {
+      "country": "KAZ",
+      "year": 2018
+    },
+    {
+      "country": "SWE",
+      "year": 2017
+    },
+    {
+      "country": "GTM",
+      "year": 2016
+    }
+  ],
+  "v2cltort": [
+    {
+      "country": "SYR",
+      "year": 2016
+    },
+    {
+      "country": "TKM",
+      "year": 2017
+    },
+    {
+      "country": "NPL",
+      "year": 2017
+    },
+    {
+      "country": "NAM",
+      "year": 2018
+    },
+    {
+      "country": "NZL",
+      "year": 2017
+    }
+  ],
+  "v2cltrnslw": [
+    {
+      "country": "PRK",
+      "year": 2017
+    },
+    {
+      "country": "YEM",
+      "year": 2018
+    },
+    {
+      "country": "KAZ",
+      "year": 2017
+    },
+    {
+      "country": "STP",
+      "year": 2016
+    },
+    {
+      "country": "CHE",
+      "year": 2016
+    }
+  ],
+  "v2csantimv": [
+    {
+      "country": "PRK",
+      "year": 2017
+    },
+    {
+      "country": "LSO",
+      "year": 2016
+    },
+    {
+      "country": "MRT",
+      "year": 2016
+    },
+    {
+      "country": "CMR",
+      "year": 2017
+    }
+  ],
+  "v2cscnsult": [
+    {
+      "country": "SYR",
+      "year": 2016
+    },
+    {
+      "country": "MDA",
+      "year": 2017
+    },
+    {
+      "country": "DNK",
+      "year": 2017
+    }
+  ],
+  "v2cseeorgs": [
+    {
+      "country": "TKM",
+      "year": 2018
+    },
+    {
+      "country": "DZA",
+      "year": 2018
+    },
+    {
+      "country": "SOM",
+      "year": 2016
+    },
+    {
+      "country": "SLV",
+      "year": 2016
+    },
+    {
+      "country": "MLT",
+      "year": 2017
+    }
+  ],
+  "v2csgender": [
+    {
+      "country": "PRK",
+      "year": 2016
+    },
+    {
+      "country": "TKM",
+      "year": 2016
+    },
+    {
+      "country": "MDV",
+      "year": 2018
+    },
+    {
+      "country": "SLE",
+      "year": 2018
+    }
+  ],
+  "v2csprtcpt": [
+    {
+      "country": "TKM",
+      "year": 2016
+    },
+    {
+      "country": "SYR",
+      "year": 2017
+    },
+    {
+      "country": "NAM",
+      "year": 2016
+    },
+    {
+      "country": "FIN",
+      "year": 2018
+    }
+  ],
+  "v2csreprss": [
+    {
+      "country": "PRK",
+      "year": 2016
+    },
+    {
+      "country": "SAU",
+      "year": 2017
+    },
+    {
+      "country": "NIC",
+      "year": 2017
+    },
+    {
+      "country": "MLI",
+      "year": 2016
+    },
+    {
+      "country": "SWE",
+      "year": 2018
+    }
+  ],
+  "v2csrlgcon": [
+    {
+      "country": "TKM",
+      "year": 2016
+    },
+    {
+      "country": "LUX",
+      "year": 2018
+    },
+    {
+      "country": "DOM",
+      "year": 2018
+    }
+  ],
+  "v2csrlgrep": [
+    {
+      "country": "EGY",
+      "year": 2016
+    },
+    {
+      "country": "TKM",
+      "year": 2017
+    },
+    {
+      "country": "RWA",
+      "year": 2018
+    },
+    {
+      "country": "BGD",
+      "year": 2018
+    },
+    {
+      "country": "SUR",
+      "year": 2018
+    }
+  ],
+  "v2smarrest": [
+    {
+      "country": "PRK",
+      "year": 2017
+    },
+    {
+      "country": "DZA",
+      "year": 2016
+    },
+    {
+      "country": "NIC",
+      "year": 2017
+    },
+    {
+      "country": "ISL",
+      "year": 2018
+    }
+  ],
+  "v2smcamp": [
+    {
+      "country": "SAU",
+      "year": 2016
+    },
+    {
+      "country": "CHN",
+      "year": 2017
+    },
+    {
+      "country": "HTI",
+      "year": 2018
+    },
+    {
+      "country": "SOM",
+      "year": 2016
+    }
+  ],
+  "v2smdefabu": [
+    {
+      "country": "PRK",
+      "year": 2017
+    },
+    {
+      "country": "CUB",
+      "year": 2018
+    },
+    {
+      "country": "SOM",
+      "year": 2016
+    },
+    {
+      "country": "ROU",
+      "year": 2018
+    },
+    {
+      "country": "CHE",
+      "year": 2017
+    }
+  ],
+  "v2smforads": [
+    {
+      "country": "TWN",
+      "year": 2016
+    },
+    {
+      "country": "XKX",
+      "year": 2017
+    },
+    {
+      "country": "VEN",
+      "year": 2017
+    },
+    {
+      "country": "CHE",
+      "year": 2017
+    }
+  ],
+  "v2smfordom": [
+    {
+      "country": "LVA",
+      "year": 2016
+    },
+    {
+      "country": "SOM",
+      "year": 2018
+    },
+    {
+      "country": "ESP",
+      "year": 2017
+    },
+    {
+      "country": "SLB",
+      "year": 2018
+    }
+  ],
+  "v2smgovab": [
+    {
+      "country": "PRK",
+      "year": 2017
+    },
+    {
+      "country": "GNQ",
+      "year": 2017
+    },
+    {
+      "country": "IRQ",
+      "year": 2016
+    },
+    {
+      "country": "KGZ",
+      "year": 2016
+    },
+    {
+      "country": "NZL",
+      "year": 2017
+    }
+  ],
+  "v2smgovcapsec": [
+    {
+      "country": "GNB",
+      "year": 2018
+    },
+    {
+      "country": "GUY",
+      "year": 2017
+    },
+    {
+      "country": "POL",
+      "year": 2018
+    },
+    {
+      "country": "DNK",
+      "year": 2017
+    },
+    {
+      "country": "ISR",
+      "year": 2016
+    }
+  ],
+  "v2smgovdom": [
+    {
+      "country": "AZE",
+      "year": 2018
+    },
+    {
+      "country": "SSD",
+      "year": 2016
+    },
+    {
+      "country": "GTM",
+      "year": 2018
+    },
+    {
+      "country": "GBR",
+      "year": 2018
+    },
+    {
+      "country": "VUT",
+      "year": 2018
+    }
+  ],
+  "v2smgovfilcap": [
+    {
+      "country": "SLB",
+      "year": 2018
+    },
+    {
+      "country": "SLV",
+      "year": 2017
+    },
+    {
+      "country": "BWA",
+      "year": 2018
+    },
+    {
+      "country": "JOR",
+      "year": 2016
+    }
+  ],
+  "v2smgovfilprc": [
+    {
+      "country": "PRK",
+      "year": 2016
+    },
+    {
+      "country": "GNQ",
+      "year": 2016
+    },
+    {
+      "country": "NIC",
+      "year": 2017
+    },
+    {
+      "country": "MRT",
+      "year": 2016
+    },
+    {
+      "country": "LUX",
+      "year": 2018
+    }
+  ],
+  "v2smgovshut": [
+    {
+      "country": "TKM",
+      "year": 2018
+    },
+    {
+      "country": "YEM",
+      "year": 2018
+    },
+    {
+      "country": "AFG",
+      "year": 2016
+    },
+    {
+      "country": "MLT",
+      "year": 2018
+    }
+  ],
+  "v2smgovshutcap": [
+    {
+      "country": "CHE",
+      "year": 2017
+    },
+    {
+      "country": "SOM",
+      "year": 2017
+    },
+    {
+      "country": "CHL",
+      "year": 2018
+    },
+    {
+      "country": "TJK",
+      "year": 2016
+    },
+    {
+      "country": "SGP",
+      "year": 2017
+    }
+  ],
+  "v2smgovsm": [
+    {
+      "country": "PRK",
+      "year": 2016
+    },
+    {
+      "country": "UKR",
+      "year": 2017
+    },
+    {
+      "country": "SOM",
+      "year": 2016
+    },
+    {
+      "country": "HND",
+      "year": 2017
+    }
+  ],
+  "v2smgovsmalt": [
+    {
+      "country": "PRK",
+      "year": 2016
+    },
+    {
+      "country": "ERI",
+      "year": 2016
+    },
+    {
+      "country": "CUB",
+      "year": 2018
+    },
+    {
+      "country": "LBN",
+      "year": 2018
+    },
+    {
+      "country": "SWE",
+      "year": 2018
+    }
+  ],
+  "v2smgovsmcenprc": [
+    {
+      "country": "PRK",
+      "year": 2017
+    },
+    {
+      "country": "TKM",
+      "year": 2018
+    },
+    {
+      "country": "SDN",
+      "year": 2016
+    },
+    {
+      "country": "NIC",
+      "year": 2016
+    },
+    {
+      "country": "NLD",
+      "year": 2016
+    }
+  ],
+  "v2smgovsmmon": [
+    {
+      "country": "PRK",
+      "year": 2016
+    },
+    {
+      "country": "TJK",
+      "year": 2018
+    },
+    {
+      "country": "TZA",
+      "year": 2018
+    },
+    {
+      "country": "SYC",
+      "year": 2016
+    },
+    {
+      "country": "ISL",
+      "year": 2016
+    }
+  ],
+  "v2smlawpr": [
+    {
+      "country": "CUB",
+      "year": 2018
+    },
+    {
+      "country": "GNB",
+      "year": 2017
+    },
+    {
+      "country": "UKR",
+      "year": 2017
+    },
+    {
+      "country": "ISL",
+      "year": 2018
+    },
+    {
+      "country": "SGP",
+      "year": 2018
+    }
+  ],
+  "v2smmefra": [
+    {
+      "country": "ZWE",
+      "year": 2016
+    },
+    {
+      "country": "SLV",
+      "year": 2016
+    },
+    {
+      "country": "BGR",
+      "year": 2018
+    },
+    {
+      "country": "PRK",
+      "year": 2017
+    }
+  ],
+  "v2smonex": [
+    {
+      "country": "TKM",
+      "year": 2017
+    },
+    {
+      "country": "MDV",
+      "year": 2017
+    },
+    {
+      "country": "GBR",
+      "year": 2017
+    }
+  ],
+  "v2smonper": [
+    {
+      "country": "PRK",
+      "year": 2016
+    },
+    {
+      "country": "SYR",
+      "year": 2016
+    },
+    {
+      "country": "ECU",
+      "year": 2017
+    },
+    {
+      "country": "GNB",
+      "year": 2018
+    },
+    {
+      "country": "DNK",
+      "year": 2017
+    }
+  ],
+  "v2smorgavgact": [
+    {
+      "country": "PRK",
+      "year": 2016
+    },
+    {
+      "country": "TJK",
+      "year": 2018
+    },
+    {
+      "country": "DZA",
+      "year": 2016
+    },
+    {
+      "country": "NOR",
+      "year": 2017
+    },
+    {
+      "country": "ISR",
+      "year": 2017
+    }
+  ],
+  "v2smorgelitact": [
+    {
+      "country": "PRK",
+      "year": 2016
+    },
+    {
+      "country": "MNE",
+      "year": 2016
+    },
+    {
+      "country": "GRC",
+      "year": 2017
+    },
+    {
+      "country": "IRQ",
+      "year": 2016
+    },
+    {
+      "country": "COL",
+      "year": 2018
+    }
+  ],
+  "v2smorgviol": [
+    {
+      "country": "IRQ",
+      "year": 2017
+    },
+    {
+      "country": "KEN",
+      "year": 2017
+    },
+    {
+      "country": "PRK",
+      "year": 2017
+    }
+  ],
+  "v2smparab": [
+    {
+      "country": "CUB",
+      "year": 2017
+    },
+    {
+      "country": "GAB",
+      "year": 2016
+    },
+    {
+      "country": "HRV",
+      "year": 2018
+    },
+    {
+      "country": "NZL",
+      "year": 2018
+    }
+  ],
+  "v2smpardom": [
+    {
+      "country": "CUB",
+      "year": 2016
+    },
+    {
+      "country": "ZAF",
+      "year": 2017
+    },
+    {
+      "country": "LVA",
+      "year": 2018
+    },
+    {
+      "country": "SWE",
+      "year": 2018
+    }
+  ],
+  "v2smpolcap": [
+    {
+      "country": "VUT",
+      "year": 2016
+    },
+    {
+      "country": "MLT",
+      "year": 2018
+    },
+    {
+      "country": "OMN",
+      "year": 2016
+    },
+    {
+      "country": "PRK",
+      "year": 2016
+    }
+  ],
+  "v2smpolhate": [
+    {
+      "country": "YEM",
+      "year": 2018
+    },
+    {
+      "country": "MUS",
+      "year": 2018
+    },
+    {
+      "country": "VNM",
+      "year": 2018
+    },
+    {
+      "country": "LUX",
+      "year": 2016
+    }
+  ],
+  "v2smpolsoc": [
+    {
+      "country": "BHR",
+      "year": 2018
+    },
+    {
+      "country": "MOZ",
+      "year": 2017
+    },
+    {
+      "country": "AUS",
+      "year": 2016
+    },
+    {
+      "country": "LAO",
+      "year": 2017
+    },
+    {
+      "country": "PRK",
+      "year": 2016
+    }
+  ],
+  "v2smprivex": [
+    {
+      "country": "ERI",
+      "year": 2017
+    },
+    {
+      "country": "LUX",
+      "year": 2016
+    }
+  ],
+  "v2smregapp": [
+    {
+      "country": "PRK",
+      "year": 2017
+    },
+    {
+      "country": "URY",
+      "year": 2016
+    },
+    {
+      "country": "AGO",
+      "year": 2017
+    },
+    {
+      "country": "FIN",
+      "year": 2016
+    },
+    {
+      "country": "PRY",
+      "year": 2016
+    }
+  ],
+  "v2smregcap": [
+    {
+      "country": "HTI",
+      "year": 2017
+    },
+    {
+      "country": "GIN",
+      "year": 2017
+    },
+    {
+      "country": "CAN",
+      "year": 2017
+    },
+    {
+      "country": "TUN",
+      "year": 2017
+    },
+    {
+      "country": "PRK",
+      "year": 2017
+    }
+  ],
+  "v2smregcon": [
+    {
+      "country": "CUB",
+      "year": 2016
+    },
+    {
+      "country": "TKM",
+      "year": 2018
+    },
+    {
+      "country": "COM",
+      "year": 2016
+    },
+    {
+      "country": "SYC",
+      "year": 2017
+    },
+    {
+      "country": "MLT",
+      "year": 2016
+    }
+  ],
+  "v2elaccept": [
+    {
+      "country": "BGD",
+      "year": 2018
+    },
+    {
+      "country": "GNQ",
+      "year": 2017
+    },
+    {
+      "country": "IRQ",
+      "year": 2018
+    },
+    {
+      "country": "UZB",
+      "year": 2016
+    },
+    {
+      "country": "KOR",
+      "year": 2017
+    }
+  ],
+  "v2elasmoff": [
+    {
+      "country": "VEN",
+      "year": 2017
+    },
+    {
+      "country": "MLI",
+      "year": 2018
+    }
+  ],
+  "v2elboycot": [
+    {
+      "country": "AZE",
+      "year": 2018
+    },
+    {
+      "country": "DJI",
+      "year": 2016
+    },
+    {
+      "country": "AFG",
+      "year": 2018
+    },
+    {
+      "country": "ISL",
+      "year": 2017
+    }
+  ],
+  "v2eldonate": [
+    {
+      "country": "ERI",
+      "year": 2016
+    },
+    {
+      "country": "NIC",
+      "year": 2017
+    },
+    {
+      "country": "PAK",
+      "year": 2016
+    },
+    {
+      "country": "BLR",
+      "year": 2017
+    },
+    {
+      "country": "KOR",
+      "year": 2017
+    }
+  ],
+  "v2elembaut": [
+    {
+      "country": "LAO",
+      "year": 2017
+    },
+    {
+      "country": "HND",
+      "year": 2017
+    },
+    {
+      "country": "CIV",
+      "year": 2016
+    },
+    {
+      "country": "LKA",
+      "year": 2017
+    },
+    {
+      "country": "LUX",
+      "year": 2018
+    }
+  ],
+  "v2elembcap": [
+    {
+      "country": "SAU",
+      "year": 2017
+    },
+    {
+      "country": "PNG",
+      "year": 2018
+    },
+    {
+      "country": "BDI",
+      "year": 2018
+    },
+    {
+      "country": "MDA",
+      "year": 2018
+    },
+    {
+      "country": "FIN",
+      "year": 2017
+    }
+  ],
+  "v2elffelr": [
+    {
+      "country": "TKM",
+      "year": 2018
+    },
+    {
+      "country": "BGD",
+      "year": 2018
+    },
+    {
+      "country": "MDG",
+      "year": 2016
+    },
+    {
+      "country": "DOM",
+      "year": 2018
+    },
+    {
+      "country": "SWE",
+      "year": 2016
+    }
+  ],
+  "v2elffelrbin": [
+    {
+      "country": "BRB",
+      "year": 2018
+    },
+    {
+      "country": "RUS",
+      "year": 2018
+    }
+  ],
+  "v2elfrcamp": [
+    {
+      "country": "LAO",
+      "year": 2016
+    },
+    {
+      "country": "AFG",
+      "year": 2018
+    },
+    {
+      "country": "MNE",
+      "year": 2016
+    }
+  ],
+  "v2elfrfair": [
+    {
+      "country": "GNQ",
+      "year": 2017
+    },
+    {
+      "country": "DJI",
+      "year": 2018
+    },
+    {
+      "country": "TUR",
+      "year": 2018
+    },
+    {
+      "country": "ECU",
+      "year": 2017
+    },
+    {
+      "country": "KOR",
+      "year": 2017
+    }
+  ],
+  "v2elintim": [
+    {
+      "country": "TKM",
+      "year": 2017
+    },
+    {
+      "country": "CMR",
+      "year": 2018
+    },
+    {
+      "country": "NPL",
+      "year": 2017
+    },
+    {
+      "country": "IRL",
+      "year": 2016
+    }
+  ],
+  "v2elirreg": [
+    {
+      "country": "BLR",
+      "year": 2016
+    },
+    {
+      "country": "IRQ",
+      "year": 2018
+    },
+    {
+      "country": "SLE",
+      "year": 2018
+    },
+    {
+      "country": "BTN",
+      "year": 2018
+    },
+    {
+      "country": "NOR",
+      "year": 2017
+    }
+  ],
+  "v2ellocpwr": [
+    {
+      "country": "TKM",
+      "year": 2017
+    },
+    {
+      "country": "IRN",
+      "year": 2017
+    },
+    {
+      "country": "MLI",
+      "year": 2017
+    },
+    {
+      "country": "CYP",
+      "year": 2018
+    },
+    {
+      "country": "COL",
+      "year": 2017
+    }
+  ],
+  "v2elmulpar": [
+    {
+      "country": "SWZ",
+      "year": 2018
+    },
+    {
+      "country": "EGY",
+      "year": 2018
+    },
+    {
+      "country": "NIC",
+      "year": 2016
+    },
+    {
+      "country": "AFG",
+      "year": 2018
+    },
+    {
+      "country": "NZL",
+      "year": 2017
+    }
+  ],
+  "v2elpaidig": [
+    {
+      "country": "CUB",
+      "year": 2018
+    },
+    {
+      "country": "STP",
+      "year": 2016
+    },
+    {
+      "country": "JOR",
+      "year": 2016
+    },
+    {
+      "country": "LTU",
+      "year": 2016
+    }
+  ],
+  "v2elpdcamp": [
+    {
+      "country": "CUB",
+      "year": 2018
+    },
+    {
+      "country": "ZMB",
+      "year": 2016
+    },
+    {
+      "country": "SRB",
+      "year": 2016
+    },
+    {
+      "country": "KOR",
+      "year": 2017
+    }
+  ],
+  "v2elpeace": [
+    {
+      "country": "HND",
+      "year": 2017
+    },
+    {
+      "country": "IRQ",
+      "year": 2018
+    },
+    {
+      "country": "GEO",
+      "year": 2016
+    },
+    {
+      "country": "DEU",
+      "year": 2017
+    }
+  ],
+  "v2elpubfin": [
+    {
+      "country": "SOM",
+      "year": 2018
+    },
+    {
+      "country": "YEM",
+      "year": 2017
+    },
+    {
+      "country": "KAZ",
+      "year": 2017
+    },
+    {
+      "country": "ECU",
+      "year": 2018
+    },
+    {
+      "country": "BEL",
+      "year": 2018
+    }
+  ],
+  "v2elrgpwr": [
+    {
+      "country": "SAU",
+      "year": 2017
+    },
+    {
+      "country": "RWA",
+      "year": 2017
+    },
+    {
+      "country": "NPL",
+      "year": 2016
+    },
+    {
+      "country": "MYS",
+      "year": 2018
+    },
+    {
+      "country": "CRI",
+      "year": 2016
+    }
+  ],
+  "v2elrgstry": [
+    {
+      "country": "GNQ",
+      "year": 2017
+    },
+    {
+      "country": "VEN",
+      "year": 2018
+    },
+    {
+      "country": "PHL",
+      "year": 2016
+    },
+    {
+      "country": "NOR",
+      "year": 2017
+    }
+  ],
+  "v2elsnlsff": [
+    {
+      "country": "GAB",
+      "year": 2017
+    },
+    {
+      "country": "YEM",
+      "year": 2017
+    },
+    {
+      "country": "TWN",
+      "year": 2018
+    }
+  ],
+  "v2elvotbuy": [
+    {
+      "country": "AZE",
+      "year": 2018
+    },
+    {
+      "country": "CMR",
+      "year": 2018
+    },
+    {
+      "country": "MNG",
+      "year": 2017
+    },
+    {
+      "country": "MLT",
+      "year": 2017
+    },
+    {
+      "country": "CHL",
+      "year": 2017
+    }
+  ],
+  "v2juaccnt": [
+    {
+      "country": "VEN",
+      "year": 2018
+    },
+    {
+      "country": "KHM",
+      "year": 2016
+    },
+    {
+      "country": "ETH",
+      "year": 2016
+    },
+    {
+      "country": "AUT",
+      "year": 2018
+    },
+    {
+      "country": "EST",
+      "year": 2017
+    }
+  ],
+  "v2jucomp": [
+    {
+      "country": "PRK",
+      "year": 2016
+    },
+    {
+      "country": "DZA",
+      "year": 2018
+    },
+    {
+      "country": "SLE",
+      "year": 2016
+    },
+    {
+      "country": "ROU",
+      "year": 2016
+    },
+    {
+      "country": "CHL",
+      "year": 2016
+    }
+  ],
+  "v2jucorrdc": [
+    {
+      "country": "AZE",
+      "year": 2018
+    },
+    {
+      "country": "CAF",
+      "year": 2017
+    },
+    {
+      "country": "LBN",
+      "year": 2017
+    },
+    {
+      "country": "JAM",
+      "year": 2018
+    },
+    {
+      "country": "DNK",
+      "year": 2018
+    }
+  ],
+  "v2juhccomp": [
+    {
+      "country": "PRK",
+      "year": 2016
+    },
+    {
+      "country": "TGO",
+      "year": 2017
+    },
+    {
+      "country": "SAU",
+      "year": 2018
+    },
+    {
+      "country": "BTN",
+      "year": 2016
+    },
+    {
+      "country": "AUS",
+      "year": 2018
+    }
+  ],
+  "v2juhcind": [
+    {
+      "country": "AZE",
+      "year": 2018
+    },
+    {
+      "country": "MRT",
+      "year": 2016
+    },
+    {
+      "country": "TLS",
+      "year": 2017
+    },
+    {
+      "country": "SYC",
+      "year": 2016
+    },
+    {
+      "country": "NZL",
+      "year": 2017
+    }
+  ],
+  "v2juncind": [
+    {
+      "country": "AZE",
+      "year": 2018
+    },
+    {
+      "country": "TCD",
+      "year": 2016
+    },
+    {
+      "country": "FJI",
+      "year": 2016
+    },
+    {
+      "country": "GUY",
+      "year": 2018
+    },
+    {
+      "country": "NZL",
+      "year": 2018
+    }
+  ],
+  "v2jupack": [
+    {
+      "country": "TUR",
+      "year": 2018
+    },
+    {
+      "country": "BDI",
+      "year": 2016
+    },
+    {
+      "country": "VNM",
+      "year": 2018
+    },
+    {
+      "country": "DNK",
+      "year": 2018
+    }
+  ],
+  "v2jupoatck": [
+    {
+      "country": "POL",
+      "year": 2018
+    },
+    {
+      "country": "GNQ",
+      "year": 2018
+    },
+    {
+      "country": "BGD",
+      "year": 2016
+    },
+    {
+      "country": "FJI",
+      "year": 2016
+    },
+    {
+      "country": "KWT",
+      "year": 2016
+    }
+  ],
+  "v2jupurge": [
+    {
+      "country": "TUR",
+      "year": 2017
+    },
+    {
+      "country": "NIC",
+      "year": 2018
+    },
+    {
+      "country": "BGD",
+      "year": 2018
+    },
+    {
+      "country": "FJI",
+      "year": 2017
+    },
+    {
+      "country": "KWT",
+      "year": 2018
+    }
+  ],
+  "v2jureform": [
+    {
+      "country": "TUR",
+      "year": 2017
+    },
+    {
+      "country": "MWI",
+      "year": 2017
+    },
+    {
+      "country": "TUN",
+      "year": 2016
+    }
+  ],
+  "v2jureview": [
+    {
+      "country": "PRK",
+      "year": 2016
+    },
+    {
+      "country": "ALB",
+      "year": 2018
+    }
+  ],
+  "v2mebias": [
+    {
+      "country": "ERI",
+      "year": 2017
+    },
+    {
+      "country": "YEM",
+      "year": 2018
+    },
+    {
+      "country": "MKD",
+      "year": 2016
+    },
+    {
+      "country": "IDN",
+      "year": 2018
+    },
+    {
+      "country": "LUX",
+      "year": 2017
+    }
+  ],
+  "v2mecenefi": [
+    {
+      "country": "PRK",
+      "year": 2016
+    },
+    {
+      "country": "TUR",
+      "year": 2016
+    },
+    {
+      "country": "SOM",
+      "year": 2016
+    },
+    {
+      "country": "ITA",
+      "year": 2016
+    }
+  ],
+  "v2mecenefibin": [
+    {
+      "country": "ARG",
+      "year": 2018
+    }
+  ],
+  "v2mecenefm": [
+    {
+      "country": "TKM",
+      "year": 2017
+    },
+    {
+      "country": "ARE",
+      "year": 2016
+    },
+    {
+      "country": "HTI",
+      "year": 2016
+    },
+    {
+      "country": "CPV",
+      "year": 2017
+    },
+    {
+      "country": "BEL",
+      "year": 2018
+    }
+  ],
+  "v2mecorrpt": [
+    {
+      "country": "PRK",
+      "year": 2017
+    },
+    {
+      "country": "TJK",
+      "year": 2017
+    },
+    {
+      "country": "BEN",
+      "year": 2017
+    },
+    {
+      "country": "SUR",
+      "year": 2018
+    },
+    {
+      "country": "DNK",
+      "year": 2018
+    }
+  ],
+  "v2mecrit": [
+    {
+      "country": "ERI",
+      "year": 2016
+    },
+    {
+      "country": "YEM",
+      "year": 2016
+    },
+    {
+      "country": "DOM",
+      "year": 2018
+    },
+    {
+      "country": "BEL",
+      "year": 2016
+    }
+  ],
+  "v2meharjrn": [
+    {
+      "country": "PRK",
+      "year": 2017
+    },
+    {
+      "country": "TUR",
+      "year": 2018
+    },
+    {
+      "country": "ECU",
+      "year": 2017
+    },
+    {
+      "country": "ITA",
+      "year": 2017
+    },
+    {
+      "country": "LTU",
+      "year": 2018
+    }
+  ],
+  "v2merange": [
+    {
+      "country": "ERI",
+      "year": 2018
+    },
+    {
+      "country": "YEM",
+      "year": 2017
+    },
+    {
+      "country": "AFG",
+      "year": 2016
+    },
+    {
+      "country": "MLT",
+      "year": 2017
+    }
+  ],
+  "v2meslfcen": [
+    {
+      "country": "ERI",
+      "year": 2017
+    },
+    {
+      "country": "AZE",
+      "year": 2016
+    },
+    {
+      "country": "COL",
+      "year": 2016
+    },
+    {
+      "country": "BEL",
+      "year": 2016
+    }
+  ],
+  "v2caassemb": [
+    {
+      "country": "ERI",
+      "year": 2016
+    },
+    {
+      "country": "QAT",
+      "year": 2017
+    },
+    {
+      "country": "FJI",
+      "year": 2018
+    },
+    {
+      "country": "BOL",
+      "year": 2018
+    },
+    {
+      "country": "DEU",
+      "year": 2016
+    }
+  ],
+  "v2caautmob": [
+    {
+      "country": "PAN",
+      "year": 2017
+    },
+    {
+      "country": "SLE",
+      "year": 2018
+    },
+    {
+      "country": "TKM",
+      "year": 2016
+    },
+    {
+      "country": "SYR",
+      "year": 2018
+    },
+    {
+      "country": "PRK",
+      "year": 2016
+    }
+  ],
+  "v2cacamps": [
+    {
+      "country": "BRB",
+      "year": 2017
+    },
+    {
+      "country": "FIN",
+      "year": 2016
+    },
+    {
+      "country": "TLS",
+      "year": 2018
+    },
+    {
+      "country": "GEO",
+      "year": 2017
+    },
+    {
+      "country": "LBY",
+      "year": 2018
+    }
+  ],
+  "v2caconmob": [
+    {
+      "country": "MLT",
+      "year": 2018
+    },
+    {
+      "country": "LSO",
+      "year": 2016
+    },
+    {
+      "country": "BOL",
+      "year": 2016
+    },
+    {
+      "country": "SYR",
+      "year": 2016
+    }
+  ],
+  "v2cacritic": [
+    {
+      "country": "TKM",
+      "year": 2018
+    },
+    {
+      "country": "BDI",
+      "year": 2017
+    },
+    {
+      "country": "SYC",
+      "year": 2018
+    },
+    {
+      "country": "FRA",
+      "year": 2016
+    },
+    {
+      "country": "CHL",
+      "year": 2018
+    }
+  ],
+  "v2cademmob": [
+    {
+      "country": "LAO",
+      "year": 2017
+    },
+    {
+      "country": "GUY",
+      "year": 2017
+    },
+    {
+      "country": "LKA",
+      "year": 2016
+    },
+    {
+      "country": "ZWE",
+      "year": 2018
+    },
+    {
+      "country": "ARM",
+      "year": 2018
+    }
+  ],
+  "v2cagenmob": [
+    {
+      "country": "ERI",
+      "year": 2018
+    },
+    {
+      "country": "JPN",
+      "year": 2018
+    },
+    {
+      "country": "NIC",
+      "year": 2016
+    },
+    {
+      "country": "SYR",
+      "year": 2016
+    },
+    {
+      "country": "ARM",
+      "year": 2018
+    }
+  ],
+  "v2cainsaut": [
+    {
+      "country": "ERI",
+      "year": 2018
+    },
+    {
+      "country": "CHN",
+      "year": 2017
+    },
+    {
+      "country": "UKR",
+      "year": 2017
+    },
+    {
+      "country": "NZL",
+      "year": 2017
+    },
+    {
+      "country": "CRI",
+      "year": 2016
+    }
+  ],
+  "v2canonpol": [
+    {
+      "country": "PRK",
+      "year": 2016
+    },
+    {
+      "country": "ERI",
+      "year": 2016
+    },
+    {
+      "country": "JOR",
+      "year": 2016
+    },
+    {
+      "country": "DNK",
+      "year": 2018
+    },
+    {
+      "country": "CHE",
+      "year": 2017
+    }
+  ],
+  "v2capolit": [
+    {
+      "country": "TKM",
+      "year": 2018
+    },
+    {
+      "country": "VNM",
+      "year": 2018
+    },
+    {
+      "country": "GIN",
+      "year": 2016
+    },
+    {
+      "country": "CHE",
+      "year": 2018
+    }
+  ],
+  "v2castate": [
+    {
+      "country": "ISL",
+      "year": 2017
+    },
+    {
+      "country": "FJI",
+      "year": 2016
+    },
+    {
+      "country": "KEN",
+      "year": 2016
+    },
+    {
+      "country": "BLR",
+      "year": 2016
+    },
+    {
+      "country": "CUB",
+      "year": 2018
+    }
+  ],
+  "v2casurv": [
+    {
+      "country": "ERI",
+      "year": 2018
+    },
+    {
+      "country": "TUR",
+      "year": 2016
+    },
+    {
+      "country": "QAT",
+      "year": 2018
+    },
+    {
+      "country": "TLS",
+      "year": 2018
+    },
+    {
+      "country": "LUX",
+      "year": 2017
+    }
+  ],
+  "v2catrauni": [
+    {
+      "country": "LAO",
+      "year": 2018
+    },
+    {
+      "country": "SOM",
+      "year": 2016
+    },
+    {
+      "country": "HTI",
+      "year": 2017
+    },
+    {
+      "country": "LUX",
+      "year": 2018
+    },
+    {
+      "country": "DNK",
+      "year": 2017
+    }
+  ],
+  "v2caviol": [
+    {
+      "country": "ROU",
+      "year": 2016
+    },
+    {
+      "country": "MRT",
+      "year": 2017
+    },
+    {
+      "country": "PNG",
+      "year": 2017
+    },
+    {
+      "country": "BDI",
+      "year": 2016
+    },
+    {
+      "country": "AFG",
+      "year": 2016
+    }
+  ],
+  "v2exbribe": [
+    {
+      "country": "KHM",
+      "year": 2017
+    },
+    {
+      "country": "TGO",
+      "year": 2017
+    },
+    {
+      "country": "BLR",
+      "year": 2017
+    },
+    {
+      "country": "TTO",
+      "year": 2016
+    },
+    {
+      "country": "CHE",
+      "year": 2018
+    }
+  ],
+  "v2excrptps": [
+    {
+      "country": "VEN",
+      "year": 2018
+    },
+    {
+      "country": "KGZ",
+      "year": 2016
+    },
+    {
+      "country": "BHR",
+      "year": 2017
+    },
+    {
+      "country": "KOR",
+      "year": 2017
+    },
+    {
+      "country": "DNK",
+      "year": 2017
+    }
+  ],
+  "v2exdfcbhs": [
+    {
+      "country": "VUT",
+      "year": 2017
+    },
+    {
+      "country": "BGD",
+      "year": 2016
+    },
+    {
+      "country": "NGA",
+      "year": 2017
+    },
+    {
+      "country": "MEX",
+      "year": 2018
+    },
+    {
+      "country": "SAU",
+      "year": 2018
+    }
+  ],
+  "v2exdfdmhs": [
+    {
+      "country": "SWE",
+      "year": 2017
+    },
+    {
+      "country": "LTU",
+      "year": 2017
+    },
+    {
+      "country": "BTN",
+      "year": 2016
+    },
+    {
+      "country": "NIC",
+      "year": 2017
+    }
+  ],
+  "v2exdfdshg": [
+    {
+      "country": "BLR",
+      "year": 2016
+    },
+    {
+      "country": "LAO",
+      "year": 2017
+    },
+    {
+      "country": "EGY",
+      "year": 2018
+    },
+    {
+      "country": "AUS",
+      "year": 2018
+    }
+  ],
+  "v2exdfdshs": [
+    {
+      "country": "COL",
+      "year": 2016
+    },
+    {
+      "country": "HUN",
+      "year": 2016
+    },
+    {
+      "country": "ZWE",
+      "year": 2017
+    },
+    {
+      "country": "SAU",
+      "year": 2017
+    }
+  ],
+  "v2exdfpphg": [
+    {
+      "country": "BGD",
+      "year": 2017
+    },
+    {
+      "country": "DEU",
+      "year": 2018
+    },
+    {
+      "country": "AZE",
+      "year": 2016
+    }
+  ],
+  "v2exdfpphs": [
+    {
+      "country": "TKM",
+      "year": 2016
+    },
+    {
+      "country": "LBY",
+      "year": 2017
+    },
+    {
+      "country": "AUS",
+      "year": 2018
+    }
+  ],
+  "v2exdfvthg": [
+    {
+      "country": "LTU",
+      "year": 2017
+    },
+    {
+      "country": "YEM",
+      "year": 2018
+    },
+    {
+      "country": "FJI",
+      "year": 2018
+    },
+    {
+      "country": "BGD",
+      "year": 2017
+    },
+    {
+      "country": "ARE",
+      "year": 2017
+    }
+  ],
+  "v2exdfvths": [
+    {
+      "country": "CHE",
+      "year": 2017
+    },
+    {
+      "country": "BRB",
+      "year": 2017
+    },
+    {
+      "country": "MNE",
+      "year": 2017
+    },
+    {
+      "country": "ZWE",
+      "year": 2018
+    },
+    {
+      "country": "ARE",
+      "year": 2017
+    }
+  ],
+  "v2exdjcbhg": [
+    {
+      "country": "CMR",
+      "year": 2018
+    },
+    {
+      "country": "HRV",
+      "year": 2016
+    },
+    {
+      "country": "TTO",
+      "year": 2017
+    }
+  ],
+  "v2exdjdshg": [
+    {
+      "country": "ARM",
+      "year": 2017
+    },
+    {
+      "country": "SDN",
+      "year": 2017
+    },
+    {
+      "country": "MYS",
+      "year": 2018
+    },
+    {
+      "country": "DNK",
+      "year": 2018
+    }
+  ],
+  "v2exembez": [
+    {
+      "country": "VEN",
+      "year": 2018
+    },
+    {
+      "country": "NGA",
+      "year": 2018
+    },
+    {
+      "country": "MDV",
+      "year": 2017
+    },
+    {
+      "country": "FJI",
+      "year": 2017
+    },
+    {
+      "country": "SWE",
+      "year": 2017
+    }
+  ],
+  "v2exremhog": [
+    {
+      "country": "THA",
+      "year": 2017
+    },
+    {
+      "country": "CPV",
+      "year": 2018
+    },
+    {
+      "country": "NZL",
+      "year": 2018
+    },
+    {
+      "country": "NPL",
+      "year": 2018
+    }
+  ],
+  "v2exremhsp": [
+    {
+      "country": "QAT",
+      "year": 2018
+    },
+    {
+      "country": "GRC",
+      "year": 2017
+    },
+    {
+      "country": "BRB",
+      "year": 2016
+    }
+  ],
+  "v2exrescon": [
+    {
+      "country": "VEN",
+      "year": 2016
+    },
+    {
+      "country": "SSD",
+      "year": 2017
+    },
+    {
+      "country": "RUS",
+      "year": 2017
+    },
+    {
+      "country": "TUN",
+      "year": 2018
+    },
+    {
+      "country": "NZL",
+      "year": 2018
+    }
+  ],
+  "v2exthftps": [
+    {
+      "country": "VEN",
+      "year": 2018
+    },
+    {
+      "country": "AGO",
+      "year": 2016
+    },
+    {
+      "country": "LBN",
+      "year": 2017
+    },
+    {
+      "country": "BTN",
+      "year": 2016
+    },
+    {
+      "country": "NZL",
+      "year": 2016
+    }
+  ],
+  "v2peapsecon": [
+    {
+      "country": "YEM",
+      "year": 2017
+    },
+    {
+      "country": "GNB",
+      "year": 2018
+    },
+    {
+      "country": "ECU",
+      "year": 2016
+    },
+    {
+      "country": "BTN",
+      "year": 2018
+    },
+    {
+      "country": "FRA",
+      "year": 2017
+    }
+  ],
+  "v2peapsgen": [
+    {
+      "country": "AFG",
+      "year": 2018
+    },
+    {
+      "country": "FJI",
+      "year": 2018
+    },
+    {
+      "country": "DZA",
+      "year": 2017
+    },
+    {
+      "country": "FIN",
+      "year": 2016
+    }
+  ],
+  "v2peapsgeo": [
+    {
+      "country": "PNG",
+      "year": 2017
+    },
+    {
+      "country": "NGA",
+      "year": 2016
+    },
+    {
+      "country": "TUN",
+      "year": 2016
+    },
+    {
+      "country": "MNE",
+      "year": 2017
+    },
+    {
+      "country": "LUX",
+      "year": 2017
+    }
+  ],
+  "v2peapspol": [
+    {
+      "country": "SSD",
+      "year": 2016
+    },
+    {
+      "country": "TUR",
+      "year": 2017
+    },
+    {
+      "country": "IDN",
+      "year": 2017
+    },
+    {
+      "country": "NOR",
+      "year": 2018
+    }
+  ],
+  "v2peapssoc": [
+    {
+      "country": "SSD",
+      "year": 2016
+    },
+    {
+      "country": "BGD",
+      "year": 2018
+    },
+    {
+      "country": "TUN",
+      "year": 2016
+    },
+    {
+      "country": "TTO",
+      "year": 2017
+    },
+    {
+      "country": "NOR",
+      "year": 2016
+    }
+  ],
+  "v2peasbecon": [
+    {
+      "country": "GTM",
+      "year": 2018
+    },
+    {
+      "country": "GNB",
+      "year": 2018
+    },
+    {
+      "country": "MDA",
+      "year": 2018
+    },
+    {
+      "country": "CAN",
+      "year": 2016
+    },
+    {
+      "country": "JPN",
+      "year": 2016
+    }
+  ],
+  "v2peasbegeo": [
+    {
+      "country": "PNG",
+      "year": 2018
+    },
+    {
+      "country": "GNB",
+      "year": 2018
+    },
+    {
+      "country": "DZA",
+      "year": 2017
+    },
+    {
+      "country": "CHL",
+      "year": 2017
+    },
+    {
+      "country": "DNK",
+      "year": 2016
+    }
+  ],
+  "v2peasbepol": [
+    {
+      "country": "IRQ",
+      "year": 2017
+    },
+    {
+      "country": "HTI",
+      "year": 2018
+    },
+    {
+      "country": "HRV",
+      "year": 2018
+    },
+    {
+      "country": "AUT",
+      "year": 2018
+    },
+    {
+      "country": "JPN",
+      "year": 2017
+    }
+  ],
+  "v2peasbgen": [
+    {
+      "country": "TJK",
+      "year": 2017
+    },
+    {
+      "country": "MEX",
+      "year": 2018
+    },
+    {
+      "country": "THA",
+      "year": 2016
+    },
+    {
+      "country": "NLD",
+      "year": 2018
+    }
+  ],
+  "v2peasbsoc": [
+    {
+      "country": "CAF",
+      "year": 2018
+    },
+    {
+      "country": "BGD",
+      "year": 2018
+    },
+    {
+      "country": "SLV",
+      "year": 2017
+    },
+    {
+      "country": "GBR",
+      "year": 2017
+    },
+    {
+      "country": "LTU",
+      "year": 2017
+    }
+  ],
+  "v2peasjgen": [
+    {
+      "country": "SOM",
+      "year": 2018
+    },
+    {
+      "country": "YEM",
+      "year": 2017
+    },
+    {
+      "country": "FJI",
+      "year": 2016
+    },
+    {
+      "country": "ECU",
+      "year": 2016
+    },
+    {
+      "country": "NOR",
+      "year": 2018
+    }
+  ],
+  "v2peasjgeo": [
+    {
+      "country": "PNG",
+      "year": 2018
+    },
+    {
+      "country": "YEM",
+      "year": 2017
+    },
+    {
+      "country": "MWI",
+      "year": 2018
+    },
+    {
+      "country": "MNE",
+      "year": 2018
+    },
+    {
+      "country": "CHE",
+      "year": 2017
+    }
+  ],
+  "v2peasjpol": [
+    {
+      "country": "ZMB",
+      "year": 2017
+    },
+    {
+      "country": "SUR",
+      "year": 2016
+    },
+    {
+      "country": "LKA",
+      "year": 2017
+    },
+    {
+      "country": "VUT",
+      "year": 2016
+    },
+    {
+      "country": "NOR",
+      "year": 2017
+    }
+  ],
+  "v2peasjsoc": [
+    {
+      "country": "BHR",
+      "year": 2018
+    },
+    {
+      "country": "CAF",
+      "year": 2016
+    },
+    {
+      "country": "KAZ",
+      "year": 2017
+    },
+    {
+      "country": "SYC",
+      "year": 2018
+    },
+    {
+      "country": "NOR",
+      "year": 2017
+    }
+  ],
+  "v2peasjsoecon": [
+    {
+      "country": "TCD",
+      "year": 2018
+    },
+    {
+      "country": "SYR",
+      "year": 2017
+    },
+    {
+      "country": "PRT",
+      "year": 2017
+    },
+    {
+      "country": "EST",
+      "year": 2016
+    }
+  ],
+  "v2peedueq": [
+    {
+      "country": "SSD",
+      "year": 2016
+    },
+    {
+      "country": "PNG",
+      "year": 2018
+    },
+    {
+      "country": "GUY",
+      "year": 2017
+    },
+    {
+      "country": "CAN",
+      "year": 2016
+    },
+    {
+      "country": "EST",
+      "year": 2018
+    }
+  ],
+  "v2pehealth": [
+    {
+      "country": "SSD",
+      "year": 2016
+    },
+    {
+      "country": "VEN",
+      "year": 2016
+    },
+    {
+      "country": "IRN",
+      "year": 2018
+    },
+    {
+      "country": "BGR",
+      "year": 2018
+    },
+    {
+      "country": "DEU",
+      "year": 2018
+    }
+  ],
+  "v2pepwrgen": [
+    {
+      "country": "SAU",
+      "year": 2017
+    },
+    {
+      "country": "ARM",
+      "year": 2016
+    },
+    {
+      "country": "GHA",
+      "year": 2018
+    },
+    {
+      "country": "CRI",
+      "year": 2018
+    },
+    {
+      "country": "DNK",
+      "year": 2018
+    }
+  ],
+  "v2pepwrgeo": [
+    {
+      "country": "MRT",
+      "year": 2018
+    },
+    {
+      "country": "MDG",
+      "year": 2017
+    },
+    {
+      "country": "PAN",
+      "year": 2016
+    },
+    {
+      "country": "PAK",
+      "year": 2017
+    },
+    {
+      "country": "NZL",
+      "year": 2018
+    }
+  ],
+  "v2pepwrort": [
+    {
+      "country": "QAT",
+      "year": 2016
+    },
+    {
+      "country": "JAM",
+      "year": 2016
+    },
+    {
+      "country": "ZAF",
+      "year": 2017
+    },
+    {
+      "country": "DNK",
+      "year": 2017
+    }
+  ],
+  "v2pepwrses": [
+    {
+      "country": "TKM",
+      "year": 2018
+    },
+    {
+      "country": "IRQ",
+      "year": 2017
+    },
+    {
+      "country": "BWA",
+      "year": 2016
+    },
+    {
+      "country": "LUX",
+      "year": 2016
+    },
+    {
+      "country": "POL",
+      "year": 2018
+    }
+  ],
+  "v2pepwrsoc": [
+    {
+      "country": "QAT",
+      "year": 2018
+    },
+    {
+      "country": "HTI",
+      "year": 2017
+    },
+    {
+      "country": "SYC",
+      "year": 2016
+    },
+    {
+      "country": "ROU",
+      "year": 2017
+    },
+    {
+      "country": "LUX",
+      "year": 2017
+    }
+  ],
+  "v2psbars": [
+    {
+      "country": "ARE",
+      "year": 2016
+    },
+    {
+      "country": "TJK",
+      "year": 2018
+    },
+    {
+      "country": "BDI",
+      "year": 2018
+    },
+    {
+      "country": "FJI",
+      "year": 2016
+    },
+    {
+      "country": "TTO",
+      "year": 2016
+    }
+  ],
+  "v2pscnslnl": [
+    {
+      "country": "MRT",
+      "year": 2018
+    },
+    {
+      "country": "KHM",
+      "year": 2016
+    }
+  ],
+  "v2pscohesv": [
+    {
+      "country": "AFG",
+      "year": 2017
+    },
+    {
+      "country": "KWT",
+      "year": 2016
+    },
+    {
+      "country": "MWI",
+      "year": 2018
+    },
+    {
+      "country": "CUB",
+      "year": 2018
+    }
+  ],
+  "v2pscomprg": [
+    {
+      "country": "SOM",
+      "year": 2018
+    },
+    {
+      "country": "IRQ",
+      "year": 2018
+    },
+    {
+      "country": "DEU",
+      "year": 2017
+    }
+  ],
+  "v2psnatpar": [
+    {
+      "country": "FIN",
+      "year": 2016
+    },
+    {
+      "country": "PAK",
+      "year": 2016
+    },
+    {
+      "country": "CUB",
+      "year": 2018
+    }
+  ],
+  "v2psoppaut": [
+    {
+      "country": "CUB",
+      "year": 2017
+    },
+    {
+      "country": "SYR",
+      "year": 2016
+    },
+    {
+      "country": "GNQ",
+      "year": 2017
+    },
+    {
+      "country": "MDA",
+      "year": 2018
+    },
+    {
+      "country": "FRA",
+      "year": 2017
+    }
+  ],
+  "v2psorgs": [
+    {
+      "country": "SAU",
+      "year": 2016
+    },
+    {
+      "country": "BDI",
+      "year": 2017
+    },
+    {
+      "country": "BLR",
+      "year": 2018
+    },
+    {
+      "country": "LKA",
+      "year": 2018
+    },
+    {
+      "country": "SWE",
+      "year": 2017
+    }
+  ],
+  "v2psparban": [
+    {
+      "country": "CUB",
+      "year": 2017
+    },
+    {
+      "country": "SYR",
+      "year": 2017
+    },
+    {
+      "country": "GNQ",
+      "year": 2018
+    },
+    {
+      "country": "TJK",
+      "year": 2016
+    },
+    {
+      "country": "SLB",
+      "year": 2016
+    }
+  ],
+  "v2psplats": [
+    {
+      "country": "ARE",
+      "year": 2016
+    },
+    {
+      "country": "VNM",
+      "year": 2017
+    },
+    {
+      "country": "MOZ",
+      "year": 2018
+    },
+    {
+      "country": "BTN",
+      "year": 2018
+    },
+    {
+      "country": "URY",
+      "year": 2016
+    }
+  ],
+  "v2psprbrch": [
+    {
+      "country": "QAT",
+      "year": 2016
+    },
+    {
+      "country": "SSD",
+      "year": 2018
+    },
+    {
+      "country": "BOL",
+      "year": 2017
+    },
+    {
+      "country": "UZB",
+      "year": 2017
+    },
+    {
+      "country": "SWE",
+      "year": 2018
+    }
+  ],
+  "v2psprlnks": [
+    {
+      "country": "QAT",
+      "year": 2017
+    },
+    {
+      "country": "TJK",
+      "year": 2018
+    },
+    {
+      "country": "PAK",
+      "year": 2018
+    },
+    {
+      "country": "CHL",
+      "year": 2016
+    },
+    {
+      "country": "DNK",
+      "year": 2017
+    }
+  ],
+  "v2pssunpar": [
+    {
+      "country": "ERI",
+      "year": 2016
+    },
+    {
+      "country": "YEM",
+      "year": 2016
+    },
+    {
+      "country": "DNK",
+      "year": 2016
+    }
+  ],
+  "v2lgcomslo": [
+    {
+      "country": "QAT",
+      "year": 2018
+    },
+    {
+      "country": "KAZ",
+      "year": 2018
+    },
+    {
+      "country": "CHE",
+      "year": 2017
+    }
+  ],
+  "v2lgcrrpt": [
+    {
+      "country": "PNG",
+      "year": 2017
+    },
+    {
+      "country": "TJK",
+      "year": 2016
+    },
+    {
+      "country": "TZA",
+      "year": 2017
+    },
+    {
+      "country": "ESP",
+      "year": 2017
+    },
+    {
+      "country": "URY",
+      "year": 2016
+    }
+  ],
+  "v2lgdomchm": [
+    {
+      "country": "SVN",
+      "year": 2018
+    },
+    {
+      "country": "JAM",
+      "year": 2016
+    },
+    {
+      "country": "BDI",
+      "year": 2018
+    },
+    {
+      "country": "JOR",
+      "year": 2018
+    }
+  ],
+  "v2lgdsadlo": [
+    {
+      "country": "QAT",
+      "year": 2017
+    },
+    {
+      "country": "CRI",
+      "year": 2016
+    },
+    {
+      "country": "NOR",
+      "year": 2016
+    },
+    {
+      "country": "XKX",
+      "year": 2018
+    }
+  ],
+  "v2lgdsadlobin": [
+    {
+      "country": "SSD",
+      "year": 2017
+    }
+  ],
+  "v2lgfunds": [
+    {
+      "country": "TKM",
+      "year": 2018
+    },
+    {
+      "country": "ISR",
+      "year": 2016
+    }
+  ],
+  "v2lginvstp": [
+    {
+      "country": "QAT",
+      "year": 2018
+    },
+    {
+      "country": "CUB",
+      "year": 2018
+    },
+    {
+      "country": "SLB",
+      "year": 2018
+    },
+    {
+      "country": "NGA",
+      "year": 2016
+    },
+    {
+      "country": "NLD",
+      "year": 2018
+    }
+  ],
+  "v2lglegplo": [
+    {
+      "country": "ARE",
+      "year": 2018
+    },
+    {
+      "country": "BLR",
+      "year": 2016
+    },
+    {
+      "country": "LUX",
+      "year": 2018
+    }
+  ],
+  "v2lglegpup": [
+    {
+      "country": "ETH",
+      "year": 2016
+    },
+    {
+      "country": "AUT",
+      "year": 2017
+    },
+    {
+      "country": "BIH",
+      "year": 2016
+    }
+  ],
+  "v2lgoppart": [
+    {
+      "country": "KAZ",
+      "year": 2017
+    },
+    {
+      "country": "MAR",
+      "year": 2017
+    },
+    {
+      "country": "NOR",
+      "year": 2017
+    }
+  ],
+  "v2lgotovst": [
+    {
+      "country": "QAT",
+      "year": 2017
+    },
+    {
+      "country": "AZE",
+      "year": 2017
+    },
+    {
+      "country": "SGP",
+      "year": 2017
+    },
+    {
+      "country": "FRA",
+      "year": 2016
+    },
+    {
+      "country": "CHL",
+      "year": 2018
+    }
+  ],
+  "v2lgqstexp": [
+    {
+      "country": "PRK",
+      "year": 2017
+    },
+    {
+      "country": "LUX",
+      "year": 2016
+    }
+  ],
+  "v2lgsrvlo": [
+    {
+      "country": "SVN",
+      "year": 2018
+    },
+    {
+      "country": "BWA",
+      "year": 2016
+    }
+  ],
+  "v2lgstafflo": [
+    {
+      "country": "SUR",
+      "year": 2016
+    },
+    {
+      "country": "ISR",
+      "year": 2017
+    }
+  ],
+  "v2svdomaut": [
+    {
+      "country": "SYR",
+      "year": 2017
+    },
+    {
+      "country": "CAF",
+      "year": 2018
+    },
+    {
+      "country": "SGP",
+      "year": 2018
+    }
+  ],
+  "v2svinlaut": [
+    {
+      "country": "BHR",
+      "year": 2018
+    },
+    {
+      "country": "CAF",
+      "year": 2018
+    },
+    {
+      "country": "NZL",
+      "year": 2017
+    }
+  ],
+  "v2stcritapparm": [
+    {
+      "country": "BHR",
+      "year": 2018
+    },
+    {
+      "country": "LBR",
+      "year": 2018
+    },
+    {
+      "country": "BEL",
+      "year": 2018
+    },
+    {
+      "country": "CRI",
+      "year": 2016
+    }
+  ],
+  "v2stcritrecadm": [
+    {
+      "country": "KHM",
+      "year": 2018
+    },
+    {
+      "country": "PAN",
+      "year": 2016
+    },
+    {
+      "country": "CAN",
+      "year": 2017
+    },
+    {
+      "country": "DNK",
+      "year": 2018
+    }
+  ],
+  "v2stfisccap": [
+    {
+      "country": "CAF",
+      "year": 2016
+    },
+    {
+      "country": "SAU",
+      "year": 2017
+    },
+    {
+      "country": "ALB",
+      "year": 2017
+    },
+    {
+      "country": "THA",
+      "year": 2017
+    }
+  ],
+  "v2strenadm": [
+    {
+      "country": "TGO",
+      "year": 2018
+    },
+    {
+      "country": "VNM",
+      "year": 2018
+    },
+    {
+      "country": "FRA",
+      "year": 2016
+    }
+  ],
+  "v2strenarm": [
+    {
+      "country": "ISL",
+      "year": 2016
+    },
+    {
+      "country": "SLB",
+      "year": 2017
+    },
+    {
+      "country": "SSD",
+      "year": 2016
+    },
+    {
+      "country": "SVN",
+      "year": 2018
+    }
+  ],
+  "v2dlcommon": [
+    {
+      "country": "SYR",
+      "year": 2016
+    },
+    {
+      "country": "ZMB",
+      "year": 2017
+    },
+    {
+      "country": "JAM",
+      "year": 2018
+    },
+    {
+      "country": "ARM",
+      "year": 2018
+    }
+  ],
+  "v2dlconslt": [
+    {
+      "country": "PRK",
+      "year": 2017
+    },
+    {
+      "country": "QAT",
+      "year": 2016
+    },
+    {
+      "country": "CAF",
+      "year": 2018
+    },
+    {
+      "country": "KGZ",
+      "year": 2016
+    },
+    {
+      "country": "FRA",
+      "year": 2018
+    }
+  ],
+  "v2dlcountr": [
+    {
+      "country": "PRK",
+      "year": 2016
+    },
+    {
+      "country": "AZE",
+      "year": 2016
+    },
+    {
+      "country": "SWZ",
+      "year": 2018
+    },
+    {
+      "country": "TTO",
+      "year": 2017
+    },
+    {
+      "country": "CHE",
+      "year": 2017
+    }
+  ],
+  "v2dlencmps": [
+    {
+      "country": "SSD",
+      "year": 2017
+    },
+    {
+      "country": "PRK",
+      "year": 2017
+    },
+    {
+      "country": "AFG",
+      "year": 2017
+    },
+    {
+      "country": "ISL",
+      "year": 2018
+    },
+    {
+      "country": "URY",
+      "year": 2016
+    }
+  ],
+  "v2dlengage": [
+    {
+      "country": "PRK",
+      "year": 2016
+    },
+    {
+      "country": "ERI",
+      "year": 2017
+    },
+    {
+      "country": "RUS",
+      "year": 2017
+    },
+    {
+      "country": "PAN",
+      "year": 2017
+    },
+    {
+      "country": "ITA",
+      "year": 2017
+    }
+  ],
+  "v2dlreason": [
+    {
+      "country": "PRK",
+      "year": 2017
+    },
+    {
+      "country": "RUS",
+      "year": 2016
+    },
+    {
+      "country": "SEN",
+      "year": 2018
+    },
+    {
+      "country": "CHE",
+      "year": 2018
+    }
+  ],
+  "v2dlunivl": [
+    {
+      "country": "SSD",
+      "year": 2016
+    },
+    {
+      "country": "YEM",
+      "year": 2017
+    },
+    {
+      "country": "KHM",
+      "year": 2018
+    },
+    {
+      "country": "RUS",
+      "year": 2016
+    },
+    {
+      "country": "PRT",
+      "year": 2016
+    }
+  ],
+  "v2exl_legitideol": [
+    {
+      "country": "CHE",
+      "year": 2017
+    },
+    {
+      "country": "MWI",
+      "year": 2017
+    },
+    {
+      "country": "ARM",
+      "year": 2017
+    },
+    {
+      "country": "IRQ",
+      "year": 2016
+    },
+    {
+      "country": "CUB",
+      "year": 2018
+    }
+  ],
+  "v2exl_legitideolcr": [],
+  "v2exl_legitlead": [
+    {
+      "country": "EST",
+      "year": 2016
+    },
+    {
+      "country": "PAN",
+      "year": 2016
+    },
+    {
+      "country": "MOZ",
+      "year": 2018
+    },
+    {
+      "country": "PHL",
+      "year": 2018
+    },
+    {
+      "country": "OMN",
+      "year": 2017
+    }
+  ],
+  "v2exl_legitperf": [
+    {
+      "country": "YEM",
+      "year": 2017
+    },
+    {
+      "country": "GNB",
+      "year": 2018
+    },
+    {
+      "country": "HND",
+      "year": 2016
+    },
+    {
+      "country": "AUS",
+      "year": 2016
+    }
+  ],
+  "v2exl_legitratio": [
+    {
+      "country": "TCD",
+      "year": 2017
+    },
+    {
+      "country": "MNE",
+      "year": 2018
+    },
+    {
+      "country": "VUT",
+      "year": 2018
+    }
+  ]
+}

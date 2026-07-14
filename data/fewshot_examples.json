@@ -1,28 +1,5298 @@
 {
-  "v2csreprss": [
+  "v2cafexch": [
     {
       "country": "PRK",
       "slug": "north-korea",
       "country_name": "North Korea",
-      "year": 2020,
+      "year": 2017,
       "level": 0,
-      "raw_mean": 0.0,
-      "region": "East Asia"
+      "raw_mean": 0.2857,
+      "region": "East & Southeast Asia & Pacific"
     },
     {
-      "country": "SAU",
-      "slug": "saudi-arabia",
-      "country_name": "Saudi Arabia",
-      "year": 2020,
+      "country": "SSD",
+      "slug": "south-sudan",
+      "country_name": "South Sudan",
+      "year": 2018,
       "level": 1,
       "raw_mean": 1.0,
-      "region": "MENA"
+      "region": "Sub-Saharan Africa"
+    },
+    {
+      "country": "MRT",
+      "slug": "mauritania",
+      "country_name": "Mauritania",
+      "year": 2018,
+      "level": 2,
+      "raw_mean": 2.0,
+      "region": "Middle East & North Africa"
+    },
+    {
+      "country": "COL",
+      "slug": "colombia",
+      "country_name": "Colombia",
+      "year": 2017,
+      "level": 3,
+      "raw_mean": 3.0,
+      "region": "Latin America & Caribbean"
+    },
+    {
+      "country": "DNK",
+      "slug": "denmark",
+      "country_name": "Denmark",
+      "year": 2018,
+      "level": 4,
+      "raw_mean": 4.0,
+      "region": "Western Europe & North America"
+    }
+  ],
+  "v2cafres": [
+    {
+      "country": "ERI",
+      "slug": "eritrea",
+      "country_name": "Eritrea",
+      "year": 2018,
+      "level": 0,
+      "raw_mean": 0.0,
+      "region": "Sub-Saharan Africa"
+    },
+    {
+      "country": "TUR",
+      "slug": "turkey",
+      "country_name": "Turkey",
+      "year": 2016,
+      "level": 1,
+      "raw_mean": 1.0,
+      "region": "Eastern Europe & Central Asia"
+    },
+    {
+      "country": "KHM",
+      "slug": "cambodia",
+      "country_name": "Cambodia",
+      "year": 2017,
+      "level": 2,
+      "raw_mean": 2.0,
+      "region": "East & Southeast Asia & Pacific"
+    },
+    {
+      "country": "HTI",
+      "slug": "haiti",
+      "country_name": "Haiti",
+      "year": 2018,
+      "level": 3,
+      "raw_mean": 3.0,
+      "region": "Latin America & Caribbean"
+    },
+    {
+      "country": "AUT",
+      "slug": "austria",
+      "country_name": "Austria",
+      "year": 2017,
+      "level": 4,
+      "raw_mean": 4.0,
+      "region": "Western Europe & North America"
+    }
+  ],
+  "v2clacfree": [
+    {
+      "country": "PRK",
+      "slug": "north-korea",
+      "country_name": "North Korea",
+      "year": 2016,
+      "level": 0,
+      "raw_mean": 0.0,
+      "region": "East & Southeast Asia & Pacific"
+    },
+    {
+      "country": "IRN",
+      "slug": "iran",
+      "country_name": "Iran",
+      "year": 2018,
+      "level": 1,
+      "raw_mean": 1.0,
+      "region": "Middle East & North Africa"
+    },
+    {
+      "country": "GIN",
+      "slug": "guinea",
+      "country_name": "Guinea",
+      "year": 2016,
+      "level": 2,
+      "raw_mean": 2.0,
+      "region": "Sub-Saharan Africa"
+    },
+    {
+      "country": "MLT",
+      "slug": "malta",
+      "country_name": "Malta",
+      "year": 2016,
+      "level": 3,
+      "raw_mean": 3.0,
+      "region": "Western Europe & North America"
+    },
+    {
+      "country": "URY",
+      "slug": "uruguay",
+      "country_name": "Uruguay",
+      "year": 2018,
+      "level": 4,
+      "raw_mean": 4.0,
+      "region": "Latin America & Caribbean"
+    }
+  ],
+  "v2clacjstm": [
+    {
+      "country": "PRK",
+      "slug": "north-korea",
+      "country_name": "North Korea",
+      "year": 2017,
+      "level": 0,
+      "raw_mean": 0.3333,
+      "region": "East & Southeast Asia & Pacific"
+    },
+    {
+      "country": "TKM",
+      "slug": "turkmenistan",
+      "country_name": "Turkmenistan",
+      "year": 2016,
+      "level": 1,
+      "raw_mean": 1.0,
+      "region": "Eastern Europe & Central Asia"
+    },
+    {
+      "country": "HND",
+      "slug": "honduras",
+      "country_name": "Honduras",
+      "year": 2017,
+      "level": 2,
+      "raw_mean": 2.0,
+      "region": "Latin America & Caribbean"
+    },
+    {
+      "country": "CPV",
+      "slug": "cabo-verde",
+      "country_name": "Cabo Verde",
+      "year": 2018,
+      "level": 3,
+      "raw_mean": 3.0,
+      "region": "Sub-Saharan Africa"
+    },
+    {
+      "country": "CHE",
+      "slug": "switzerland",
+      "country_name": "Switzerland",
+      "year": 2016,
+      "level": 4,
+      "raw_mean": 4.0,
+      "region": "Western Europe & North America"
+    }
+  ],
+  "v2clacjstw": [
+    {
+      "country": "PRK",
+      "slug": "north-korea",
+      "country_name": "North Korea",
+      "year": 2016,
+      "level": 0,
+      "raw_mean": 0.2857,
+      "region": "East & Southeast Asia & Pacific"
+    },
+    {
+      "country": "SYR",
+      "slug": "syria",
+      "country_name": "Syria",
+      "year": 2017,
+      "level": 1,
+      "raw_mean": 1.0,
+      "region": "Middle East & North Africa"
+    },
+    {
+      "country": "ETH",
+      "slug": "ethiopia",
+      "country_name": "Ethiopia",
+      "year": 2016,
+      "level": 2,
+      "raw_mean": 2.0,
+      "region": "Sub-Saharan Africa"
+    },
+    {
+      "country": "BRB",
+      "slug": "barbados",
+      "country_name": "Barbados",
+      "year": 2017,
+      "level": 3,
+      "raw_mean": 3.0,
+      "region": "Latin America & Caribbean"
+    },
+    {
+      "country": "BEL",
+      "slug": "belgium",
+      "country_name": "Belgium",
+      "year": 2017,
+      "level": 4,
+      "raw_mean": 4.0,
+      "region": "Western Europe & North America"
+    }
+  ],
+  "v2clacjust": [
+    {
+      "country": "PRK",
+      "slug": "north-korea",
+      "country_name": "North Korea",
+      "year": 2016,
+      "level": 0,
+      "raw_mean": 0.1429,
+      "region": "East & Southeast Asia & Pacific"
     },
     {
       "country": "AGO",
       "slug": "angola",
       "country_name": "Angola",
-      "year": 2020,
+      "year": 2018,
+      "level": 1,
+      "raw_mean": 1.0,
+      "region": "Sub-Saharan Africa"
+    },
+    {
+      "country": "TUR",
+      "slug": "turkey",
+      "country_name": "Turkey",
+      "year": 2018,
+      "level": 2,
+      "raw_mean": 2.0,
+      "region": "Eastern Europe & Central Asia"
+    },
+    {
+      "country": "TUN",
+      "slug": "tunisia",
+      "country_name": "Tunisia",
+      "year": 2016,
+      "level": 3,
+      "raw_mean": 3.0,
+      "region": "Middle East & North Africa"
+    },
+    {
+      "country": "LUX",
+      "slug": "luxembourg",
+      "country_name": "Luxembourg",
+      "year": 2017,
+      "level": 4,
+      "raw_mean": 4.0,
+      "region": "Western Europe & North America"
+    }
+  ],
+  "v2cldiscm": [
+    {
+      "country": "PRK",
+      "slug": "north-korea",
+      "country_name": "North Korea",
+      "year": 2017,
+      "level": 0,
+      "raw_mean": 0.0,
+      "region": "East & Southeast Asia & Pacific"
+    },
+    {
+      "country": "SSD",
+      "slug": "south-sudan",
+      "country_name": "South Sudan",
+      "year": 2018,
+      "level": 1,
+      "raw_mean": 1.0,
+      "region": "Sub-Saharan Africa"
+    },
+    {
+      "country": "LBY",
+      "slug": "libya",
+      "country_name": "Libya",
+      "year": 2017,
+      "level": 2,
+      "raw_mean": 2.0,
+      "region": "Middle East & North Africa"
+    },
+    {
+      "country": "GTM",
+      "slug": "guatemala",
+      "country_name": "Guatemala",
+      "year": 2016,
+      "level": 3,
+      "raw_mean": 3.0,
+      "region": "Latin America & Caribbean"
+    },
+    {
+      "country": "LVA",
+      "slug": "latvia",
+      "country_name": "Latvia",
+      "year": 2018,
+      "level": 4,
+      "raw_mean": 4.0,
+      "region": "Eastern Europe & Central Asia"
+    }
+  ],
+  "v2cldiscw": [
+    {
+      "country": "PRK",
+      "slug": "north-korea",
+      "country_name": "North Korea",
+      "year": 2017,
+      "level": 0,
+      "raw_mean": 0.0,
+      "region": "East & Southeast Asia & Pacific"
+    },
+    {
+      "country": "GNQ",
+      "slug": "equatorial-guinea",
+      "country_name": "Equatorial Guinea",
+      "year": 2017,
+      "level": 1,
+      "raw_mean": 1.0,
+      "region": "Sub-Saharan Africa"
+    },
+    {
+      "country": "DZA",
+      "slug": "algeria",
+      "country_name": "Algeria",
+      "year": 2018,
+      "level": 2,
+      "raw_mean": 2.0,
+      "region": "Middle East & North Africa"
+    },
+    {
+      "country": "SYC",
+      "slug": "seychelles",
+      "country_name": "Seychelles",
+      "year": 2016,
+      "level": 3,
+      "raw_mean": 3.0,
+      "region": "Other"
+    },
+    {
+      "country": "CHL",
+      "slug": "chile",
+      "country_name": "Chile",
+      "year": 2018,
+      "level": 4,
+      "raw_mean": 4.0,
+      "region": "Latin America & Caribbean"
+    }
+  ],
+  "v2cldmovem": [
+    {
+      "country": "PRK",
+      "slug": "north-korea",
+      "country_name": "North Korea",
+      "year": 2017,
+      "level": 0,
+      "raw_mean": 0.0,
+      "region": "East & Southeast Asia & Pacific"
+    },
+    {
+      "country": "ERI",
+      "slug": "eritrea",
+      "country_name": "Eritrea",
+      "year": 2018,
+      "level": 1,
+      "raw_mean": 1.0,
+      "region": "Sub-Saharan Africa"
+    },
+    {
+      "country": "SYR",
+      "slug": "syria",
+      "country_name": "Syria",
+      "year": 2016,
+      "level": 2,
+      "raw_mean": 2.0,
+      "region": "Middle East & North Africa"
+    },
+    {
+      "country": "AFG",
+      "slug": "afghanistan",
+      "country_name": "Afghanistan",
+      "year": 2017,
+      "level": 3,
+      "raw_mean": 3.0,
+      "region": "South Asia"
+    },
+    {
+      "country": "PRT",
+      "slug": "portugal",
+      "country_name": "Portugal",
+      "year": 2017,
+      "level": 4,
+      "raw_mean": 4.0,
+      "region": "Western Europe & North America"
+    }
+  ],
+  "v2cldmovew": [
+    {
+      "country": "PRK",
+      "slug": "north-korea",
+      "country_name": "North Korea",
+      "year": 2017,
+      "level": 0,
+      "raw_mean": 0.0,
+      "region": "East & Southeast Asia & Pacific"
+    },
+    {
+      "country": "SAU",
+      "slug": "saudi-arabia",
+      "country_name": "Saudi Arabia",
+      "year": 2017,
+      "level": 1,
+      "raw_mean": 1.0,
+      "region": "Middle East & North Africa"
+    },
+    {
+      "country": "SOM",
+      "slug": "somalia",
+      "country_name": "Somalia",
+      "year": 2016,
+      "level": 2,
+      "raw_mean": 2.0,
+      "region": "Sub-Saharan Africa"
+    },
+    {
+      "country": "IND",
+      "slug": "india",
+      "country_name": "India",
+      "year": 2016,
+      "level": 3,
+      "raw_mean": 3.0,
+      "region": "South Asia"
+    },
+    {
+      "country": "EST",
+      "slug": "estonia",
+      "country_name": "Estonia",
+      "year": 2018,
+      "level": 4,
+      "raw_mean": 4.0,
+      "region": "Eastern Europe & Central Asia"
+    }
+  ],
+  "v2clfmove": [
+    {
+      "country": "PRK",
+      "slug": "north-korea",
+      "country_name": "North Korea",
+      "year": 2017,
+      "level": 0,
+      "raw_mean": 0.0,
+      "region": "East & Southeast Asia & Pacific"
+    },
+    {
+      "country": "BDI",
+      "slug": "burundi",
+      "country_name": "Burundi",
+      "year": 2016,
+      "level": 1,
+      "raw_mean": 0.9,
+      "region": "Sub-Saharan Africa"
+    },
+    {
+      "country": "AZE",
+      "slug": "azerbaijan",
+      "country_name": "Azerbaijan",
+      "year": 2016,
+      "level": 2,
+      "raw_mean": 2.0,
+      "region": "Eastern Europe & Central Asia"
+    },
+    {
+      "country": "QAT",
+      "slug": "qatar",
+      "country_name": "Qatar",
+      "year": 2016,
+      "level": 3,
+      "raw_mean": 3.0,
+      "region": "Middle East & North Africa"
+    },
+    {
+      "country": "ISL",
+      "slug": "iceland",
+      "country_name": "Iceland",
+      "year": 2017,
+      "level": 4,
+      "raw_mean": 4.0,
+      "region": "Western Europe & North America"
+    }
+  ],
+  "v2clgencl": [
+    {
+      "country": "YEM",
+      "slug": "yemen",
+      "country_name": "Yemen",
+      "year": 2017,
+      "level": 0,
+      "raw_mean": 0.5,
+      "region": "Middle East & North Africa"
+    },
+    {
+      "country": "SOM",
+      "slug": "somalia",
+      "country_name": "Somalia",
+      "year": 2016,
+      "level": 1,
+      "raw_mean": 1.0,
+      "region": "Sub-Saharan Africa"
+    },
+    {
+      "country": "HTI",
+      "slug": "haiti",
+      "country_name": "Haiti",
+      "year": 2017,
+      "level": 2,
+      "raw_mean": 2.0,
+      "region": "Latin America & Caribbean"
+    },
+    {
+      "country": "UZB",
+      "slug": "uzbekistan",
+      "country_name": "Uzbekistan",
+      "year": 2016,
+      "level": 3,
+      "raw_mean": 3.0,
+      "region": "Eastern Europe & Central Asia"
+    },
+    {
+      "country": "LUX",
+      "slug": "luxembourg",
+      "country_name": "Luxembourg",
+      "year": 2017,
+      "level": 4,
+      "raw_mean": 4.0,
+      "region": "Western Europe & North America"
+    }
+  ],
+  "v2clgeocl": [
+    {
+      "country": "AFG",
+      "slug": "afghanistan",
+      "country_name": "Afghanistan",
+      "year": 2018,
+      "level": 1,
+      "raw_mean": 1.1,
+      "region": "South Asia"
+    },
+    {
+      "country": "PNG",
+      "slug": "papua-new-guinea",
+      "country_name": "Papua New Guinea",
+      "year": 2017,
+      "level": 2,
+      "raw_mean": 2.0,
+      "region": "East & Southeast Asia & Pacific"
+    },
+    {
+      "country": "QAT",
+      "slug": "qatar",
+      "country_name": "Qatar",
+      "year": 2017,
+      "level": 3,
+      "raw_mean": 3.0,
+      "region": "Middle East & North Africa"
+    },
+    {
+      "country": "SVN",
+      "slug": "slovenia",
+      "country_name": "Slovenia",
+      "year": 2016,
+      "level": 4,
+      "raw_mean": 4.0,
+      "region": "Eastern Europe & Central Asia"
+    }
+  ],
+  "v2clkill": [
+    {
+      "country": "PRK",
+      "slug": "north-korea",
+      "country_name": "North Korea",
+      "year": 2017,
+      "level": 0,
+      "raw_mean": 0.0,
+      "region": "East & Southeast Asia & Pacific"
+    },
+    {
+      "country": "TJK",
+      "slug": "tajikistan",
+      "country_name": "Tajikistan",
+      "year": 2016,
+      "level": 1,
+      "raw_mean": 1.0,
+      "region": "Eastern Europe & Central Asia"
+    },
+    {
+      "country": "NGA",
+      "slug": "nigeria",
+      "country_name": "Nigeria",
+      "year": 2017,
+      "level": 2,
+      "raw_mean": 2.0,
+      "region": "Sub-Saharan Africa"
+    },
+    {
+      "country": "PRY",
+      "slug": "paraguay",
+      "country_name": "Paraguay",
+      "year": 2017,
+      "level": 3,
+      "raw_mean": 3.0,
+      "region": "Latin America & Caribbean"
+    },
+    {
+      "country": "AUT",
+      "slug": "austria",
+      "country_name": "Austria",
+      "year": 2016,
+      "level": 4,
+      "raw_mean": 4.0,
+      "region": "Western Europe & North America"
+    }
+  ],
+  "v2clpolcl": [
+    {
+      "country": "GNQ",
+      "slug": "equatorial-guinea",
+      "country_name": "Equatorial Guinea",
+      "year": 2017,
+      "level": 0,
+      "raw_mean": 0.4286,
+      "region": "Sub-Saharan Africa"
+    },
+    {
+      "country": "KHM",
+      "slug": "cambodia",
+      "country_name": "Cambodia",
+      "year": 2017,
+      "level": 1,
+      "raw_mean": 1.0,
+      "region": "East & Southeast Asia & Pacific"
+    },
+    {
+      "country": "PAK",
+      "slug": "pakistan",
+      "country_name": "Pakistan",
+      "year": 2017,
+      "level": 2,
+      "raw_mean": 2.0,
+      "region": "South Asia"
+    },
+    {
+      "country": "DOM",
+      "slug": "dominican-republic",
+      "country_name": "Dominican Republic",
+      "year": 2017,
+      "level": 3,
+      "raw_mean": 3.0,
+      "region": "Latin America & Caribbean"
+    },
+    {
+      "country": "DEU",
+      "slug": "germany",
+      "country_name": "Germany",
+      "year": 2016,
+      "level": 4,
+      "raw_mean": 4.0,
+      "region": "Western Europe & North America"
+    }
+  ],
+  "v2clprptym": [
+    {
+      "country": "PRK",
+      "slug": "north-korea",
+      "country_name": "North Korea",
+      "year": 2016,
+      "level": 0,
+      "raw_mean": 0.1429,
+      "region": "East & Southeast Asia & Pacific"
+    },
+    {
+      "country": "TKM",
+      "slug": "turkmenistan",
+      "country_name": "Turkmenistan",
+      "year": 2018,
+      "level": 2,
+      "raw_mean": 2.0,
+      "region": "Eastern Europe & Central Asia"
+    },
+    {
+      "country": "CUB",
+      "slug": "cuba",
+      "country_name": "Cuba",
+      "year": 2018,
+      "level": 3,
+      "raw_mean": 3.0,
+      "region": "Latin America & Caribbean"
+    },
+    {
+      "country": "ZWE",
+      "slug": "zimbabwe",
+      "country_name": "Zimbabwe",
+      "year": 2018,
+      "level": 4,
+      "raw_mean": 4.0,
+      "region": "Sub-Saharan Africa"
+    }
+  ],
+  "v2clprptyw": [
+    {
+      "country": "PRK",
+      "slug": "north-korea",
+      "country_name": "North Korea",
+      "year": 2016,
+      "level": 0,
+      "raw_mean": 0.1429,
+      "region": "East & Southeast Asia & Pacific"
+    },
+    {
+      "country": "SWZ",
+      "slug": "eswatini",
+      "country_name": "Eswatini",
+      "year": 2017,
+      "level": 1,
+      "raw_mean": 1.0909,
+      "region": "Sub-Saharan Africa"
+    },
+    {
+      "country": "XKX",
+      "slug": "kosovo",
+      "country_name": "Kosovo",
+      "year": 2017,
+      "level": 2,
+      "raw_mean": 2.1111,
+      "region": "Eastern Europe & Central Asia"
+    },
+    {
+      "country": "QAT",
+      "slug": "qatar",
+      "country_name": "Qatar",
+      "year": 2017,
+      "level": 3,
+      "raw_mean": 3.0,
+      "region": "Middle East & North Africa"
+    },
+    {
+      "country": "PAK",
+      "slug": "pakistan",
+      "country_name": "Pakistan",
+      "year": 2017,
+      "level": 4,
+      "raw_mean": 4.0,
+      "region": "South Asia"
+    }
+  ],
+  "v2clrelig": [
+    {
+      "country": "MRT",
+      "slug": "mauritania",
+      "country_name": "Mauritania",
+      "year": 2017,
+      "level": 0,
+      "raw_mean": 0.1667,
+      "region": "Middle East & North Africa"
+    },
+    {
+      "country": "SOM",
+      "slug": "somalia",
+      "country_name": "Somalia",
+      "year": 2016,
+      "level": 1,
+      "raw_mean": 1.0,
+      "region": "Sub-Saharan Africa"
+    },
+    {
+      "country": "KAZ",
+      "slug": "kazakhstan",
+      "country_name": "Kazakhstan",
+      "year": 2018,
+      "level": 2,
+      "raw_mean": 2.0,
+      "region": "Eastern Europe & Central Asia"
+    },
+    {
+      "country": "LKA",
+      "slug": "sri-lanka",
+      "country_name": "Sri Lanka",
+      "year": 2017,
+      "level": 3,
+      "raw_mean": 3.0,
+      "region": "South Asia"
+    },
+    {
+      "country": "NOR",
+      "slug": "norway",
+      "country_name": "Norway",
+      "year": 2017,
+      "level": 4,
+      "raw_mean": 4.0,
+      "region": "Western Europe & North America"
+    }
+  ],
+  "v2clrgunev": [
+    {
+      "country": "TCD",
+      "slug": "chad",
+      "country_name": "Chad",
+      "year": 2017,
+      "level": 0,
+      "raw_mean": 0.2857,
+      "region": "Sub-Saharan Africa"
+    },
+    {
+      "country": "PNG",
+      "slug": "papua-new-guinea",
+      "country_name": "Papua New Guinea",
+      "year": 2016,
+      "level": 1,
+      "raw_mean": 1.0,
+      "region": "East & Southeast Asia & Pacific"
+    },
+    {
+      "country": "PRT",
+      "slug": "portugal",
+      "country_name": "Portugal",
+      "year": 2017,
+      "level": 2,
+      "raw_mean": 2.0,
+      "region": "Western Europe & North America"
+    }
+  ],
+  "v2clrspct": [
+    {
+      "country": "SSD",
+      "slug": "south-sudan",
+      "country_name": "South Sudan",
+      "year": 2017,
+      "level": 0,
+      "raw_mean": 0.4545,
+      "region": "Sub-Saharan Africa"
+    },
+    {
+      "country": "HTI",
+      "slug": "haiti",
+      "country_name": "Haiti",
+      "year": 2018,
+      "level": 1,
+      "raw_mean": 1.0,
+      "region": "Latin America & Caribbean"
+    },
+    {
+      "country": "MDA",
+      "slug": "moldova",
+      "country_name": "Moldova",
+      "year": 2017,
+      "level": 2,
+      "raw_mean": 2.0,
+      "region": "Eastern Europe & Central Asia"
+    },
+    {
+      "country": "CYP",
+      "slug": "cyprus",
+      "country_name": "Cyprus",
+      "year": 2018,
+      "level": 3,
+      "raw_mean": 3.0,
+      "region": "Western Europe & North America"
+    },
+    {
+      "country": "KOR",
+      "slug": "south-korea",
+      "country_name": "South Korea",
+      "year": 2017,
+      "level": 4,
+      "raw_mean": 3.5,
+      "region": "East & Southeast Asia & Pacific"
+    }
+  ],
+  "v2clslavef": [
+    {
+      "country": "PRK",
+      "slug": "north-korea",
+      "country_name": "North Korea",
+      "year": 2017,
+      "level": 0,
+      "raw_mean": 0.1667,
+      "region": "East & Southeast Asia & Pacific"
+    },
+    {
+      "country": "UZB",
+      "slug": "uzbekistan",
+      "country_name": "Uzbekistan",
+      "year": 2016,
+      "level": 1,
+      "raw_mean": 1.1111,
+      "region": "Eastern Europe & Central Asia"
+    },
+    {
+      "country": "QAT",
+      "slug": "qatar",
+      "country_name": "Qatar",
+      "year": 2016,
+      "level": 2,
+      "raw_mean": 2.0,
+      "region": "Middle East & North Africa"
+    },
+    {
+      "country": "SLE",
+      "slug": "sierra-leone",
+      "country_name": "Sierra Leone",
+      "year": 2018,
+      "level": 3,
+      "raw_mean": 3.0,
+      "region": "Sub-Saharan Africa"
+    },
+    {
+      "country": "DNK",
+      "slug": "denmark",
+      "country_name": "Denmark",
+      "year": 2017,
+      "level": 4,
+      "raw_mean": 4.0,
+      "region": "Western Europe & North America"
+    }
+  ],
+  "v2clslavem": [
+    {
+      "country": "PRK",
+      "slug": "north-korea",
+      "country_name": "North Korea",
+      "year": 2017,
+      "level": 0,
+      "raw_mean": 0.1667,
+      "region": "East & Southeast Asia & Pacific"
+    },
+    {
+      "country": "UZB",
+      "slug": "uzbekistan",
+      "country_name": "Uzbekistan",
+      "year": 2016,
+      "level": 1,
+      "raw_mean": 1.1111,
+      "region": "Eastern Europe & Central Asia"
+    },
+    {
+      "country": "SWZ",
+      "slug": "eswatini",
+      "country_name": "Eswatini",
+      "year": 2017,
+      "level": 2,
+      "raw_mean": 2.0,
+      "region": "Sub-Saharan Africa"
+    },
+    {
+      "country": "IRQ",
+      "slug": "iraq",
+      "country_name": "Iraq",
+      "year": 2018,
+      "level": 3,
+      "raw_mean": 3.0,
+      "region": "Middle East & North Africa"
+    },
+    {
+      "country": "BEL",
+      "slug": "belgium",
+      "country_name": "Belgium",
+      "year": 2018,
+      "level": 4,
+      "raw_mean": 4.0,
+      "region": "Western Europe & North America"
+    }
+  ],
+  "v2clsocgrp": [
+    {
+      "country": "SYR",
+      "slug": "syria",
+      "country_name": "Syria",
+      "year": 2016,
+      "level": 0,
+      "raw_mean": 0.4545,
+      "region": "Middle East & North Africa"
+    },
+    {
+      "country": "ERI",
+      "slug": "eritrea",
+      "country_name": "Eritrea",
+      "year": 2018,
+      "level": 1,
+      "raw_mean": 1.0,
+      "region": "Sub-Saharan Africa"
+    },
+    {
+      "country": "LKA",
+      "slug": "sri-lanka",
+      "country_name": "Sri Lanka",
+      "year": 2018,
+      "level": 2,
+      "raw_mean": 2.0,
+      "region": "South Asia"
+    },
+    {
+      "country": "TWN",
+      "slug": "taiwan",
+      "country_name": "Taiwan",
+      "year": 2017,
+      "level": 3,
+      "raw_mean": 3.0,
+      "region": "East & Southeast Asia & Pacific"
+    },
+    {
+      "country": "DEU",
+      "slug": "germany",
+      "country_name": "Germany",
+      "year": 2017,
+      "level": 4,
+      "raw_mean": 4.0,
+      "region": "Western Europe & North America"
+    }
+  ],
+  "v2clstown": [
+    {
+      "country": "PRK",
+      "slug": "north-korea",
+      "country_name": "North Korea",
+      "year": 2016,
+      "level": 0,
+      "raw_mean": 0.1429,
+      "region": "East & Southeast Asia & Pacific"
+    },
+    {
+      "country": "CUB",
+      "slug": "cuba",
+      "country_name": "Cuba",
+      "year": 2017,
+      "level": 1,
+      "raw_mean": 0.9,
+      "region": "Latin America & Caribbean"
+    },
+    {
+      "country": "KAZ",
+      "slug": "kazakhstan",
+      "country_name": "Kazakhstan",
+      "year": 2018,
+      "level": 2,
+      "raw_mean": 2.0,
+      "region": "Eastern Europe & Central Asia"
+    },
+    {
+      "country": "SWE",
+      "slug": "sweden",
+      "country_name": "Sweden",
+      "year": 2017,
+      "level": 3,
+      "raw_mean": 3.0,
+      "region": "Western Europe & North America"
+    },
+    {
+      "country": "GTM",
+      "slug": "guatemala",
+      "country_name": "Guatemala",
+      "year": 2016,
+      "level": 4,
+      "raw_mean": 3.8182,
+      "region": "Latin America & Caribbean"
+    }
+  ],
+  "v2cltort": [
+    {
+      "country": "SYR",
+      "slug": "syria",
+      "country_name": "Syria",
+      "year": 2016,
+      "level": 0,
+      "raw_mean": 0.0909,
+      "region": "Middle East & North Africa"
+    },
+    {
+      "country": "TKM",
+      "slug": "turkmenistan",
+      "country_name": "Turkmenistan",
+      "year": 2017,
+      "level": 1,
+      "raw_mean": 1.0,
+      "region": "Eastern Europe & Central Asia"
+    },
+    {
+      "country": "NPL",
+      "slug": "nepal",
+      "country_name": "Nepal",
+      "year": 2017,
+      "level": 2,
+      "raw_mean": 2.0,
+      "region": "South Asia"
+    },
+    {
+      "country": "NAM",
+      "slug": "namibia",
+      "country_name": "Namibia",
+      "year": 2018,
+      "level": 3,
+      "raw_mean": 3.0,
+      "region": "Sub-Saharan Africa"
+    },
+    {
+      "country": "NZL",
+      "slug": "new-zealand",
+      "country_name": "New Zealand",
+      "year": 2017,
+      "level": 4,
+      "raw_mean": 4.0,
+      "region": "Western Europe & North America"
+    }
+  ],
+  "v2cltrnslw": [
+    {
+      "country": "PRK",
+      "slug": "north-korea",
+      "country_name": "North Korea",
+      "year": 2017,
+      "level": 0,
+      "raw_mean": 0.3333,
+      "region": "East & Southeast Asia & Pacific"
+    },
+    {
+      "country": "YEM",
+      "slug": "yemen",
+      "country_name": "Yemen",
+      "year": 2018,
+      "level": 1,
+      "raw_mean": 1.0,
+      "region": "Middle East & North Africa"
+    },
+    {
+      "country": "KAZ",
+      "slug": "kazakhstan",
+      "country_name": "Kazakhstan",
+      "year": 2017,
+      "level": 2,
+      "raw_mean": 2.0,
+      "region": "Eastern Europe & Central Asia"
+    },
+    {
+      "country": "STP",
+      "slug": "sao-tome-and-principe",
+      "country_name": "Sao Tome and Principe",
+      "year": 2016,
+      "level": 3,
+      "raw_mean": 3.0,
+      "region": "Sub-Saharan Africa"
+    },
+    {
+      "country": "CHE",
+      "slug": "switzerland",
+      "country_name": "Switzerland",
+      "year": 2016,
+      "level": 4,
+      "raw_mean": 4.0,
+      "region": "Western Europe & North America"
+    }
+  ],
+  "v2csantimv": [
+    {
+      "country": "PRK",
+      "slug": "north-korea",
+      "country_name": "North Korea",
+      "year": 2017,
+      "level": 0,
+      "raw_mean": 0.0,
+      "region": "East & Southeast Asia & Pacific"
+    },
+    {
+      "country": "LSO",
+      "slug": "lesotho",
+      "country_name": "Lesotho",
+      "year": 2016,
+      "level": 1,
+      "raw_mean": 1.0,
+      "region": "Sub-Saharan Africa"
+    },
+    {
+      "country": "MRT",
+      "slug": "mauritania",
+      "country_name": "Mauritania",
+      "year": 2016,
+      "level": 2,
+      "raw_mean": 2.0,
+      "region": "Middle East & North Africa"
+    },
+    {
+      "country": "CMR",
+      "slug": "cameroon",
+      "country_name": "Cameroon",
+      "year": 2017,
+      "level": 3,
+      "raw_mean": 2.8182,
+      "region": "Sub-Saharan Africa"
+    }
+  ],
+  "v2cscnsult": [
+    {
+      "country": "SYR",
+      "slug": "syria",
+      "country_name": "Syria",
+      "year": 2016,
+      "level": 0,
+      "raw_mean": 0.0,
+      "region": "Middle East & North Africa"
+    },
+    {
+      "country": "MDA",
+      "slug": "moldova",
+      "country_name": "Moldova",
+      "year": 2017,
+      "level": 1,
+      "raw_mean": 1.0,
+      "region": "Eastern Europe & Central Asia"
+    },
+    {
+      "country": "DNK",
+      "slug": "denmark",
+      "country_name": "Denmark",
+      "year": 2017,
+      "level": 2,
+      "raw_mean": 2.0,
+      "region": "Western Europe & North America"
+    }
+  ],
+  "v2cseeorgs": [
+    {
+      "country": "TKM",
+      "slug": "turkmenistan",
+      "country_name": "Turkmenistan",
+      "year": 2018,
+      "level": 0,
+      "raw_mean": 0.0,
+      "region": "Eastern Europe & Central Asia"
+    },
+    {
+      "country": "DZA",
+      "slug": "algeria",
+      "country_name": "Algeria",
+      "year": 2018,
+      "level": 1,
+      "raw_mean": 1.0,
+      "region": "Middle East & North Africa"
+    },
+    {
+      "country": "SOM",
+      "slug": "somalia",
+      "country_name": "Somalia",
+      "year": 2016,
+      "level": 2,
+      "raw_mean": 2.0,
+      "region": "Sub-Saharan Africa"
+    },
+    {
+      "country": "SLV",
+      "slug": "el-salvador",
+      "country_name": "El Salvador",
+      "year": 2016,
+      "level": 3,
+      "raw_mean": 3.0,
+      "region": "Latin America & Caribbean"
+    },
+    {
+      "country": "MLT",
+      "slug": "malta",
+      "country_name": "Malta",
+      "year": 2017,
+      "level": 4,
+      "raw_mean": 4.0,
+      "region": "Western Europe & North America"
+    }
+  ],
+  "v2csgender": [
+    {
+      "country": "PRK",
+      "slug": "north-korea",
+      "country_name": "North Korea",
+      "year": 2016,
+      "level": 1,
+      "raw_mean": 0.6667,
+      "region": "East & Southeast Asia & Pacific"
+    },
+    {
+      "country": "TKM",
+      "slug": "turkmenistan",
+      "country_name": "Turkmenistan",
+      "year": 2016,
+      "level": 2,
+      "raw_mean": 2.0,
+      "region": "Eastern Europe & Central Asia"
+    },
+    {
+      "country": "MDV",
+      "slug": "maldives",
+      "country_name": "Maldives",
+      "year": 2018,
+      "level": 3,
+      "raw_mean": 3.0,
+      "region": "South Asia"
+    },
+    {
+      "country": "SLE",
+      "slug": "sierra-leone",
+      "country_name": "Sierra Leone",
+      "year": 2018,
+      "level": 4,
+      "raw_mean": 4.0,
+      "region": "Sub-Saharan Africa"
+    }
+  ],
+  "v2csprtcpt": [
+    {
+      "country": "TKM",
+      "slug": "turkmenistan",
+      "country_name": "Turkmenistan",
+      "year": 2016,
+      "level": 0,
+      "raw_mean": 0.0,
+      "region": "Eastern Europe & Central Asia"
+    },
+    {
+      "country": "SYR",
+      "slug": "syria",
+      "country_name": "Syria",
+      "year": 2017,
+      "level": 1,
+      "raw_mean": 1.0,
+      "region": "Middle East & North Africa"
+    },
+    {
+      "country": "NAM",
+      "slug": "namibia",
+      "country_name": "Namibia",
+      "year": 2016,
+      "level": 2,
+      "raw_mean": 2.0,
+      "region": "Sub-Saharan Africa"
+    },
+    {
+      "country": "FIN",
+      "slug": "finland",
+      "country_name": "Finland",
+      "year": 2018,
+      "level": 3,
+      "raw_mean": 3.0,
+      "region": "Western Europe & North America"
+    }
+  ],
+  "v2csreprss": [
+    {
+      "country": "PRK",
+      "slug": "north-korea",
+      "country_name": "North Korea",
+      "year": 2016,
+      "level": 0,
+      "raw_mean": 0.0,
+      "region": "East & Southeast Asia & Pacific"
+    },
+    {
+      "country": "SAU",
+      "slug": "saudi-arabia",
+      "country_name": "Saudi Arabia",
+      "year": 2017,
+      "level": 1,
+      "raw_mean": 1.0,
+      "region": "Middle East & North Africa"
+    },
+    {
+      "country": "NIC",
+      "slug": "nicaragua",
+      "country_name": "Nicaragua",
+      "year": 2017,
+      "level": 2,
+      "raw_mean": 2.0,
+      "region": "Latin America & Caribbean"
+    },
+    {
+      "country": "MLI",
+      "slug": "mali",
+      "country_name": "Mali",
+      "year": 2016,
+      "level": 3,
+      "raw_mean": 3.0,
+      "region": "Sub-Saharan Africa"
+    },
+    {
+      "country": "SWE",
+      "slug": "sweden",
+      "country_name": "Sweden",
+      "year": 2018,
+      "level": 4,
+      "raw_mean": 4.0,
+      "region": "Western Europe & North America"
+    }
+  ],
+  "v2csrlgcon": [
+    {
+      "country": "TKM",
+      "slug": "turkmenistan",
+      "country_name": "Turkmenistan",
+      "year": 2016,
+      "level": 0,
+      "raw_mean": 0.0,
+      "region": "Eastern Europe & Central Asia"
+    },
+    {
+      "country": "LUX",
+      "slug": "luxembourg",
+      "country_name": "Luxembourg",
+      "year": 2018,
+      "level": 1,
+      "raw_mean": 1.0,
+      "region": "Western Europe & North America"
+    },
+    {
+      "country": "DOM",
+      "slug": "dominican-republic",
+      "country_name": "Dominican Republic",
+      "year": 2018,
+      "level": 2,
+      "raw_mean": 1.9,
+      "region": "Latin America & Caribbean"
+    }
+  ],
+  "v2csrlgrep": [
+    {
+      "country": "EGY",
+      "slug": "egypt",
+      "country_name": "Egypt",
+      "year": 2016,
+      "level": 0,
+      "raw_mean": 0.5,
+      "region": "Middle East & North Africa"
+    },
+    {
+      "country": "TKM",
+      "slug": "turkmenistan",
+      "country_name": "Turkmenistan",
+      "year": 2017,
+      "level": 1,
+      "raw_mean": 1.0,
+      "region": "Eastern Europe & Central Asia"
+    },
+    {
+      "country": "RWA",
+      "slug": "rwanda",
+      "country_name": "Rwanda",
+      "year": 2018,
+      "level": 2,
+      "raw_mean": 2.0,
+      "region": "Sub-Saharan Africa"
+    },
+    {
+      "country": "BGD",
+      "slug": "bangladesh",
+      "country_name": "Bangladesh",
+      "year": 2018,
+      "level": 3,
+      "raw_mean": 3.0,
+      "region": "South Asia"
+    },
+    {
+      "country": "SUR",
+      "slug": "suriname",
+      "country_name": "Suriname",
+      "year": 2018,
+      "level": 4,
+      "raw_mean": 4.0,
+      "region": "Latin America & Caribbean"
+    }
+  ],
+  "v2smarrest": [
+    {
+      "country": "PRK",
+      "slug": "north-korea",
+      "country_name": "North Korea",
+      "year": 2017,
+      "level": 0,
+      "raw_mean": 0.0,
+      "region": "East & Southeast Asia & Pacific"
+    },
+    {
+      "country": "DZA",
+      "slug": "algeria",
+      "country_name": "Algeria",
+      "year": 2016,
+      "level": 1,
+      "raw_mean": 1.0,
+      "region": "Middle East & North Africa"
+    },
+    {
+      "country": "NIC",
+      "slug": "nicaragua",
+      "country_name": "Nicaragua",
+      "year": 2017,
+      "level": 2,
+      "raw_mean": 2.0,
+      "region": "Latin America & Caribbean"
+    },
+    {
+      "country": "ISL",
+      "slug": "iceland",
+      "country_name": "Iceland",
+      "year": 2018,
+      "level": 3,
+      "raw_mean": 3.0,
+      "region": "Western Europe & North America"
+    }
+  ],
+  "v2smcamp": [
+    {
+      "country": "SAU",
+      "slug": "saudi-arabia",
+      "country_name": "Saudi Arabia",
+      "year": 2016,
+      "level": 0,
+      "raw_mean": 0.2,
+      "region": "Middle East & North Africa"
+    },
+    {
+      "country": "CHN",
+      "slug": "china",
+      "country_name": "China",
+      "year": 2017,
+      "level": 1,
+      "raw_mean": 1.0714,
+      "region": "East & Southeast Asia & Pacific"
+    },
+    {
+      "country": "HTI",
+      "slug": "haiti",
+      "country_name": "Haiti",
+      "year": 2018,
+      "level": 2,
+      "raw_mean": 2.0,
+      "region": "Latin America & Caribbean"
+    },
+    {
+      "country": "SOM",
+      "slug": "somalia",
+      "country_name": "Somalia",
+      "year": 2016,
+      "level": 3,
+      "raw_mean": 3.0,
+      "region": "Sub-Saharan Africa"
+    }
+  ],
+  "v2smdefabu": [
+    {
+      "country": "PRK",
+      "slug": "north-korea",
+      "country_name": "North Korea",
+      "year": 2017,
+      "level": 0,
+      "raw_mean": 0.2,
+      "region": "East & Southeast Asia & Pacific"
+    },
+    {
+      "country": "CUB",
+      "slug": "cuba",
+      "country_name": "Cuba",
+      "year": 2018,
+      "level": 1,
+      "raw_mean": 1.0,
+      "region": "Latin America & Caribbean"
+    },
+    {
+      "country": "SOM",
+      "slug": "somalia",
+      "country_name": "Somalia",
+      "year": 2016,
+      "level": 2,
+      "raw_mean": 2.0,
+      "region": "Sub-Saharan Africa"
+    },
+    {
+      "country": "ROU",
+      "slug": "romania",
+      "country_name": "Romania",
+      "year": 2018,
+      "level": 3,
+      "raw_mean": 3.0,
+      "region": "Eastern Europe & Central Asia"
+    },
+    {
+      "country": "CHE",
+      "slug": "switzerland",
+      "country_name": "Switzerland",
+      "year": 2017,
+      "level": 4,
+      "raw_mean": 4.0,
+      "region": "Western Europe & North America"
+    }
+  ],
+  "v2smforads": [
+    {
+      "country": "TWN",
+      "slug": "taiwan",
+      "country_name": "Taiwan",
+      "year": 2016,
+      "level": 1,
+      "raw_mean": 1.1111,
+      "region": "East & Southeast Asia & Pacific"
+    },
+    {
+      "country": "XKX",
+      "slug": "kosovo",
+      "country_name": "Kosovo",
+      "year": 2017,
+      "level": 2,
+      "raw_mean": 2.0,
+      "region": "Eastern Europe & Central Asia"
+    },
+    {
+      "country": "VEN",
+      "slug": "venezuela",
+      "country_name": "Venezuela",
+      "year": 2017,
+      "level": 3,
+      "raw_mean": 3.0,
+      "region": "Latin America & Caribbean"
+    },
+    {
+      "country": "CHE",
+      "slug": "switzerland",
+      "country_name": "Switzerland",
+      "year": 2017,
+      "level": 4,
+      "raw_mean": 4.0,
+      "region": "Western Europe & North America"
+    }
+  ],
+  "v2smfordom": [
+    {
+      "country": "LVA",
+      "slug": "latvia",
+      "country_name": "Latvia",
+      "year": 2016,
+      "level": 1,
+      "raw_mean": 1.0,
+      "region": "Eastern Europe & Central Asia"
+    },
+    {
+      "country": "SOM",
+      "slug": "somalia",
+      "country_name": "Somalia",
+      "year": 2018,
+      "level": 2,
+      "raw_mean": 2.0,
+      "region": "Sub-Saharan Africa"
+    },
+    {
+      "country": "ESP",
+      "slug": "spain",
+      "country_name": "Spain",
+      "year": 2017,
+      "level": 3,
+      "raw_mean": 3.0,
+      "region": "Western Europe & North America"
+    },
+    {
+      "country": "SLB",
+      "slug": "solomon-islands",
+      "country_name": "Solomon Islands",
+      "year": 2018,
+      "level": 4,
+      "raw_mean": 3.8,
+      "region": "East & Southeast Asia & Pacific"
+    }
+  ],
+  "v2smgovab": [
+    {
+      "country": "PRK",
+      "slug": "north-korea",
+      "country_name": "North Korea",
+      "year": 2017,
+      "level": 0,
+      "raw_mean": 0.2,
+      "region": "East & Southeast Asia & Pacific"
+    },
+    {
+      "country": "GNQ",
+      "slug": "equatorial-guinea",
+      "country_name": "Equatorial Guinea",
+      "year": 2017,
+      "level": 1,
+      "raw_mean": 1.0,
+      "region": "Sub-Saharan Africa"
+    },
+    {
+      "country": "IRQ",
+      "slug": "iraq",
+      "country_name": "Iraq",
+      "year": 2016,
+      "level": 2,
+      "raw_mean": 2.0,
+      "region": "Middle East & North Africa"
+    },
+    {
+      "country": "KGZ",
+      "slug": "kyrgyzstan",
+      "country_name": "Kyrgyzstan",
+      "year": 2016,
+      "level": 3,
+      "raw_mean": 3.0,
+      "region": "Eastern Europe & Central Asia"
+    },
+    {
+      "country": "NZL",
+      "slug": "new-zealand",
+      "country_name": "New Zealand",
+      "year": 2017,
+      "level": 4,
+      "raw_mean": 4.0,
+      "region": "Western Europe & North America"
+    }
+  ],
+  "v2smgovcapsec": [
+    {
+      "country": "GNB",
+      "slug": "guinea-bissau",
+      "country_name": "Guinea-Bissau",
+      "year": 2018,
+      "level": 0,
+      "raw_mean": 0.1429,
+      "region": "Sub-Saharan Africa"
+    },
+    {
+      "country": "GUY",
+      "slug": "guyana",
+      "country_name": "Guyana",
+      "year": 2017,
+      "level": 1,
+      "raw_mean": 1.0,
+      "region": "Latin America & Caribbean"
+    },
+    {
+      "country": "POL",
+      "slug": "poland",
+      "country_name": "Poland",
+      "year": 2018,
+      "level": 2,
+      "raw_mean": 2.0,
+      "region": "Eastern Europe & Central Asia"
+    },
+    {
+      "country": "DNK",
+      "slug": "denmark",
+      "country_name": "Denmark",
+      "year": 2017,
+      "level": 3,
+      "raw_mean": 3.0,
+      "region": "Western Europe & North America"
+    },
+    {
+      "country": "ISR",
+      "slug": "israel",
+      "country_name": "Israel",
+      "year": 2016,
+      "level": 4,
+      "raw_mean": 3.8571,
+      "region": "Western Europe & North America"
+    }
+  ],
+  "v2smgovdom": [
+    {
+      "country": "AZE",
+      "slug": "azerbaijan",
+      "country_name": "Azerbaijan",
+      "year": 2018,
+      "level": 0,
+      "raw_mean": 0.25,
+      "region": "Eastern Europe & Central Asia"
+    },
+    {
+      "country": "SSD",
+      "slug": "south-sudan",
+      "country_name": "South Sudan",
+      "year": 2016,
+      "level": 1,
+      "raw_mean": 1.0,
+      "region": "Sub-Saharan Africa"
+    },
+    {
+      "country": "GTM",
+      "slug": "guatemala",
+      "country_name": "Guatemala",
+      "year": 2018,
+      "level": 2,
+      "raw_mean": 2.0,
+      "region": "Latin America & Caribbean"
+    },
+    {
+      "country": "GBR",
+      "slug": "united-kingdom",
+      "country_name": "United Kingdom",
+      "year": 2018,
+      "level": 3,
+      "raw_mean": 3.0,
+      "region": "Western Europe & North America"
+    },
+    {
+      "country": "VUT",
+      "slug": "vanuatu",
+      "country_name": "Vanuatu",
+      "year": 2018,
+      "level": 4,
+      "raw_mean": 3.5714,
+      "region": "East & Southeast Asia & Pacific"
+    }
+  ],
+  "v2smgovfilcap": [
+    {
+      "country": "SLB",
+      "slug": "solomon-islands",
+      "country_name": "Solomon Islands",
+      "year": 2018,
+      "level": 0,
+      "raw_mean": 0.4,
+      "region": "East & Southeast Asia & Pacific"
+    },
+    {
+      "country": "SLV",
+      "slug": "el-salvador",
+      "country_name": "El Salvador",
+      "year": 2017,
+      "level": 1,
+      "raw_mean": 1.0,
+      "region": "Latin America & Caribbean"
+    },
+    {
+      "country": "BWA",
+      "slug": "botswana",
+      "country_name": "Botswana",
+      "year": 2018,
+      "level": 2,
+      "raw_mean": 2.0,
+      "region": "Sub-Saharan Africa"
+    },
+    {
+      "country": "JOR",
+      "slug": "jordan",
+      "country_name": "Jordan",
+      "year": 2016,
+      "level": 3,
+      "raw_mean": 2.875,
+      "region": "Middle East & North Africa"
+    }
+  ],
+  "v2smgovfilprc": [
+    {
+      "country": "PRK",
+      "slug": "north-korea",
+      "country_name": "North Korea",
+      "year": 2016,
+      "level": 0,
+      "raw_mean": 0.0,
+      "region": "East & Southeast Asia & Pacific"
+    },
+    {
+      "country": "GNQ",
+      "slug": "equatorial-guinea",
+      "country_name": "Equatorial Guinea",
+      "year": 2016,
+      "level": 1,
+      "raw_mean": 1.0,
+      "region": "Sub-Saharan Africa"
+    },
+    {
+      "country": "NIC",
+      "slug": "nicaragua",
+      "country_name": "Nicaragua",
+      "year": 2017,
+      "level": 2,
+      "raw_mean": 2.0,
+      "region": "Latin America & Caribbean"
+    },
+    {
+      "country": "MRT",
+      "slug": "mauritania",
+      "country_name": "Mauritania",
+      "year": 2016,
+      "level": 3,
+      "raw_mean": 3.0,
+      "region": "Middle East & North Africa"
+    },
+    {
+      "country": "LUX",
+      "slug": "luxembourg",
+      "country_name": "Luxembourg",
+      "year": 2018,
+      "level": 4,
+      "raw_mean": 4.0,
+      "region": "Western Europe & North America"
+    }
+  ],
+  "v2smgovshut": [
+    {
+      "country": "TKM",
+      "slug": "turkmenistan",
+      "country_name": "Turkmenistan",
+      "year": 2018,
+      "level": 1,
+      "raw_mean": 1.4286,
+      "region": "Eastern Europe & Central Asia"
+    },
+    {
+      "country": "YEM",
+      "slug": "yemen",
+      "country_name": "Yemen",
+      "year": 2018,
+      "level": 2,
+      "raw_mean": 2.0,
+      "region": "Middle East & North Africa"
+    },
+    {
+      "country": "AFG",
+      "slug": "afghanistan",
+      "country_name": "Afghanistan",
+      "year": 2016,
+      "level": 3,
+      "raw_mean": 3.0,
+      "region": "South Asia"
+    },
+    {
+      "country": "MLT",
+      "slug": "malta",
+      "country_name": "Malta",
+      "year": 2018,
+      "level": 4,
+      "raw_mean": 4.0,
+      "region": "Western Europe & North America"
+    }
+  ],
+  "v2smgovshutcap": [
+    {
+      "country": "CHE",
+      "slug": "switzerland",
+      "country_name": "Switzerland",
+      "year": 2017,
+      "level": 0,
+      "raw_mean": 0.25,
+      "region": "Western Europe & North America"
+    },
+    {
+      "country": "SOM",
+      "slug": "somalia",
+      "country_name": "Somalia",
+      "year": 2017,
+      "level": 1,
+      "raw_mean": 1.0,
+      "region": "Sub-Saharan Africa"
+    },
+    {
+      "country": "CHL",
+      "slug": "chile",
+      "country_name": "Chile",
+      "year": 2018,
+      "level": 2,
+      "raw_mean": 2.0,
+      "region": "Latin America & Caribbean"
+    },
+    {
+      "country": "TJK",
+      "slug": "tajikistan",
+      "country_name": "Tajikistan",
+      "year": 2016,
+      "level": 3,
+      "raw_mean": 3.0,
+      "region": "Eastern Europe & Central Asia"
+    },
+    {
+      "country": "SGP",
+      "slug": "singapore",
+      "country_name": "Singapore",
+      "year": 2017,
+      "level": 4,
+      "raw_mean": 4.0,
+      "region": "East & Southeast Asia & Pacific"
+    }
+  ],
+  "v2smgovsm": [
+    {
+      "country": "PRK",
+      "slug": "north-korea",
+      "country_name": "North Korea",
+      "year": 2016,
+      "level": 1,
+      "raw_mean": 0.8,
+      "region": "East & Southeast Asia & Pacific"
+    },
+    {
+      "country": "UKR",
+      "slug": "ukraine",
+      "country_name": "Ukraine",
+      "year": 2017,
+      "level": 2,
+      "raw_mean": 2.0,
+      "region": "Eastern Europe & Central Asia"
+    },
+    {
+      "country": "SOM",
+      "slug": "somalia",
+      "country_name": "Somalia",
+      "year": 2016,
+      "level": 3,
+      "raw_mean": 3.0,
+      "region": "Sub-Saharan Africa"
+    },
+    {
+      "country": "HND",
+      "slug": "honduras",
+      "country_name": "Honduras",
+      "year": 2017,
+      "level": 4,
+      "raw_mean": 4.0,
+      "region": "Latin America & Caribbean"
+    }
+  ],
+  "v2smgovsmalt": [
+    {
+      "country": "PRK",
+      "slug": "north-korea",
+      "country_name": "North Korea",
+      "year": 2016,
+      "level": 0,
+      "raw_mean": 0.1667,
+      "region": "East & Southeast Asia & Pacific"
+    },
+    {
+      "country": "ERI",
+      "slug": "eritrea",
+      "country_name": "Eritrea",
+      "year": 2016,
+      "level": 1,
+      "raw_mean": 0.875,
+      "region": "Sub-Saharan Africa"
+    },
+    {
+      "country": "CUB",
+      "slug": "cuba",
+      "country_name": "Cuba",
+      "year": 2018,
+      "level": 2,
+      "raw_mean": 2.0,
+      "region": "Latin America & Caribbean"
+    },
+    {
+      "country": "LBN",
+      "slug": "lebanon",
+      "country_name": "Lebanon",
+      "year": 2018,
+      "level": 3,
+      "raw_mean": 3.0,
+      "region": "Middle East & North Africa"
+    },
+    {
+      "country": "SWE",
+      "slug": "sweden",
+      "country_name": "Sweden",
+      "year": 2018,
+      "level": 4,
+      "raw_mean": 4.0,
+      "region": "Western Europe & North America"
+    }
+  ],
+  "v2smgovsmcenprc": [
+    {
+      "country": "PRK",
+      "slug": "north-korea",
+      "country_name": "North Korea",
+      "year": 2017,
+      "level": 0,
+      "raw_mean": 0.1667,
+      "region": "East & Southeast Asia & Pacific"
+    },
+    {
+      "country": "TKM",
+      "slug": "turkmenistan",
+      "country_name": "Turkmenistan",
+      "year": 2018,
+      "level": 1,
+      "raw_mean": 1.1429,
+      "region": "Eastern Europe & Central Asia"
+    },
+    {
+      "country": "SDN",
+      "slug": "sudan",
+      "country_name": "Sudan",
+      "year": 2016,
+      "level": 2,
+      "raw_mean": 2.0,
+      "region": "Sub-Saharan Africa"
+    },
+    {
+      "country": "NIC",
+      "slug": "nicaragua",
+      "country_name": "Nicaragua",
+      "year": 2016,
+      "level": 3,
+      "raw_mean": 3.0,
+      "region": "Latin America & Caribbean"
+    },
+    {
+      "country": "NLD",
+      "slug": "netherlands",
+      "country_name": "Netherlands",
+      "year": 2016,
+      "level": 4,
+      "raw_mean": 4.0,
+      "region": "Western Europe & North America"
+    }
+  ],
+  "v2smgovsmmon": [
+    {
+      "country": "PRK",
+      "slug": "north-korea",
+      "country_name": "North Korea",
+      "year": 2016,
+      "level": 0,
+      "raw_mean": 0.0,
+      "region": "East & Southeast Asia & Pacific"
+    },
+    {
+      "country": "TJK",
+      "slug": "tajikistan",
+      "country_name": "Tajikistan",
+      "year": 2018,
+      "level": 1,
+      "raw_mean": 1.0,
+      "region": "Eastern Europe & Central Asia"
+    },
+    {
+      "country": "TZA",
+      "slug": "tanzania",
+      "country_name": "Tanzania",
+      "year": 2018,
+      "level": 2,
+      "raw_mean": 2.0,
+      "region": "Sub-Saharan Africa"
+    },
+    {
+      "country": "SYC",
+      "slug": "seychelles",
+      "country_name": "Seychelles",
+      "year": 2016,
+      "level": 3,
+      "raw_mean": 3.0,
+      "region": "Other"
+    },
+    {
+      "country": "ISL",
+      "slug": "iceland",
+      "country_name": "Iceland",
+      "year": 2016,
+      "level": 4,
+      "raw_mean": 4.0,
+      "region": "Western Europe & North America"
+    }
+  ],
+  "v2smlawpr": [
+    {
+      "country": "CUB",
+      "slug": "cuba",
+      "country_name": "Cuba",
+      "year": 2018,
+      "level": 0,
+      "raw_mean": 0.1667,
+      "region": "Latin America & Caribbean"
+    },
+    {
+      "country": "GNB",
+      "slug": "guinea-bissau",
+      "country_name": "Guinea-Bissau",
+      "year": 2017,
+      "level": 1,
+      "raw_mean": 1.0,
+      "region": "Sub-Saharan Africa"
+    },
+    {
+      "country": "UKR",
+      "slug": "ukraine",
+      "country_name": "Ukraine",
+      "year": 2017,
+      "level": 2,
+      "raw_mean": 2.0,
+      "region": "Eastern Europe & Central Asia"
+    },
+    {
+      "country": "ISL",
+      "slug": "iceland",
+      "country_name": "Iceland",
+      "year": 2018,
+      "level": 3,
+      "raw_mean": 3.0,
+      "region": "Western Europe & North America"
+    },
+    {
+      "country": "SGP",
+      "slug": "singapore",
+      "country_name": "Singapore",
+      "year": 2018,
+      "level": 4,
+      "raw_mean": 3.5714,
+      "region": "East & Southeast Asia & Pacific"
+    }
+  ],
+  "v2smmefra": [
+    {
+      "country": "ZWE",
+      "slug": "zimbabwe",
+      "country_name": "Zimbabwe",
+      "year": 2016,
+      "level": 1,
+      "raw_mean": 1.1429,
+      "region": "Sub-Saharan Africa"
+    },
+    {
+      "country": "SLV",
+      "slug": "el-salvador",
+      "country_name": "El Salvador",
+      "year": 2016,
+      "level": 2,
+      "raw_mean": 2.0,
+      "region": "Latin America & Caribbean"
+    },
+    {
+      "country": "BGR",
+      "slug": "bulgaria",
+      "country_name": "Bulgaria",
+      "year": 2018,
+      "level": 3,
+      "raw_mean": 3.0,
+      "region": "Eastern Europe & Central Asia"
+    },
+    {
+      "country": "PRK",
+      "slug": "north-korea",
+      "country_name": "North Korea",
+      "year": 2017,
+      "level": 4,
+      "raw_mean": 3.8333,
+      "region": "East & Southeast Asia & Pacific"
+    }
+  ],
+  "v2smonex": [
+    {
+      "country": "TKM",
+      "slug": "turkmenistan",
+      "country_name": "Turkmenistan",
+      "year": 2017,
+      "level": 1,
+      "raw_mean": 1.0,
+      "region": "Eastern Europe & Central Asia"
+    },
+    {
+      "country": "MDV",
+      "slug": "maldives",
+      "country_name": "Maldives",
+      "year": 2017,
+      "level": 2,
+      "raw_mean": 2.0,
+      "region": "South Asia"
+    },
+    {
+      "country": "GBR",
+      "slug": "united-kingdom",
+      "country_name": "United Kingdom",
+      "year": 2017,
+      "level": 3,
+      "raw_mean": 3.0,
+      "region": "Western Europe & North America"
+    }
+  ],
+  "v2smonper": [
+    {
+      "country": "PRK",
+      "slug": "north-korea",
+      "country_name": "North Korea",
+      "year": 2016,
+      "level": 0,
+      "raw_mean": 0.0,
+      "region": "East & Southeast Asia & Pacific"
+    },
+    {
+      "country": "SYR",
+      "slug": "syria",
+      "country_name": "Syria",
+      "year": 2016,
+      "level": 1,
+      "raw_mean": 1.0,
+      "region": "Middle East & North Africa"
+    },
+    {
+      "country": "ECU",
+      "slug": "ecuador",
+      "country_name": "Ecuador",
+      "year": 2017,
+      "level": 2,
+      "raw_mean": 2.0,
+      "region": "Latin America & Caribbean"
+    },
+    {
+      "country": "GNB",
+      "slug": "guinea-bissau",
+      "country_name": "Guinea-Bissau",
+      "year": 2018,
+      "level": 3,
+      "raw_mean": 3.0,
+      "region": "Sub-Saharan Africa"
+    },
+    {
+      "country": "DNK",
+      "slug": "denmark",
+      "country_name": "Denmark",
+      "year": 2017,
+      "level": 4,
+      "raw_mean": 3.8571,
+      "region": "Western Europe & North America"
+    }
+  ],
+  "v2smorgavgact": [
+    {
+      "country": "PRK",
+      "slug": "north-korea",
+      "country_name": "North Korea",
+      "year": 2016,
+      "level": 0,
+      "raw_mean": 0.1667,
+      "region": "East & Southeast Asia & Pacific"
+    },
+    {
+      "country": "TJK",
+      "slug": "tajikistan",
+      "country_name": "Tajikistan",
+      "year": 2018,
+      "level": 1,
+      "raw_mean": 1.0,
+      "region": "Eastern Europe & Central Asia"
+    },
+    {
+      "country": "DZA",
+      "slug": "algeria",
+      "country_name": "Algeria",
+      "year": 2016,
+      "level": 2,
+      "raw_mean": 2.0,
+      "region": "Middle East & North Africa"
+    },
+    {
+      "country": "NOR",
+      "slug": "norway",
+      "country_name": "Norway",
+      "year": 2017,
+      "level": 3,
+      "raw_mean": 3.0,
+      "region": "Western Europe & North America"
+    },
+    {
+      "country": "ISR",
+      "slug": "israel",
+      "country_name": "Israel",
+      "year": 2017,
+      "level": 4,
+      "raw_mean": 3.5714,
+      "region": "Western Europe & North America"
+    }
+  ],
+  "v2smorgelitact": [
+    {
+      "country": "PRK",
+      "slug": "north-korea",
+      "country_name": "North Korea",
+      "year": 2016,
+      "level": 0,
+      "raw_mean": 0.1667,
+      "region": "East & Southeast Asia & Pacific"
+    },
+    {
+      "country": "MNE",
+      "slug": "montenegro",
+      "country_name": "Montenegro",
+      "year": 2016,
+      "level": 1,
+      "raw_mean": 1.0,
+      "region": "Eastern Europe & Central Asia"
+    },
+    {
+      "country": "GRC",
+      "slug": "greece",
+      "country_name": "Greece",
+      "year": 2017,
+      "level": 2,
+      "raw_mean": 2.0,
+      "region": "Western Europe & North America"
+    },
+    {
+      "country": "IRQ",
+      "slug": "iraq",
+      "country_name": "Iraq",
+      "year": 2016,
+      "level": 3,
+      "raw_mean": 3.0,
+      "region": "Middle East & North Africa"
+    },
+    {
+      "country": "COL",
+      "slug": "colombia",
+      "country_name": "Colombia",
+      "year": 2018,
+      "level": 4,
+      "raw_mean": 3.6667,
+      "region": "Latin America & Caribbean"
+    }
+  ],
+  "v2smorgviol": [
+    {
+      "country": "IRQ",
+      "slug": "iraq",
+      "country_name": "Iraq",
+      "year": 2017,
+      "level": 0,
+      "raw_mean": 0.0,
+      "region": "Middle East & North Africa"
+    },
+    {
+      "country": "KEN",
+      "slug": "kenya",
+      "country_name": "Kenya",
+      "year": 2017,
+      "level": 1,
+      "raw_mean": 1.0,
+      "region": "Sub-Saharan Africa"
+    },
+    {
+      "country": "PRK",
+      "slug": "north-korea",
+      "country_name": "North Korea",
+      "year": 2017,
+      "level": 2,
+      "raw_mean": 2.0,
+      "region": "East & Southeast Asia & Pacific"
+    }
+  ],
+  "v2smparab": [
+    {
+      "country": "CUB",
+      "slug": "cuba",
+      "country_name": "Cuba",
+      "year": 2017,
+      "level": 1,
+      "raw_mean": 1.0,
+      "region": "Latin America & Caribbean"
+    },
+    {
+      "country": "GAB",
+      "slug": "gabon",
+      "country_name": "Gabon",
+      "year": 2016,
+      "level": 2,
+      "raw_mean": 2.0,
+      "region": "Sub-Saharan Africa"
+    },
+    {
+      "country": "HRV",
+      "slug": "croatia",
+      "country_name": "Croatia",
+      "year": 2018,
+      "level": 3,
+      "raw_mean": 3.0,
+      "region": "Eastern Europe & Central Asia"
+    },
+    {
+      "country": "NZL",
+      "slug": "new-zealand",
+      "country_name": "New Zealand",
+      "year": 2018,
+      "level": 4,
+      "raw_mean": 4.0,
+      "region": "Western Europe & North America"
+    }
+  ],
+  "v2smpardom": [
+    {
+      "country": "CUB",
+      "slug": "cuba",
+      "country_name": "Cuba",
+      "year": 2016,
+      "level": 1,
+      "raw_mean": 1.0,
+      "region": "Latin America & Caribbean"
+    },
+    {
+      "country": "ZAF",
+      "slug": "south-africa",
+      "country_name": "South Africa",
+      "year": 2017,
+      "level": 2,
+      "raw_mean": 2.0,
+      "region": "Sub-Saharan Africa"
+    },
+    {
+      "country": "LVA",
+      "slug": "latvia",
+      "country_name": "Latvia",
+      "year": 2018,
+      "level": 3,
+      "raw_mean": 3.0,
+      "region": "Eastern Europe & Central Asia"
+    },
+    {
+      "country": "SWE",
+      "slug": "sweden",
+      "country_name": "Sweden",
+      "year": 2018,
+      "level": 4,
+      "raw_mean": 3.5,
+      "region": "Western Europe & North America"
+    }
+  ],
+  "v2smpolcap": [
+    {
+      "country": "VUT",
+      "slug": "vanuatu",
+      "country_name": "Vanuatu",
+      "year": 2016,
+      "level": 0,
+      "raw_mean": 0.0,
+      "region": "East & Southeast Asia & Pacific"
+    },
+    {
+      "country": "MLT",
+      "slug": "malta",
+      "country_name": "Malta",
+      "year": 2018,
+      "level": 1,
+      "raw_mean": 1.0,
+      "region": "Western Europe & North America"
+    },
+    {
+      "country": "OMN",
+      "slug": "oman",
+      "country_name": "Oman",
+      "year": 2016,
+      "level": 2,
+      "raw_mean": 2.0,
+      "region": "Middle East & North Africa"
+    },
+    {
+      "country": "PRK",
+      "slug": "north-korea",
+      "country_name": "North Korea",
+      "year": 2016,
+      "level": 3,
+      "raw_mean": 3.1667,
+      "region": "East & Southeast Asia & Pacific"
+    }
+  ],
+  "v2smpolhate": [
+    {
+      "country": "YEM",
+      "slug": "yemen",
+      "country_name": "Yemen",
+      "year": 2018,
+      "level": 1,
+      "raw_mean": 1.0,
+      "region": "Middle East & North Africa"
+    },
+    {
+      "country": "MUS",
+      "slug": "mauritius",
+      "country_name": "Mauritius",
+      "year": 2018,
+      "level": 2,
+      "raw_mean": 2.0,
+      "region": "Sub-Saharan Africa"
+    },
+    {
+      "country": "VNM",
+      "slug": "vietnam",
+      "country_name": "Viet Nam",
+      "year": 2018,
+      "level": 3,
+      "raw_mean": 3.0,
+      "region": "East & Southeast Asia & Pacific"
+    },
+    {
+      "country": "LUX",
+      "slug": "luxembourg",
+      "country_name": "Luxembourg",
+      "year": 2016,
+      "level": 4,
+      "raw_mean": 4.0,
+      "region": "Western Europe & North America"
+    }
+  ],
+  "v2smpolsoc": [
+    {
+      "country": "BHR",
+      "slug": "bahrain",
+      "country_name": "Bahrain",
+      "year": 2018,
+      "level": 0,
+      "raw_mean": 0.0,
+      "region": "Middle East & North Africa"
+    },
+    {
+      "country": "MOZ",
+      "slug": "mozambique",
+      "country_name": "Mozambique",
+      "year": 2017,
+      "level": 1,
+      "raw_mean": 1.0,
+      "region": "Sub-Saharan Africa"
+    },
+    {
+      "country": "AUS",
+      "slug": "australia",
+      "country_name": "Australia",
+      "year": 2016,
+      "level": 2,
+      "raw_mean": 2.0,
+      "region": "Western Europe & North America"
+    },
+    {
+      "country": "LAO",
+      "slug": "laos",
+      "country_name": "Laos",
+      "year": 2017,
+      "level": 3,
+      "raw_mean": 3.1429,
+      "region": "East & Southeast Asia & Pacific"
+    },
+    {
+      "country": "PRK",
+      "slug": "north-korea",
+      "country_name": "North Korea",
+      "year": 2016,
+      "level": 4,
+      "raw_mean": 3.8333,
+      "region": "East & Southeast Asia & Pacific"
+    }
+  ],
+  "v2smprivex": [
+    {
+      "country": "ERI",
+      "slug": "eritrea",
+      "country_name": "Eritrea",
+      "year": 2017,
+      "level": 0,
+      "raw_mean": 0.0,
+      "region": "Sub-Saharan Africa"
+    },
+    {
+      "country": "LUX",
+      "slug": "luxembourg",
+      "country_name": "Luxembourg",
+      "year": 2016,
+      "level": 1,
+      "raw_mean": 1.0,
+      "region": "Western Europe & North America"
+    }
+  ],
+  "v2smregapp": [
+    {
+      "country": "PRK",
+      "slug": "north-korea",
+      "country_name": "North Korea",
+      "year": 2017,
+      "level": 0,
+      "raw_mean": 0.0,
+      "region": "East & Southeast Asia & Pacific"
+    },
+    {
+      "country": "URY",
+      "slug": "uruguay",
+      "country_name": "Uruguay",
+      "year": 2016,
+      "level": 1,
+      "raw_mean": 1.0,
+      "region": "Latin America & Caribbean"
+    },
+    {
+      "country": "AGO",
+      "slug": "angola",
+      "country_name": "Angola",
+      "year": 2017,
+      "level": 2,
+      "raw_mean": 2.0,
+      "region": "Sub-Saharan Africa"
+    },
+    {
+      "country": "FIN",
+      "slug": "finland",
+      "country_name": "Finland",
+      "year": 2016,
+      "level": 3,
+      "raw_mean": 3.0,
+      "region": "Western Europe & North America"
+    },
+    {
+      "country": "PRY",
+      "slug": "paraguay",
+      "country_name": "Paraguay",
+      "year": 2016,
+      "level": 4,
+      "raw_mean": 3.5,
+      "region": "Latin America & Caribbean"
+    }
+  ],
+  "v2smregcap": [
+    {
+      "country": "HTI",
+      "slug": "haiti",
+      "country_name": "Haiti",
+      "year": 2017,
+      "level": 0,
+      "raw_mean": 0.5,
+      "region": "Latin America & Caribbean"
+    },
+    {
+      "country": "GIN",
+      "slug": "guinea",
+      "country_name": "Guinea",
+      "year": 2017,
+      "level": 1,
+      "raw_mean": 1.0,
+      "region": "Sub-Saharan Africa"
+    },
+    {
+      "country": "CAN",
+      "slug": "canada",
+      "country_name": "Canada",
+      "year": 2017,
+      "level": 2,
+      "raw_mean": 2.0,
+      "region": "Western Europe & North America"
+    },
+    {
+      "country": "TUN",
+      "slug": "tunisia",
+      "country_name": "Tunisia",
+      "year": 2017,
+      "level": 3,
+      "raw_mean": 3.0,
+      "region": "Middle East & North Africa"
+    },
+    {
+      "country": "PRK",
+      "slug": "north-korea",
+      "country_name": "North Korea",
+      "year": 2017,
+      "level": 4,
+      "raw_mean": 4.0,
+      "region": "East & Southeast Asia & Pacific"
+    }
+  ],
+  "v2smregcon": [
+    {
+      "country": "CUB",
+      "slug": "cuba",
+      "country_name": "Cuba",
+      "year": 2016,
+      "level": 0,
+      "raw_mean": 0.0,
+      "region": "Latin America & Caribbean"
+    },
+    {
+      "country": "TKM",
+      "slug": "turkmenistan",
+      "country_name": "Turkmenistan",
+      "year": 2018,
+      "level": 1,
+      "raw_mean": 1.0,
+      "region": "Eastern Europe & Central Asia"
+    },
+    {
+      "country": "COM",
+      "slug": "comoros",
+      "country_name": "Comoros",
+      "year": 2016,
+      "level": 2,
+      "raw_mean": 2.0,
+      "region": "Sub-Saharan Africa"
+    },
+    {
+      "country": "SYC",
+      "slug": "seychelles",
+      "country_name": "Seychelles",
+      "year": 2017,
+      "level": 3,
+      "raw_mean": 3.0,
+      "region": "Other"
+    },
+    {
+      "country": "MLT",
+      "slug": "malta",
+      "country_name": "Malta",
+      "year": 2016,
+      "level": 4,
+      "raw_mean": 4.0,
+      "region": "Western Europe & North America"
+    }
+  ],
+  "v2elaccept": [
+    {
+      "country": "BGD",
+      "slug": "bangladesh",
+      "country_name": "Bangladesh",
+      "year": 2018,
+      "level": 0,
+      "raw_mean": 0.25,
+      "region": "South Asia"
+    },
+    {
+      "country": "GNQ",
+      "slug": "equatorial-guinea",
+      "country_name": "Equatorial Guinea",
+      "year": 2017,
+      "level": 1,
+      "raw_mean": 1.0,
+      "region": "Sub-Saharan Africa"
+    },
+    {
+      "country": "IRQ",
+      "slug": "iraq",
+      "country_name": "Iraq",
+      "year": 2018,
+      "level": 2,
+      "raw_mean": 2.0,
+      "region": "Middle East & North Africa"
+    },
+    {
+      "country": "UZB",
+      "slug": "uzbekistan",
+      "country_name": "Uzbekistan",
+      "year": 2016,
+      "level": 3,
+      "raw_mean": 3.0,
+      "region": "Eastern Europe & Central Asia"
+    },
+    {
+      "country": "KOR",
+      "slug": "south-korea",
+      "country_name": "South Korea",
+      "year": 2017,
+      "level": 4,
+      "raw_mean": 4.0,
+      "region": "East & Southeast Asia & Pacific"
+    }
+  ],
+  "v2elasmoff": [
+    {
+      "country": "VEN",
+      "slug": "venezuela",
+      "country_name": "Venezuela",
+      "year": 2017,
+      "level": 1,
+      "raw_mean": 1.1875,
+      "region": "Latin America & Caribbean"
+    },
+    {
+      "country": "MLI",
+      "slug": "mali",
+      "country_name": "Mali",
+      "year": 2018,
+      "level": 2,
+      "raw_mean": 2.0,
+      "region": "Sub-Saharan Africa"
+    }
+  ],
+  "v2elboycot": [
+    {
+      "country": "AZE",
+      "slug": "azerbaijan",
+      "country_name": "Azerbaijan",
+      "year": 2018,
+      "level": 1,
+      "raw_mean": 1.0769,
+      "region": "Eastern Europe & Central Asia"
+    },
+    {
+      "country": "DJI",
+      "slug": "djibouti",
+      "country_name": "Djibouti",
+      "year": 2016,
+      "level": 2,
+      "raw_mean": 2.0,
+      "region": "Middle East & North Africa"
+    },
+    {
+      "country": "AFG",
+      "slug": "afghanistan",
+      "country_name": "Afghanistan",
+      "year": 2018,
+      "level": 3,
+      "raw_mean": 3.0,
+      "region": "South Asia"
+    },
+    {
+      "country": "ISL",
+      "slug": "iceland",
+      "country_name": "Iceland",
+      "year": 2017,
+      "level": 4,
+      "raw_mean": 4.0,
+      "region": "Western Europe & North America"
+    }
+  ],
+  "v2eldonate": [
+    {
+      "country": "ERI",
+      "slug": "eritrea",
+      "country_name": "Eritrea",
+      "year": 2016,
+      "level": 0,
+      "raw_mean": 0.0,
+      "region": "Sub-Saharan Africa"
+    },
+    {
+      "country": "NIC",
+      "slug": "nicaragua",
+      "country_name": "Nicaragua",
+      "year": 2017,
+      "level": 1,
+      "raw_mean": 1.0,
+      "region": "Latin America & Caribbean"
+    },
+    {
+      "country": "PAK",
+      "slug": "pakistan",
+      "country_name": "Pakistan",
+      "year": 2016,
+      "level": 2,
+      "raw_mean": 2.0,
+      "region": "South Asia"
+    },
+    {
+      "country": "BLR",
+      "slug": "belarus",
+      "country_name": "Belarus",
+      "year": 2017,
+      "level": 3,
+      "raw_mean": 3.0,
+      "region": "Eastern Europe & Central Asia"
+    },
+    {
+      "country": "KOR",
+      "slug": "south-korea",
+      "country_name": "South Korea",
+      "year": 2017,
+      "level": 4,
+      "raw_mean": 3.7778,
+      "region": "East & Southeast Asia & Pacific"
+    }
+  ],
+  "v2elembaut": [
+    {
+      "country": "LAO",
+      "slug": "laos",
+      "country_name": "Laos",
+      "year": 2017,
+      "level": 0,
+      "raw_mean": 0.0,
+      "region": "East & Southeast Asia & Pacific"
+    },
+    {
+      "country": "HND",
+      "slug": "honduras",
+      "country_name": "Honduras",
+      "year": 2017,
+      "level": 1,
+      "raw_mean": 1.0,
+      "region": "Latin America & Caribbean"
+    },
+    {
+      "country": "CIV",
+      "slug": "cote-divoire",
+      "country_name": "Côte d'Ivoire",
+      "year": 2016,
+      "level": 2,
+      "raw_mean": 2.0,
+      "region": "Sub-Saharan Africa"
+    },
+    {
+      "country": "LKA",
+      "slug": "sri-lanka",
+      "country_name": "Sri Lanka",
+      "year": 2017,
+      "level": 3,
+      "raw_mean": 3.0,
+      "region": "South Asia"
+    },
+    {
+      "country": "LUX",
+      "slug": "luxembourg",
+      "country_name": "Luxembourg",
+      "year": 2018,
+      "level": 4,
+      "raw_mean": 4.0,
+      "region": "Western Europe & North America"
+    }
+  ],
+  "v2elembcap": [
+    {
+      "country": "SAU",
+      "slug": "saudi-arabia",
+      "country_name": "Saudi Arabia",
+      "year": 2017,
+      "level": 0,
+      "raw_mean": 0.5,
+      "region": "Middle East & North Africa"
+    },
+    {
+      "country": "PNG",
+      "slug": "papua-new-guinea",
+      "country_name": "Papua New Guinea",
+      "year": 2018,
+      "level": 1,
+      "raw_mean": 1.0,
+      "region": "East & Southeast Asia & Pacific"
+    },
+    {
+      "country": "BDI",
+      "slug": "burundi",
+      "country_name": "Burundi",
+      "year": 2018,
+      "level": 2,
+      "raw_mean": 2.0,
+      "region": "Sub-Saharan Africa"
+    },
+    {
+      "country": "MDA",
+      "slug": "moldova",
+      "country_name": "Moldova",
+      "year": 2018,
+      "level": 3,
+      "raw_mean": 3.0,
+      "region": "Eastern Europe & Central Asia"
+    },
+    {
+      "country": "FIN",
+      "slug": "finland",
+      "country_name": "Finland",
+      "year": 2017,
+      "level": 4,
+      "raw_mean": 4.0,
+      "region": "Western Europe & North America"
+    }
+  ],
+  "v2elffelr": [
+    {
+      "country": "TKM",
+      "slug": "turkmenistan",
+      "country_name": "Turkmenistan",
+      "year": 2018,
+      "level": 0,
+      "raw_mean": 0.0,
+      "region": "Eastern Europe & Central Asia"
+    },
+    {
+      "country": "BGD",
+      "slug": "bangladesh",
+      "country_name": "Bangladesh",
+      "year": 2018,
+      "level": 1,
+      "raw_mean": 1.0,
+      "region": "South Asia"
+    },
+    {
+      "country": "MDG",
+      "slug": "madagascar",
+      "country_name": "Madagascar",
+      "year": 2016,
+      "level": 2,
+      "raw_mean": 2.0,
+      "region": "Sub-Saharan Africa"
+    },
+    {
+      "country": "DOM",
+      "slug": "dominican-republic",
+      "country_name": "Dominican Republic",
+      "year": 2018,
+      "level": 3,
+      "raw_mean": 3.0,
+      "region": "Latin America & Caribbean"
+    },
+    {
+      "country": "SWE",
+      "slug": "sweden",
+      "country_name": "Sweden",
+      "year": 2016,
+      "level": 4,
+      "raw_mean": 4.0,
+      "region": "Western Europe & North America"
+    }
+  ],
+  "v2elffelrbin": [
+    {
+      "country": "BRB",
+      "slug": "barbados",
+      "country_name": "Barbados",
+      "year": 2018,
+      "level": 0,
+      "raw_mean": 0.0,
+      "region": "Latin America & Caribbean"
+    },
+    {
+      "country": "RUS",
+      "slug": "russia",
+      "country_name": "Russian Federation",
+      "year": 2018,
+      "level": 1,
+      "raw_mean": 1.0,
+      "region": "Eastern Europe & Central Asia"
+    }
+  ],
+  "v2elfrcamp": [
+    {
+      "country": "LAO",
+      "slug": "laos",
+      "country_name": "Laos",
+      "year": 2016,
+      "level": 0,
+      "raw_mean": 0.0,
+      "region": "East & Southeast Asia & Pacific"
+    },
+    {
+      "country": "AFG",
+      "slug": "afghanistan",
+      "country_name": "Afghanistan",
+      "year": 2018,
+      "level": 1,
+      "raw_mean": 1.0,
+      "region": "South Asia"
+    },
+    {
+      "country": "MNE",
+      "slug": "montenegro",
+      "country_name": "Montenegro",
+      "year": 2016,
+      "level": 2,
+      "raw_mean": 2.0,
+      "region": "Eastern Europe & Central Asia"
+    }
+  ],
+  "v2elfrfair": [
+    {
+      "country": "GNQ",
+      "slug": "equatorial-guinea",
+      "country_name": "Equatorial Guinea",
+      "year": 2017,
+      "level": 0,
+      "raw_mean": 0.0,
+      "region": "Sub-Saharan Africa"
+    },
+    {
+      "country": "DJI",
+      "slug": "djibouti",
+      "country_name": "Djibouti",
+      "year": 2018,
+      "level": 1,
+      "raw_mean": 1.0,
+      "region": "Middle East & North Africa"
+    },
+    {
+      "country": "TUR",
+      "slug": "turkey",
+      "country_name": "Turkey",
+      "year": 2018,
+      "level": 2,
+      "raw_mean": 2.0526,
+      "region": "Eastern Europe & Central Asia"
+    },
+    {
+      "country": "ECU",
+      "slug": "ecuador",
+      "country_name": "Ecuador",
+      "year": 2017,
+      "level": 3,
+      "raw_mean": 3.0,
+      "region": "Latin America & Caribbean"
+    },
+    {
+      "country": "KOR",
+      "slug": "south-korea",
+      "country_name": "South Korea",
+      "year": 2017,
+      "level": 4,
+      "raw_mean": 4.0,
+      "region": "East & Southeast Asia & Pacific"
+    }
+  ],
+  "v2elintim": [
+    {
+      "country": "TKM",
+      "slug": "turkmenistan",
+      "country_name": "Turkmenistan",
+      "year": 2017,
+      "level": 1,
+      "raw_mean": 1.0,
+      "region": "Eastern Europe & Central Asia"
+    },
+    {
+      "country": "CMR",
+      "slug": "cameroon",
+      "country_name": "Cameroon",
+      "year": 2018,
+      "level": 2,
+      "raw_mean": 1.8889,
+      "region": "Sub-Saharan Africa"
+    },
+    {
+      "country": "NPL",
+      "slug": "nepal",
+      "country_name": "Nepal",
+      "year": 2017,
+      "level": 3,
+      "raw_mean": 2.9286,
+      "region": "South Asia"
+    },
+    {
+      "country": "IRL",
+      "slug": "ireland",
+      "country_name": "Ireland",
+      "year": 2016,
+      "level": 4,
+      "raw_mean": 4.0,
+      "region": "Western Europe & North America"
+    }
+  ],
+  "v2elirreg": [
+    {
+      "country": "BLR",
+      "slug": "belarus",
+      "country_name": "Belarus",
+      "year": 2016,
+      "level": 0,
+      "raw_mean": 0.0,
+      "region": "Eastern Europe & Central Asia"
+    },
+    {
+      "country": "IRQ",
+      "slug": "iraq",
+      "country_name": "Iraq",
+      "year": 2018,
+      "level": 1,
+      "raw_mean": 0.9167,
+      "region": "Middle East & North Africa"
+    },
+    {
+      "country": "SLE",
+      "slug": "sierra-leone",
+      "country_name": "Sierra Leone",
+      "year": 2018,
+      "level": 2,
+      "raw_mean": 2.0,
+      "region": "Sub-Saharan Africa"
+    },
+    {
+      "country": "BTN",
+      "slug": "bhutan",
+      "country_name": "Bhutan",
+      "year": 2018,
+      "level": 3,
+      "raw_mean": 3.0,
+      "region": "South Asia"
+    },
+    {
+      "country": "NOR",
+      "slug": "norway",
+      "country_name": "Norway",
+      "year": 2017,
+      "level": 4,
+      "raw_mean": 4.0,
+      "region": "Western Europe & North America"
+    }
+  ],
+  "v2ellocpwr": [
+    {
+      "country": "TKM",
+      "slug": "turkmenistan",
+      "country_name": "Turkmenistan",
+      "year": 2017,
+      "level": 0,
+      "raw_mean": 0.0,
+      "region": "Eastern Europe & Central Asia"
+    },
+    {
+      "country": "IRN",
+      "slug": "iran",
+      "country_name": "Iran",
+      "year": 2017,
+      "level": 1,
+      "raw_mean": 1.0,
+      "region": "Middle East & North Africa"
+    },
+    {
+      "country": "MLI",
+      "slug": "mali",
+      "country_name": "Mali",
+      "year": 2017,
+      "level": 2,
+      "raw_mean": 2.0,
+      "region": "Sub-Saharan Africa"
+    },
+    {
+      "country": "CYP",
+      "slug": "cyprus",
+      "country_name": "Cyprus",
+      "year": 2018,
+      "level": 3,
+      "raw_mean": 3.0,
+      "region": "Western Europe & North America"
+    },
+    {
+      "country": "COL",
+      "slug": "colombia",
+      "country_name": "Colombia",
+      "year": 2017,
+      "level": 4,
+      "raw_mean": 3.7333,
+      "region": "Latin America & Caribbean"
+    }
+  ],
+  "v2elmulpar": [
+    {
+      "country": "SWZ",
+      "slug": "eswatini",
+      "country_name": "Eswatini",
+      "year": 2018,
+      "level": 0,
+      "raw_mean": 0.1111,
+      "region": "Sub-Saharan Africa"
+    },
+    {
+      "country": "EGY",
+      "slug": "egypt",
+      "country_name": "Egypt",
+      "year": 2018,
+      "level": 1,
+      "raw_mean": 1.0769,
+      "region": "Middle East & North Africa"
+    },
+    {
+      "country": "NIC",
+      "slug": "nicaragua",
+      "country_name": "Nicaragua",
+      "year": 2016,
+      "level": 2,
+      "raw_mean": 2.0,
+      "region": "Latin America & Caribbean"
+    },
+    {
+      "country": "AFG",
+      "slug": "afghanistan",
+      "country_name": "Afghanistan",
+      "year": 2018,
+      "level": 3,
+      "raw_mean": 3.0,
+      "region": "South Asia"
+    },
+    {
+      "country": "NZL",
+      "slug": "new-zealand",
+      "country_name": "New Zealand",
+      "year": 2017,
+      "level": 4,
+      "raw_mean": 4.0,
+      "region": "Western Europe & North America"
+    }
+  ],
+  "v2elpaidig": [
+    {
+      "country": "CUB",
+      "slug": "cuba",
+      "country_name": "Cuba",
+      "year": 2018,
+      "level": 0,
+      "raw_mean": 0.0,
+      "region": "Latin America & Caribbean"
+    },
+    {
+      "country": "STP",
+      "slug": "sao-tome-and-principe",
+      "country_name": "Sao Tome and Principe",
+      "year": 2016,
+      "level": 1,
+      "raw_mean": 1.0,
+      "region": "Sub-Saharan Africa"
+    },
+    {
+      "country": "JOR",
+      "slug": "jordan",
+      "country_name": "Jordan",
+      "year": 2016,
+      "level": 2,
+      "raw_mean": 2.0,
+      "region": "Middle East & North Africa"
+    },
+    {
+      "country": "LTU",
+      "slug": "lithuania",
+      "country_name": "Lithuania",
+      "year": 2016,
+      "level": 3,
+      "raw_mean": 2.75,
+      "region": "Eastern Europe & Central Asia"
+    }
+  ],
+  "v2elpdcamp": [
+    {
+      "country": "CUB",
+      "slug": "cuba",
+      "country_name": "Cuba",
+      "year": 2018,
+      "level": 0,
+      "raw_mean": 0.125,
+      "region": "Latin America & Caribbean"
+    },
+    {
+      "country": "ZMB",
+      "slug": "zambia",
+      "country_name": "Zambia",
+      "year": 2016,
+      "level": 1,
+      "raw_mean": 1.0,
+      "region": "Sub-Saharan Africa"
+    },
+    {
+      "country": "SRB",
+      "slug": "serbia",
+      "country_name": "Serbia",
+      "year": 2016,
+      "level": 2,
+      "raw_mean": 2.0,
+      "region": "Eastern Europe & Central Asia"
+    },
+    {
+      "country": "KOR",
+      "slug": "south-korea",
+      "country_name": "South Korea",
+      "year": 2017,
+      "level": 3,
+      "raw_mean": 3.0,
+      "region": "East & Southeast Asia & Pacific"
+    }
+  ],
+  "v2elpeace": [
+    {
+      "country": "HND",
+      "slug": "honduras",
+      "country_name": "Honduras",
+      "year": 2017,
+      "level": 1,
+      "raw_mean": 1.0,
+      "region": "Latin America & Caribbean"
+    },
+    {
+      "country": "IRQ",
+      "slug": "iraq",
+      "country_name": "Iraq",
+      "year": 2018,
+      "level": 2,
+      "raw_mean": 2.0,
+      "region": "Middle East & North Africa"
+    },
+    {
+      "country": "GEO",
+      "slug": "georgia",
+      "country_name": "Georgia",
+      "year": 2016,
+      "level": 3,
+      "raw_mean": 3.0,
+      "region": "Eastern Europe & Central Asia"
+    },
+    {
+      "country": "DEU",
+      "slug": "germany",
+      "country_name": "Germany",
+      "year": 2017,
+      "level": 4,
+      "raw_mean": 4.0,
+      "region": "Western Europe & North America"
+    }
+  ],
+  "v2elpubfin": [
+    {
+      "country": "SOM",
+      "slug": "somalia",
+      "country_name": "Somalia",
+      "year": 2018,
+      "level": 0,
+      "raw_mean": 0.0,
+      "region": "Sub-Saharan Africa"
+    },
+    {
+      "country": "YEM",
+      "slug": "yemen",
+      "country_name": "Yemen",
+      "year": 2017,
+      "level": 1,
+      "raw_mean": 1.0,
+      "region": "Middle East & North Africa"
+    },
+    {
+      "country": "KAZ",
+      "slug": "kazakhstan",
+      "country_name": "Kazakhstan",
+      "year": 2017,
+      "level": 2,
+      "raw_mean": 2.0,
+      "region": "Eastern Europe & Central Asia"
+    },
+    {
+      "country": "ECU",
+      "slug": "ecuador",
+      "country_name": "Ecuador",
+      "year": 2018,
+      "level": 3,
+      "raw_mean": 3.0,
+      "region": "Latin America & Caribbean"
+    },
+    {
+      "country": "BEL",
+      "slug": "belgium",
+      "country_name": "Belgium",
+      "year": 2018,
+      "level": 4,
+      "raw_mean": 4.0,
+      "region": "Western Europe & North America"
+    }
+  ],
+  "v2elrgpwr": [
+    {
+      "country": "SAU",
+      "slug": "saudi-arabia",
+      "country_name": "Saudi Arabia",
+      "year": 2017,
+      "level": 0,
+      "raw_mean": 0.0,
+      "region": "Middle East & North Africa"
+    },
+    {
+      "country": "RWA",
+      "slug": "rwanda",
+      "country_name": "Rwanda",
+      "year": 2017,
+      "level": 1,
+      "raw_mean": 1.0,
+      "region": "Sub-Saharan Africa"
+    },
+    {
+      "country": "NPL",
+      "slug": "nepal",
+      "country_name": "Nepal",
+      "year": 2016,
+      "level": 2,
+      "raw_mean": 2.0,
+      "region": "South Asia"
+    },
+    {
+      "country": "MYS",
+      "slug": "malaysia",
+      "country_name": "Malaysia",
+      "year": 2018,
+      "level": 3,
+      "raw_mean": 3.0,
+      "region": "East & Southeast Asia & Pacific"
+    },
+    {
+      "country": "CRI",
+      "slug": "costa-rica",
+      "country_name": "Costa Rica",
+      "year": 2016,
+      "level": 4,
+      "raw_mean": 4.0,
+      "region": "Latin America & Caribbean"
+    }
+  ],
+  "v2elrgstry": [
+    {
+      "country": "GNQ",
+      "slug": "equatorial-guinea",
+      "country_name": "Equatorial Guinea",
+      "year": 2017,
+      "level": 1,
+      "raw_mean": 1.3333,
+      "region": "Sub-Saharan Africa"
+    },
+    {
+      "country": "VEN",
+      "slug": "venezuela",
+      "country_name": "Venezuela",
+      "year": 2018,
+      "level": 2,
+      "raw_mean": 2.0,
+      "region": "Latin America & Caribbean"
+    },
+    {
+      "country": "PHL",
+      "slug": "philippines",
+      "country_name": "Philippines",
+      "year": 2016,
+      "level": 3,
+      "raw_mean": 3.0,
+      "region": "East & Southeast Asia & Pacific"
+    },
+    {
+      "country": "NOR",
+      "slug": "norway",
+      "country_name": "Norway",
+      "year": 2017,
+      "level": 4,
+      "raw_mean": 4.0,
+      "region": "Western Europe & North America"
+    }
+  ],
+  "v2elsnlsff": [
+    {
+      "country": "GAB",
+      "slug": "gabon",
+      "country_name": "Gabon",
+      "year": 2017,
+      "level": 0,
+      "raw_mean": 0.25,
+      "region": "Sub-Saharan Africa"
+    },
+    {
+      "country": "YEM",
+      "slug": "yemen",
+      "country_name": "Yemen",
+      "year": 2017,
+      "level": 1,
+      "raw_mean": 1.0,
+      "region": "Middle East & North Africa"
+    },
+    {
+      "country": "TWN",
+      "slug": "taiwan",
+      "country_name": "Taiwan",
+      "year": 2018,
+      "level": 2,
+      "raw_mean": 2.0,
+      "region": "East & Southeast Asia & Pacific"
+    }
+  ],
+  "v2elvotbuy": [
+    {
+      "country": "AZE",
+      "slug": "azerbaijan",
+      "country_name": "Azerbaijan",
+      "year": 2018,
+      "level": 0,
+      "raw_mean": 0.2308,
+      "region": "Eastern Europe & Central Asia"
+    },
+    {
+      "country": "CMR",
+      "slug": "cameroon",
+      "country_name": "Cameroon",
+      "year": 2018,
+      "level": 1,
+      "raw_mean": 1.0,
+      "region": "Sub-Saharan Africa"
+    },
+    {
+      "country": "MNG",
+      "slug": "mongolia",
+      "country_name": "Mongolia",
+      "year": 2017,
+      "level": 2,
+      "raw_mean": 2.0,
+      "region": "East & Southeast Asia & Pacific"
+    },
+    {
+      "country": "MLT",
+      "slug": "malta",
+      "country_name": "Malta",
+      "year": 2017,
+      "level": 3,
+      "raw_mean": 2.8571,
+      "region": "Western Europe & North America"
+    },
+    {
+      "country": "CHL",
+      "slug": "chile",
+      "country_name": "Chile",
+      "year": 2017,
+      "level": 4,
+      "raw_mean": 3.7273,
+      "region": "Latin America & Caribbean"
+    }
+  ],
+  "v2juaccnt": [
+    {
+      "country": "VEN",
+      "slug": "venezuela",
+      "country_name": "Venezuela",
+      "year": 2018,
+      "level": 0,
+      "raw_mean": 0.5,
+      "region": "Latin America & Caribbean"
+    },
+    {
+      "country": "KHM",
+      "slug": "cambodia",
+      "country_name": "Cambodia",
+      "year": 2016,
+      "level": 1,
+      "raw_mean": 1.0,
+      "region": "East & Southeast Asia & Pacific"
+    },
+    {
+      "country": "ETH",
+      "slug": "ethiopia",
+      "country_name": "Ethiopia",
+      "year": 2016,
+      "level": 2,
+      "raw_mean": 2.0,
+      "region": "Sub-Saharan Africa"
+    },
+    {
+      "country": "AUT",
+      "slug": "austria",
+      "country_name": "Austria",
+      "year": 2018,
+      "level": 3,
+      "raw_mean": 3.0,
+      "region": "Western Europe & North America"
+    },
+    {
+      "country": "EST",
+      "slug": "estonia",
+      "country_name": "Estonia",
+      "year": 2017,
+      "level": 4,
+      "raw_mean": 3.7143,
+      "region": "Eastern Europe & Central Asia"
+    }
+  ],
+  "v2jucomp": [
+    {
+      "country": "PRK",
+      "slug": "north-korea",
+      "country_name": "North Korea",
+      "year": 2016,
+      "level": 0,
+      "raw_mean": 0.125,
+      "region": "East & Southeast Asia & Pacific"
+    },
+    {
+      "country": "DZA",
+      "slug": "algeria",
+      "country_name": "Algeria",
+      "year": 2018,
+      "level": 1,
+      "raw_mean": 1.0,
+      "region": "Middle East & North Africa"
+    },
+    {
+      "country": "SLE",
+      "slug": "sierra-leone",
+      "country_name": "Sierra Leone",
+      "year": 2016,
+      "level": 2,
+      "raw_mean": 2.0,
+      "region": "Sub-Saharan Africa"
+    },
+    {
+      "country": "ROU",
+      "slug": "romania",
+      "country_name": "Romania",
+      "year": 2016,
+      "level": 3,
+      "raw_mean": 3.0,
+      "region": "Eastern Europe & Central Asia"
+    },
+    {
+      "country": "CHL",
+      "slug": "chile",
+      "country_name": "Chile",
+      "year": 2016,
+      "level": 4,
+      "raw_mean": 3.8,
+      "region": "Latin America & Caribbean"
+    }
+  ],
+  "v2jucorrdc": [
+    {
+      "country": "AZE",
+      "slug": "azerbaijan",
+      "country_name": "Azerbaijan",
+      "year": 2018,
+      "level": 0,
+      "raw_mean": 0.4444,
+      "region": "Eastern Europe & Central Asia"
+    },
+    {
+      "country": "CAF",
+      "slug": "central-african-republic",
+      "country_name": "Central African Republic",
+      "year": 2017,
+      "level": 1,
+      "raw_mean": 1.0,
+      "region": "Sub-Saharan Africa"
+    },
+    {
+      "country": "LBN",
+      "slug": "lebanon",
+      "country_name": "Lebanon",
+      "year": 2017,
+      "level": 2,
+      "raw_mean": 2.0,
+      "region": "Middle East & North Africa"
+    },
+    {
+      "country": "JAM",
+      "slug": "jamaica",
+      "country_name": "Jamaica",
+      "year": 2018,
+      "level": 3,
+      "raw_mean": 3.0,
+      "region": "Latin America & Caribbean"
+    },
+    {
+      "country": "DNK",
+      "slug": "denmark",
+      "country_name": "Denmark",
+      "year": 2018,
+      "level": 4,
+      "raw_mean": 4.0,
+      "region": "Western Europe & North America"
+    }
+  ],
+  "v2juhccomp": [
+    {
+      "country": "PRK",
+      "slug": "north-korea",
+      "country_name": "North Korea",
+      "year": 2016,
+      "level": 0,
+      "raw_mean": 0.125,
+      "region": "East & Southeast Asia & Pacific"
+    },
+    {
+      "country": "TGO",
+      "slug": "togo",
+      "country_name": "Togo",
+      "year": 2017,
+      "level": 1,
+      "raw_mean": 1.0,
+      "region": "Sub-Saharan Africa"
+    },
+    {
+      "country": "SAU",
+      "slug": "saudi-arabia",
+      "country_name": "Saudi Arabia",
+      "year": 2018,
+      "level": 2,
+      "raw_mean": 2.0,
+      "region": "Middle East & North Africa"
+    },
+    {
+      "country": "BTN",
+      "slug": "bhutan",
+      "country_name": "Bhutan",
+      "year": 2016,
+      "level": 3,
+      "raw_mean": 3.0,
+      "region": "South Asia"
+    },
+    {
+      "country": "AUS",
+      "slug": "australia",
+      "country_name": "Australia",
+      "year": 2018,
+      "level": 4,
+      "raw_mean": 4.0,
+      "region": "Western Europe & North America"
+    }
+  ],
+  "v2juhcind": [
+    {
+      "country": "AZE",
+      "slug": "azerbaijan",
+      "country_name": "Azerbaijan",
+      "year": 2018,
+      "level": 0,
+      "raw_mean": 0.1111,
+      "region": "Eastern Europe & Central Asia"
+    },
+    {
+      "country": "MRT",
+      "slug": "mauritania",
+      "country_name": "Mauritania",
+      "year": 2016,
+      "level": 1,
+      "raw_mean": 1.0,
+      "region": "Middle East & North Africa"
+    },
+    {
+      "country": "TLS",
+      "slug": "timor-leste",
+      "country_name": "Timor-Leste",
+      "year": 2017,
+      "level": 2,
+      "raw_mean": 2.0,
+      "region": "East & Southeast Asia & Pacific"
+    },
+    {
+      "country": "SYC",
+      "slug": "seychelles",
+      "country_name": "Seychelles",
+      "year": 2016,
+      "level": 3,
+      "raw_mean": 3.0,
+      "region": "Other"
+    },
+    {
+      "country": "NZL",
+      "slug": "new-zealand",
+      "country_name": "New Zealand",
+      "year": 2017,
+      "level": 4,
+      "raw_mean": 4.0,
+      "region": "Western Europe & North America"
+    }
+  ],
+  "v2juncind": [
+    {
+      "country": "AZE",
+      "slug": "azerbaijan",
+      "country_name": "Azerbaijan",
+      "year": 2018,
+      "level": 0,
+      "raw_mean": 0.1111,
+      "region": "Eastern Europe & Central Asia"
+    },
+    {
+      "country": "TCD",
+      "slug": "chad",
+      "country_name": "Chad",
+      "year": 2016,
+      "level": 1,
+      "raw_mean": 1.0,
+      "region": "Sub-Saharan Africa"
+    },
+    {
+      "country": "FJI",
+      "slug": "fiji",
+      "country_name": "Fiji",
+      "year": 2016,
+      "level": 2,
+      "raw_mean": 2.0,
+      "region": "East & Southeast Asia & Pacific"
+    },
+    {
+      "country": "GUY",
+      "slug": "guyana",
+      "country_name": "Guyana",
+      "year": 2018,
+      "level": 3,
+      "raw_mean": 3.0,
+      "region": "Latin America & Caribbean"
+    },
+    {
+      "country": "NZL",
+      "slug": "new-zealand",
+      "country_name": "New Zealand",
+      "year": 2018,
+      "level": 4,
+      "raw_mean": 4.0,
+      "region": "Western Europe & North America"
+    }
+  ],
+  "v2jupack": [
+    {
+      "country": "TUR",
+      "slug": "turkey",
+      "country_name": "Turkey",
+      "year": 2018,
+      "level": 0,
+      "raw_mean": 0.5,
+      "region": "Eastern Europe & Central Asia"
+    },
+    {
+      "country": "BDI",
+      "slug": "burundi",
+      "country_name": "Burundi",
+      "year": 2016,
+      "level": 1,
+      "raw_mean": 1.1111,
+      "region": "Sub-Saharan Africa"
+    },
+    {
+      "country": "VNM",
+      "slug": "vietnam",
+      "country_name": "Viet Nam",
+      "year": 2018,
+      "level": 2,
+      "raw_mean": 2.0,
+      "region": "East & Southeast Asia & Pacific"
+    },
+    {
+      "country": "DNK",
+      "slug": "denmark",
+      "country_name": "Denmark",
+      "year": 2018,
+      "level": 3,
+      "raw_mean": 3.0,
+      "region": "Western Europe & North America"
+    }
+  ],
+  "v2jupoatck": [
+    {
+      "country": "POL",
+      "slug": "poland",
+      "country_name": "Poland",
+      "year": 2018,
+      "level": 0,
+      "raw_mean": 0.4444,
+      "region": "Eastern Europe & Central Asia"
+    },
+    {
+      "country": "GNQ",
+      "slug": "equatorial-guinea",
+      "country_name": "Equatorial Guinea",
+      "year": 2018,
+      "level": 1,
+      "raw_mean": 1.1667,
+      "region": "Sub-Saharan Africa"
+    },
+    {
+      "country": "BGD",
+      "slug": "bangladesh",
+      "country_name": "Bangladesh",
+      "year": 2016,
+      "level": 2,
+      "raw_mean": 2.0,
+      "region": "South Asia"
+    },
+    {
+      "country": "FJI",
+      "slug": "fiji",
+      "country_name": "Fiji",
+      "year": 2016,
+      "level": 3,
+      "raw_mean": 3.0,
+      "region": "East & Southeast Asia & Pacific"
+    },
+    {
+      "country": "KWT",
+      "slug": "kuwait",
+      "country_name": "Kuwait",
+      "year": 2016,
+      "level": 4,
+      "raw_mean": 4.0,
+      "region": "Middle East & North Africa"
+    }
+  ],
+  "v2jupurge": [
+    {
+      "country": "TUR",
+      "slug": "turkey",
+      "country_name": "Turkey",
+      "year": 2017,
+      "level": 0,
+      "raw_mean": 0.2,
+      "region": "Eastern Europe & Central Asia"
+    },
+    {
+      "country": "NIC",
+      "slug": "nicaragua",
+      "country_name": "Nicaragua",
+      "year": 2018,
+      "level": 1,
+      "raw_mean": 1.2857,
+      "region": "Latin America & Caribbean"
+    },
+    {
+      "country": "BGD",
+      "slug": "bangladesh",
+      "country_name": "Bangladesh",
+      "year": 2018,
+      "level": 2,
+      "raw_mean": 2.0,
+      "region": "South Asia"
+    },
+    {
+      "country": "FJI",
+      "slug": "fiji",
+      "country_name": "Fiji",
+      "year": 2017,
+      "level": 3,
+      "raw_mean": 3.0,
+      "region": "East & Southeast Asia & Pacific"
+    },
+    {
+      "country": "KWT",
+      "slug": "kuwait",
+      "country_name": "Kuwait",
+      "year": 2018,
+      "level": 4,
+      "raw_mean": 4.0,
+      "region": "Middle East & North Africa"
+    }
+  ],
+  "v2jureform": [
+    {
+      "country": "TUR",
+      "slug": "turkey",
+      "country_name": "Turkey",
+      "year": 2017,
+      "level": 0,
+      "raw_mean": 0.1,
+      "region": "Eastern Europe & Central Asia"
+    },
+    {
+      "country": "MWI",
+      "slug": "malawi",
+      "country_name": "Malawi",
+      "year": 2017,
+      "level": 1,
+      "raw_mean": 1.0,
+      "region": "Sub-Saharan Africa"
+    },
+    {
+      "country": "TUN",
+      "slug": "tunisia",
+      "country_name": "Tunisia",
+      "year": 2016,
+      "level": 2,
+      "raw_mean": 1.8889,
+      "region": "Middle East & North Africa"
+    }
+  ],
+  "v2jureview": [
+    {
+      "country": "PRK",
+      "slug": "north-korea",
+      "country_name": "North Korea",
+      "year": 2016,
+      "level": 0,
+      "raw_mean": 0.0,
+      "region": "East & Southeast Asia & Pacific"
+    },
+    {
+      "country": "ALB",
+      "slug": "albania",
+      "country_name": "Albania",
+      "year": 2018,
+      "level": 1,
+      "raw_mean": 1.0,
+      "region": "Eastern Europe & Central Asia"
+    }
+  ],
+  "v2mebias": [
+    {
+      "country": "ERI",
+      "slug": "eritrea",
+      "country_name": "Eritrea",
+      "year": 2017,
+      "level": 0,
+      "raw_mean": 0.0,
+      "region": "Sub-Saharan Africa"
+    },
+    {
+      "country": "YEM",
+      "slug": "yemen",
+      "country_name": "Yemen",
+      "year": 2018,
+      "level": 1,
+      "raw_mean": 1.0,
+      "region": "Middle East & North Africa"
+    },
+    {
+      "country": "MKD",
+      "slug": "north-macedonia",
+      "country_name": "North Macedonia",
+      "year": 2016,
+      "level": 2,
+      "raw_mean": 2.0,
+      "region": "Eastern Europe & Central Asia"
+    },
+    {
+      "country": "IDN",
+      "slug": "indonesia",
+      "country_name": "Indonesia",
+      "year": 2018,
+      "level": 3,
+      "raw_mean": 3.0,
+      "region": "East & Southeast Asia & Pacific"
+    },
+    {
+      "country": "LUX",
+      "slug": "luxembourg",
+      "country_name": "Luxembourg",
+      "year": 2017,
+      "level": 4,
+      "raw_mean": 4.0,
+      "region": "Western Europe & North America"
+    }
+  ],
+  "v2mecenefi": [
+    {
+      "country": "PRK",
+      "slug": "north-korea",
+      "country_name": "North Korea",
+      "year": 2016,
+      "level": 0,
+      "raw_mean": 0.0,
+      "region": "East & Southeast Asia & Pacific"
+    },
+    {
+      "country": "TUR",
+      "slug": "turkey",
+      "country_name": "Turkey",
+      "year": 2016,
+      "level": 1,
+      "raw_mean": 1.0,
+      "region": "Eastern Europe & Central Asia"
+    },
+    {
+      "country": "SOM",
+      "slug": "somalia",
+      "country_name": "Somalia",
+      "year": 2016,
+      "level": 2,
+      "raw_mean": 2.0,
+      "region": "Sub-Saharan Africa"
+    },
+    {
+      "country": "ITA",
+      "slug": "italy",
+      "country_name": "Italy",
+      "year": 2016,
+      "level": 3,
+      "raw_mean": 3.0,
+      "region": "Western Europe & North America"
+    }
+  ],
+  "v2mecenefibin": [
+    {
+      "country": "ARG",
+      "slug": "argentina",
+      "country_name": "Argentina",
+      "year": 2018,
+      "level": 1,
+      "raw_mean": 1.0,
+      "region": "Latin America & Caribbean"
+    }
+  ],
+  "v2mecenefm": [
+    {
+      "country": "TKM",
+      "slug": "turkmenistan",
+      "country_name": "Turkmenistan",
+      "year": 2017,
+      "level": 0,
+      "raw_mean": 0.0,
+      "region": "Eastern Europe & Central Asia"
+    },
+    {
+      "country": "ARE",
+      "slug": "united-arab-emirates",
+      "country_name": "United Arab Emirates",
+      "year": 2016,
+      "level": 1,
+      "raw_mean": 1.0,
+      "region": "Middle East & North Africa"
+    },
+    {
+      "country": "HTI",
+      "slug": "haiti",
+      "country_name": "Haiti",
+      "year": 2016,
+      "level": 2,
+      "raw_mean": 2.0,
+      "region": "Latin America & Caribbean"
+    },
+    {
+      "country": "CPV",
+      "slug": "cabo-verde",
+      "country_name": "Cabo Verde",
+      "year": 2017,
+      "level": 3,
+      "raw_mean": 3.0,
+      "region": "Sub-Saharan Africa"
+    },
+    {
+      "country": "BEL",
+      "slug": "belgium",
+      "country_name": "Belgium",
+      "year": 2018,
+      "level": 4,
+      "raw_mean": 4.0,
+      "region": "Western Europe & North America"
+    }
+  ],
+  "v2mecorrpt": [
+    {
+      "country": "PRK",
+      "slug": "north-korea",
+      "country_name": "North Korea",
+      "year": 2017,
+      "level": 0,
+      "raw_mean": 0.0,
+      "region": "East & Southeast Asia & Pacific"
+    },
+    {
+      "country": "TJK",
+      "slug": "tajikistan",
+      "country_name": "Tajikistan",
+      "year": 2017,
+      "level": 1,
+      "raw_mean": 1.0,
+      "region": "Eastern Europe & Central Asia"
+    },
+    {
+      "country": "BEN",
+      "slug": "benin",
+      "country_name": "Benin",
+      "year": 2017,
+      "level": 2,
+      "raw_mean": 2.0,
+      "region": "Sub-Saharan Africa"
+    },
+    {
+      "country": "SUR",
+      "slug": "suriname",
+      "country_name": "Suriname",
+      "year": 2018,
+      "level": 3,
+      "raw_mean": 3.0,
+      "region": "Latin America & Caribbean"
+    },
+    {
+      "country": "DNK",
+      "slug": "denmark",
+      "country_name": "Denmark",
+      "year": 2018,
+      "level": 4,
+      "raw_mean": 4.0,
+      "region": "Western Europe & North America"
+    }
+  ],
+  "v2mecrit": [
+    {
+      "country": "ERI",
+      "slug": "eritrea",
+      "country_name": "Eritrea",
+      "year": 2016,
+      "level": 0,
+      "raw_mean": 0.0,
+      "region": "Sub-Saharan Africa"
+    },
+    {
+      "country": "YEM",
+      "slug": "yemen",
+      "country_name": "Yemen",
+      "year": 2016,
+      "level": 1,
+      "raw_mean": 1.0,
+      "region": "Middle East & North Africa"
+    },
+    {
+      "country": "DOM",
+      "slug": "dominican-republic",
+      "country_name": "Dominican Republic",
+      "year": 2018,
+      "level": 2,
+      "raw_mean": 2.0,
+      "region": "Latin America & Caribbean"
+    },
+    {
+      "country": "BEL",
+      "slug": "belgium",
+      "country_name": "Belgium",
+      "year": 2016,
+      "level": 3,
+      "raw_mean": 3.0,
+      "region": "Western Europe & North America"
+    }
+  ],
+  "v2meharjrn": [
+    {
+      "country": "PRK",
+      "slug": "north-korea",
+      "country_name": "North Korea",
+      "year": 2017,
+      "level": 0,
+      "raw_mean": 0.0,
+      "region": "East & Southeast Asia & Pacific"
+    },
+    {
+      "country": "TUR",
+      "slug": "turkey",
+      "country_name": "Turkey",
+      "year": 2018,
+      "level": 1,
+      "raw_mean": 1.0,
+      "region": "Eastern Europe & Central Asia"
+    },
+    {
+      "country": "ECU",
+      "slug": "ecuador",
+      "country_name": "Ecuador",
+      "year": 2017,
+      "level": 2,
+      "raw_mean": 2.0,
+      "region": "Latin America & Caribbean"
+    },
+    {
+      "country": "ITA",
+      "slug": "italy",
+      "country_name": "Italy",
+      "year": 2017,
+      "level": 3,
+      "raw_mean": 3.0,
+      "region": "Western Europe & North America"
+    },
+    {
+      "country": "LTU",
+      "slug": "lithuania",
+      "country_name": "Lithuania",
+      "year": 2018,
+      "level": 4,
+      "raw_mean": 4.0,
+      "region": "Eastern Europe & Central Asia"
+    }
+  ],
+  "v2merange": [
+    {
+      "country": "ERI",
+      "slug": "eritrea",
+      "country_name": "Eritrea",
+      "year": 2018,
+      "level": 0,
+      "raw_mean": 0.0,
+      "region": "Sub-Saharan Africa"
+    },
+    {
+      "country": "YEM",
+      "slug": "yemen",
+      "country_name": "Yemen",
+      "year": 2017,
+      "level": 1,
+      "raw_mean": 1.0,
+      "region": "Middle East & North Africa"
+    },
+    {
+      "country": "AFG",
+      "slug": "afghanistan",
+      "country_name": "Afghanistan",
+      "year": 2016,
+      "level": 2,
+      "raw_mean": 2.0,
+      "region": "South Asia"
+    },
+    {
+      "country": "MLT",
+      "slug": "malta",
+      "country_name": "Malta",
+      "year": 2017,
+      "level": 3,
+      "raw_mean": 3.0,
+      "region": "Western Europe & North America"
+    }
+  ],
+  "v2meslfcen": [
+    {
+      "country": "ERI",
+      "slug": "eritrea",
+      "country_name": "Eritrea",
+      "year": 2017,
+      "level": 0,
+      "raw_mean": 0.0,
+      "region": "Sub-Saharan Africa"
+    },
+    {
+      "country": "AZE",
+      "slug": "azerbaijan",
+      "country_name": "Azerbaijan",
+      "year": 2016,
+      "level": 1,
+      "raw_mean": 1.0,
+      "region": "Eastern Europe & Central Asia"
+    },
+    {
+      "country": "COL",
+      "slug": "colombia",
+      "country_name": "Colombia",
+      "year": 2016,
+      "level": 2,
+      "raw_mean": 2.0,
+      "region": "Latin America & Caribbean"
+    },
+    {
+      "country": "BEL",
+      "slug": "belgium",
+      "country_name": "Belgium",
+      "year": 2016,
+      "level": 3,
+      "raw_mean": 3.0,
+      "region": "Western Europe & North America"
+    }
+  ],
+  "v2caassemb": [
+    {
+      "country": "ERI",
+      "slug": "eritrea",
+      "country_name": "Eritrea",
+      "year": 2016,
+      "level": 0,
+      "raw_mean": 0.0,
+      "region": "Sub-Saharan Africa"
+    },
+    {
+      "country": "QAT",
+      "slug": "qatar",
+      "country_name": "Qatar",
+      "year": 2017,
+      "level": 1,
+      "raw_mean": 1.0,
+      "region": "Middle East & North Africa"
+    },
+    {
+      "country": "FJI",
+      "slug": "fiji",
+      "country_name": "Fiji",
+      "year": 2018,
+      "level": 2,
+      "raw_mean": 2.0,
+      "region": "East & Southeast Asia & Pacific"
+    },
+    {
+      "country": "BOL",
+      "slug": "bolivia",
+      "country_name": "Bolivia",
+      "year": 2018,
+      "level": 3,
+      "raw_mean": 3.0,
+      "region": "Latin America & Caribbean"
+    },
+    {
+      "country": "DEU",
+      "slug": "germany",
+      "country_name": "Germany",
+      "year": 2016,
+      "level": 4,
+      "raw_mean": 4.0,
+      "region": "Western Europe & North America"
+    }
+  ],
+  "v2caautmob": [
+    {
+      "country": "PAN",
+      "slug": "panama",
+      "country_name": "Panama",
+      "year": 2017,
+      "level": 0,
+      "raw_mean": 0.0,
+      "region": "Latin America & Caribbean"
+    },
+    {
+      "country": "SLE",
+      "slug": "sierra-leone",
+      "country_name": "Sierra Leone",
+      "year": 2018,
+      "level": 1,
+      "raw_mean": 1.0,
+      "region": "Sub-Saharan Africa"
+    },
+    {
+      "country": "TKM",
+      "slug": "turkmenistan",
+      "country_name": "Turkmenistan",
+      "year": 2016,
+      "level": 2,
+      "raw_mean": 2.0,
+      "region": "Eastern Europe & Central Asia"
+    },
+    {
+      "country": "SYR",
+      "slug": "syria",
+      "country_name": "Syria",
+      "year": 2018,
+      "level": 3,
+      "raw_mean": 2.7143,
+      "region": "Middle East & North Africa"
+    },
+    {
+      "country": "PRK",
+      "slug": "north-korea",
+      "country_name": "North Korea",
+      "year": 2016,
+      "level": 4,
+      "raw_mean": 3.5714,
+      "region": "East & Southeast Asia & Pacific"
+    }
+  ],
+  "v2cacamps": [
+    {
+      "country": "BRB",
+      "slug": "barbados",
+      "country_name": "Barbados",
+      "year": 2017,
+      "level": 0,
+      "raw_mean": 0.2857,
+      "region": "Latin America & Caribbean"
+    },
+    {
+      "country": "FIN",
+      "slug": "finland",
+      "country_name": "Finland",
+      "year": 2016,
+      "level": 1,
+      "raw_mean": 1.0,
+      "region": "Western Europe & North America"
+    },
+    {
+      "country": "TLS",
+      "slug": "timor-leste",
+      "country_name": "Timor-Leste",
+      "year": 2018,
+      "level": 2,
+      "raw_mean": 2.0,
+      "region": "East & Southeast Asia & Pacific"
+    },
+    {
+      "country": "GEO",
+      "slug": "georgia",
+      "country_name": "Georgia",
+      "year": 2017,
+      "level": 3,
+      "raw_mean": 3.0,
+      "region": "Eastern Europe & Central Asia"
+    },
+    {
+      "country": "LBY",
+      "slug": "libya",
+      "country_name": "Libya",
+      "year": 2018,
+      "level": 4,
+      "raw_mean": 3.7273,
+      "region": "Middle East & North Africa"
+    }
+  ],
+  "v2caconmob": [
+    {
+      "country": "MLT",
+      "slug": "malta",
+      "country_name": "Malta",
+      "year": 2018,
+      "level": 0,
+      "raw_mean": 0.0,
+      "region": "Western Europe & North America"
+    },
+    {
+      "country": "LSO",
+      "slug": "lesotho",
+      "country_name": "Lesotho",
+      "year": 2016,
+      "level": 1,
+      "raw_mean": 1.0,
+      "region": "Sub-Saharan Africa"
+    },
+    {
+      "country": "BOL",
+      "slug": "bolivia",
+      "country_name": "Bolivia",
+      "year": 2016,
+      "level": 2,
+      "raw_mean": 2.0,
+      "region": "Latin America & Caribbean"
+    },
+    {
+      "country": "SYR",
+      "slug": "syria",
+      "country_name": "Syria",
+      "year": 2016,
+      "level": 3,
+      "raw_mean": 2.7143,
+      "region": "Middle East & North Africa"
+    }
+  ],
+  "v2cacritic": [
+    {
+      "country": "TKM",
+      "slug": "turkmenistan",
+      "country_name": "Turkmenistan",
+      "year": 2018,
+      "level": 0,
+      "raw_mean": 0.0,
+      "region": "Eastern Europe & Central Asia"
+    },
+    {
+      "country": "BDI",
+      "slug": "burundi",
+      "country_name": "Burundi",
+      "year": 2017,
+      "level": 1,
+      "raw_mean": 1.0,
+      "region": "Sub-Saharan Africa"
+    },
+    {
+      "country": "SYC",
+      "slug": "seychelles",
+      "country_name": "Seychelles",
+      "year": 2018,
+      "level": 2,
+      "raw_mean": 2.0,
+      "region": "Other"
+    },
+    {
+      "country": "FRA",
+      "slug": "france",
+      "country_name": "France",
+      "year": 2016,
+      "level": 3,
+      "raw_mean": 3.0,
+      "region": "Western Europe & North America"
+    },
+    {
+      "country": "CHL",
+      "slug": "chile",
+      "country_name": "Chile",
+      "year": 2018,
+      "level": 4,
+      "raw_mean": 3.875,
+      "region": "Latin America & Caribbean"
+    }
+  ],
+  "v2cademmob": [
+    {
+      "country": "LAO",
+      "slug": "laos",
+      "country_name": "Laos",
+      "year": 2017,
+      "level": 0,
+      "raw_mean": 0.0,
+      "region": "East & Southeast Asia & Pacific"
+    },
+    {
+      "country": "GUY",
+      "slug": "guyana",
+      "country_name": "Guyana",
+      "year": 2017,
+      "level": 1,
+      "raw_mean": 1.0,
+      "region": "Latin America & Caribbean"
+    },
+    {
+      "country": "LKA",
+      "slug": "sri-lanka",
+      "country_name": "Sri Lanka",
+      "year": 2016,
+      "level": 2,
+      "raw_mean": 2.0,
+      "region": "South Asia"
+    },
+    {
+      "country": "ZWE",
+      "slug": "zimbabwe",
+      "country_name": "Zimbabwe",
+      "year": 2018,
+      "level": 3,
+      "raw_mean": 3.0,
+      "region": "Sub-Saharan Africa"
+    },
+    {
+      "country": "ARM",
+      "slug": "armenia",
+      "country_name": "Armenia",
+      "year": 2018,
+      "level": 4,
+      "raw_mean": 4.0,
+      "region": "Eastern Europe & Central Asia"
+    }
+  ],
+  "v2cagenmob": [
+    {
+      "country": "ERI",
+      "slug": "eritrea",
+      "country_name": "Eritrea",
+      "year": 2018,
+      "level": 0,
+      "raw_mean": 0.0,
+      "region": "Sub-Saharan Africa"
+    },
+    {
+      "country": "JPN",
+      "slug": "japan",
+      "country_name": "Japan",
+      "year": 2018,
+      "level": 1,
+      "raw_mean": 1.0,
+      "region": "East & Southeast Asia & Pacific"
+    },
+    {
+      "country": "NIC",
+      "slug": "nicaragua",
+      "country_name": "Nicaragua",
+      "year": 2016,
+      "level": 2,
+      "raw_mean": 2.0,
+      "region": "Latin America & Caribbean"
+    },
+    {
+      "country": "SYR",
+      "slug": "syria",
+      "country_name": "Syria",
+      "year": 2016,
+      "level": 3,
+      "raw_mean": 3.0,
+      "region": "Middle East & North Africa"
+    },
+    {
+      "country": "ARM",
+      "slug": "armenia",
+      "country_name": "Armenia",
+      "year": 2018,
+      "level": 4,
+      "raw_mean": 4.0,
+      "region": "Eastern Europe & Central Asia"
+    }
+  ],
+  "v2cainsaut": [
+    {
+      "country": "ERI",
+      "slug": "eritrea",
+      "country_name": "Eritrea",
+      "year": 2018,
+      "level": 0,
+      "raw_mean": 0.0,
+      "region": "Sub-Saharan Africa"
+    },
+    {
+      "country": "CHN",
+      "slug": "china",
+      "country_name": "China",
+      "year": 2017,
+      "level": 1,
+      "raw_mean": 1.0,
+      "region": "East & Southeast Asia & Pacific"
+    },
+    {
+      "country": "UKR",
+      "slug": "ukraine",
+      "country_name": "Ukraine",
+      "year": 2017,
+      "level": 2,
+      "raw_mean": 2.0,
+      "region": "Eastern Europe & Central Asia"
+    },
+    {
+      "country": "NZL",
+      "slug": "new-zealand",
+      "country_name": "New Zealand",
+      "year": 2017,
+      "level": 3,
+      "raw_mean": 3.0,
+      "region": "Western Europe & North America"
+    },
+    {
+      "country": "CRI",
+      "slug": "costa-rica",
+      "country_name": "Costa Rica",
+      "year": 2016,
+      "level": 4,
+      "raw_mean": 3.8,
+      "region": "Latin America & Caribbean"
+    }
+  ],
+  "v2canonpol": [
+    {
+      "country": "PRK",
+      "slug": "north-korea",
+      "country_name": "North Korea",
+      "year": 2016,
+      "level": 0,
+      "raw_mean": 0.2857,
+      "region": "East & Southeast Asia & Pacific"
+    },
+    {
+      "country": "ERI",
+      "slug": "eritrea",
+      "country_name": "Eritrea",
+      "year": 2016,
+      "level": 1,
+      "raw_mean": 1.0,
+      "region": "Sub-Saharan Africa"
+    },
+    {
+      "country": "JOR",
+      "slug": "jordan",
+      "country_name": "Jordan",
+      "year": 2016,
+      "level": 2,
+      "raw_mean": 2.0,
+      "region": "Middle East & North Africa"
+    },
+    {
+      "country": "DNK",
+      "slug": "denmark",
+      "country_name": "Denmark",
+      "year": 2018,
+      "level": 3,
+      "raw_mean": 3.0,
+      "region": "Western Europe & North America"
+    },
+    {
+      "country": "CHE",
+      "slug": "switzerland",
+      "country_name": "Switzerland",
+      "year": 2017,
+      "level": 4,
+      "raw_mean": 3.8571,
+      "region": "Western Europe & North America"
+    }
+  ],
+  "v2capolit": [
+    {
+      "country": "TKM",
+      "slug": "turkmenistan",
+      "country_name": "Turkmenistan",
+      "year": 2018,
+      "level": 0,
+      "raw_mean": 0.0,
+      "region": "Eastern Europe & Central Asia"
+    },
+    {
+      "country": "VNM",
+      "slug": "vietnam",
+      "country_name": "Viet Nam",
+      "year": 2018,
+      "level": 1,
+      "raw_mean": 1.0,
+      "region": "East & Southeast Asia & Pacific"
+    },
+    {
+      "country": "GIN",
+      "slug": "guinea",
+      "country_name": "Guinea",
+      "year": 2016,
+      "level": 2,
+      "raw_mean": 2.0,
+      "region": "Sub-Saharan Africa"
+    },
+    {
+      "country": "CHE",
+      "slug": "switzerland",
+      "country_name": "Switzerland",
+      "year": 2018,
+      "level": 3,
+      "raw_mean": 2.5714,
+      "region": "Western Europe & North America"
+    }
+  ],
+  "v2castate": [
+    {
+      "country": "ISL",
+      "slug": "iceland",
+      "country_name": "Iceland",
+      "year": 2017,
+      "level": 0,
+      "raw_mean": 0.0,
+      "region": "Western Europe & North America"
+    },
+    {
+      "country": "FJI",
+      "slug": "fiji",
+      "country_name": "Fiji",
+      "year": 2016,
+      "level": 1,
+      "raw_mean": 1.0,
+      "region": "East & Southeast Asia & Pacific"
+    },
+    {
+      "country": "KEN",
+      "slug": "kenya",
+      "country_name": "Kenya",
+      "year": 2016,
+      "level": 2,
+      "raw_mean": 2.0,
+      "region": "Sub-Saharan Africa"
+    },
+    {
+      "country": "BLR",
+      "slug": "belarus",
+      "country_name": "Belarus",
+      "year": 2016,
+      "level": 3,
+      "raw_mean": 2.8889,
+      "region": "Eastern Europe & Central Asia"
+    },
+    {
+      "country": "CUB",
+      "slug": "cuba",
+      "country_name": "Cuba",
+      "year": 2018,
+      "level": 4,
+      "raw_mean": 3.7143,
+      "region": "Latin America & Caribbean"
+    }
+  ],
+  "v2casurv": [
+    {
+      "country": "ERI",
+      "slug": "eritrea",
+      "country_name": "Eritrea",
+      "year": 2018,
+      "level": 0,
+      "raw_mean": 0.0,
+      "region": "Sub-Saharan Africa"
+    },
+    {
+      "country": "TUR",
+      "slug": "turkey",
+      "country_name": "Turkey",
+      "year": 2016,
+      "level": 1,
+      "raw_mean": 1.0,
+      "region": "Eastern Europe & Central Asia"
+    },
+    {
+      "country": "QAT",
+      "slug": "qatar",
+      "country_name": "Qatar",
+      "year": 2018,
+      "level": 2,
+      "raw_mean": 2.0,
+      "region": "Middle East & North Africa"
+    },
+    {
+      "country": "TLS",
+      "slug": "timor-leste",
+      "country_name": "Timor-Leste",
+      "year": 2018,
+      "level": 3,
+      "raw_mean": 3.0,
+      "region": "East & Southeast Asia & Pacific"
+    },
+    {
+      "country": "LUX",
+      "slug": "luxembourg",
+      "country_name": "Luxembourg",
+      "year": 2017,
+      "level": 4,
+      "raw_mean": 4.0,
+      "region": "Western Europe & North America"
+    }
+  ],
+  "v2catrauni": [
+    {
+      "country": "LAO",
+      "slug": "laos",
+      "country_name": "Laos",
+      "year": 2018,
+      "level": 0,
+      "raw_mean": 0.0,
+      "region": "East & Southeast Asia & Pacific"
+    },
+    {
+      "country": "SOM",
+      "slug": "somalia",
+      "country_name": "Somalia",
+      "year": 2016,
+      "level": 1,
+      "raw_mean": 1.0,
+      "region": "Sub-Saharan Africa"
+    },
+    {
+      "country": "HTI",
+      "slug": "haiti",
+      "country_name": "Haiti",
+      "year": 2017,
+      "level": 2,
+      "raw_mean": 2.0,
+      "region": "Latin America & Caribbean"
+    },
+    {
+      "country": "LUX",
+      "slug": "luxembourg",
+      "country_name": "Luxembourg",
+      "year": 2018,
+      "level": 3,
+      "raw_mean": 3.0,
+      "region": "Western Europe & North America"
+    },
+    {
+      "country": "DNK",
+      "slug": "denmark",
+      "country_name": "Denmark",
+      "year": 2017,
+      "level": 4,
+      "raw_mean": 3.5,
+      "region": "Western Europe & North America"
+    }
+  ],
+  "v2caviol": [
+    {
+      "country": "ROU",
+      "slug": "romania",
+      "country_name": "Romania",
+      "year": 2016,
+      "level": 0,
+      "raw_mean": 0.0,
+      "region": "Eastern Europe & Central Asia"
+    },
+    {
+      "country": "MRT",
+      "slug": "mauritania",
+      "country_name": "Mauritania",
+      "year": 2017,
+      "level": 1,
+      "raw_mean": 1.0,
+      "region": "Middle East & North Africa"
+    },
+    {
+      "country": "PNG",
+      "slug": "papua-new-guinea",
+      "country_name": "Papua New Guinea",
+      "year": 2017,
+      "level": 2,
+      "raw_mean": 2.0,
+      "region": "East & Southeast Asia & Pacific"
+    },
+    {
+      "country": "BDI",
+      "slug": "burundi",
+      "country_name": "Burundi",
+      "year": 2016,
+      "level": 3,
+      "raw_mean": 3.0,
+      "region": "Sub-Saharan Africa"
+    },
+    {
+      "country": "AFG",
+      "slug": "afghanistan",
+      "country_name": "Afghanistan",
+      "year": 2016,
+      "level": 4,
+      "raw_mean": 3.5556,
+      "region": "South Asia"
+    }
+  ],
+  "v2exbribe": [
+    {
+      "country": "KHM",
+      "slug": "cambodia",
+      "country_name": "Cambodia",
+      "year": 2017,
+      "level": 0,
+      "raw_mean": 0.125,
+      "region": "East & Southeast Asia & Pacific"
+    },
+    {
+      "country": "TGO",
+      "slug": "togo",
+      "country_name": "Togo",
+      "year": 2017,
+      "level": 1,
+      "raw_mean": 1.0,
+      "region": "Sub-Saharan Africa"
+    },
+    {
+      "country": "BLR",
+      "slug": "belarus",
+      "country_name": "Belarus",
+      "year": 2017,
+      "level": 2,
+      "raw_mean": 2.0,
+      "region": "Eastern Europe & Central Asia"
+    },
+    {
+      "country": "TTO",
+      "slug": "trinidad-and-tobago",
+      "country_name": "Trinidad and Tobago",
+      "year": 2016,
+      "level": 3,
+      "raw_mean": 3.0,
+      "region": "Latin America & Caribbean"
+    },
+    {
+      "country": "CHE",
+      "slug": "switzerland",
+      "country_name": "Switzerland",
+      "year": 2018,
+      "level": 4,
+      "raw_mean": 4.0,
+      "region": "Western Europe & North America"
+    }
+  ],
+  "v2excrptps": [
+    {
+      "country": "VEN",
+      "slug": "venezuela",
+      "country_name": "Venezuela",
+      "year": 2018,
+      "level": 0,
+      "raw_mean": 0.1429,
+      "region": "Latin America & Caribbean"
+    },
+    {
+      "country": "KGZ",
+      "slug": "kyrgyzstan",
+      "country_name": "Kyrgyzstan",
+      "year": 2016,
+      "level": 1,
+      "raw_mean": 1.0,
+      "region": "Eastern Europe & Central Asia"
+    },
+    {
+      "country": "BHR",
+      "slug": "bahrain",
+      "country_name": "Bahrain",
+      "year": 2017,
+      "level": 2,
+      "raw_mean": 2.0,
+      "region": "Middle East & North Africa"
+    },
+    {
+      "country": "KOR",
+      "slug": "south-korea",
+      "country_name": "South Korea",
+      "year": 2017,
+      "level": 3,
+      "raw_mean": 3.0,
+      "region": "East & Southeast Asia & Pacific"
+    },
+    {
+      "country": "DNK",
+      "slug": "denmark",
+      "country_name": "Denmark",
+      "year": 2017,
+      "level": 4,
+      "raw_mean": 4.0,
+      "region": "Western Europe & North America"
+    }
+  ],
+  "v2exdfcbhs": [
+    {
+      "country": "VUT",
+      "slug": "vanuatu",
+      "country_name": "Vanuatu",
+      "year": 2017,
+      "level": 0,
+      "raw_mean": 0.0,
+      "region": "East & Southeast Asia & Pacific"
+    },
+    {
+      "country": "BGD",
+      "slug": "bangladesh",
+      "country_name": "Bangladesh",
+      "year": 2016,
+      "level": 1,
+      "raw_mean": 1.0,
+      "region": "South Asia"
+    },
+    {
+      "country": "NGA",
+      "slug": "nigeria",
+      "country_name": "Nigeria",
+      "year": 2017,
       "level": 2,
       "raw_mean": 2.0,
       "region": "Sub-Saharan Africa"
@@ -31,36 +5301,331 @@
       "country": "MEX",
       "slug": "mexico",
       "country_name": "Mexico",
-      "year": 2020,
+      "year": 2018,
       "level": 3,
-      "raw_mean": 3.1,
-      "region": "Latin America"
+      "raw_mean": 3.0,
+      "region": "Latin America & Caribbean"
     },
+    {
+      "country": "SAU",
+      "slug": "saudi-arabia",
+      "country_name": "Saudi Arabia",
+      "year": 2018,
+      "level": 4,
+      "raw_mean": 4.0,
+      "region": "Middle East & North Africa"
+    }
+  ],
+  "v2exdfdmhs": [
     {
       "country": "SWE",
       "slug": "sweden",
       "country_name": "Sweden",
-      "year": 2020,
-      "level": 4,
-      "raw_mean": 4.0,
-      "region": "Western Europe"
-    }
-  ],
-  "v2mecenefm": [
-    {
-      "country": "SYR",
-      "slug": "syria",
-      "country_name": "Syria",
-      "year": 2020,
+      "year": 2017,
       "level": 0,
       "raw_mean": 0.0,
-      "region": "MENA"
+      "region": "Western Europe & North America"
     },
     {
-      "country": "SWZ",
-      "slug": "eswatini",
-      "country_name": "Eswatini",
-      "year": 2020,
+      "country": "LTU",
+      "slug": "lithuania",
+      "country_name": "Lithuania",
+      "year": 2017,
+      "level": 1,
+      "raw_mean": 1.0,
+      "region": "Eastern Europe & Central Asia"
+    },
+    {
+      "country": "BTN",
+      "slug": "bhutan",
+      "country_name": "Bhutan",
+      "year": 2016,
+      "level": 2,
+      "raw_mean": 2.0,
+      "region": "South Asia"
+    },
+    {
+      "country": "NIC",
+      "slug": "nicaragua",
+      "country_name": "Nicaragua",
+      "year": 2017,
+      "level": 3,
+      "raw_mean": 3.0,
+      "region": "Latin America & Caribbean"
+    }
+  ],
+  "v2exdfdshg": [
+    {
+      "country": "BLR",
+      "slug": "belarus",
+      "country_name": "Belarus",
+      "year": 2016,
+      "level": 0,
+      "raw_mean": 0.0,
+      "region": "Eastern Europe & Central Asia"
+    },
+    {
+      "country": "LAO",
+      "slug": "laos",
+      "country_name": "Laos",
+      "year": 2017,
+      "level": 1,
+      "raw_mean": 1.0,
+      "region": "East & Southeast Asia & Pacific"
+    },
+    {
+      "country": "EGY",
+      "slug": "egypt",
+      "country_name": "Egypt",
+      "year": 2018,
+      "level": 2,
+      "raw_mean": 2.0,
+      "region": "Middle East & North Africa"
+    },
+    {
+      "country": "AUS",
+      "slug": "australia",
+      "country_name": "Australia",
+      "year": 2018,
+      "level": 3,
+      "raw_mean": 3.0,
+      "region": "Western Europe & North America"
+    }
+  ],
+  "v2exdfdshs": [
+    {
+      "country": "COL",
+      "slug": "colombia",
+      "country_name": "Colombia",
+      "year": 2016,
+      "level": 0,
+      "raw_mean": 0.0,
+      "region": "Latin America & Caribbean"
+    },
+    {
+      "country": "HUN",
+      "slug": "hungary",
+      "country_name": "Hungary",
+      "year": 2016,
+      "level": 1,
+      "raw_mean": 1.0,
+      "region": "Eastern Europe & Central Asia"
+    },
+    {
+      "country": "ZWE",
+      "slug": "zimbabwe",
+      "country_name": "Zimbabwe",
+      "year": 2017,
+      "level": 2,
+      "raw_mean": 2.0,
+      "region": "Sub-Saharan Africa"
+    },
+    {
+      "country": "SAU",
+      "slug": "saudi-arabia",
+      "country_name": "Saudi Arabia",
+      "year": 2017,
+      "level": 3,
+      "raw_mean": 3.0,
+      "region": "Middle East & North Africa"
+    }
+  ],
+  "v2exdfpphg": [
+    {
+      "country": "BGD",
+      "slug": "bangladesh",
+      "country_name": "Bangladesh",
+      "year": 2017,
+      "level": 0,
+      "raw_mean": 0.2308,
+      "region": "South Asia"
+    },
+    {
+      "country": "DEU",
+      "slug": "germany",
+      "country_name": "Germany",
+      "year": 2018,
+      "level": 1,
+      "raw_mean": 1.0,
+      "region": "Western Europe & North America"
+    },
+    {
+      "country": "AZE",
+      "slug": "azerbaijan",
+      "country_name": "Azerbaijan",
+      "year": 2016,
+      "level": 2,
+      "raw_mean": 1.6667,
+      "region": "Eastern Europe & Central Asia"
+    }
+  ],
+  "v2exdfpphs": [
+    {
+      "country": "TKM",
+      "slug": "turkmenistan",
+      "country_name": "Turkmenistan",
+      "year": 2016,
+      "level": 0,
+      "raw_mean": 0.0,
+      "region": "Eastern Europe & Central Asia"
+    },
+    {
+      "country": "LBY",
+      "slug": "libya",
+      "country_name": "Libya",
+      "year": 2017,
+      "level": 1,
+      "raw_mean": 1.0,
+      "region": "Middle East & North Africa"
+    },
+    {
+      "country": "AUS",
+      "slug": "australia",
+      "country_name": "Australia",
+      "year": 2018,
+      "level": 2,
+      "raw_mean": 2.0,
+      "region": "Western Europe & North America"
+    }
+  ],
+  "v2exdfvthg": [
+    {
+      "country": "LTU",
+      "slug": "lithuania",
+      "country_name": "Lithuania",
+      "year": 2017,
+      "level": 0,
+      "raw_mean": 0.0,
+      "region": "Eastern Europe & Central Asia"
+    },
+    {
+      "country": "YEM",
+      "slug": "yemen",
+      "country_name": "Yemen",
+      "year": 2018,
+      "level": 1,
+      "raw_mean": 1.0,
+      "region": "Middle East & North Africa"
+    },
+    {
+      "country": "FJI",
+      "slug": "fiji",
+      "country_name": "Fiji",
+      "year": 2018,
+      "level": 2,
+      "raw_mean": 2.0,
+      "region": "East & Southeast Asia & Pacific"
+    },
+    {
+      "country": "BGD",
+      "slug": "bangladesh",
+      "country_name": "Bangladesh",
+      "year": 2017,
+      "level": 3,
+      "raw_mean": 2.9167,
+      "region": "South Asia"
+    },
+    {
+      "country": "ARE",
+      "slug": "united-arab-emirates",
+      "country_name": "United Arab Emirates",
+      "year": 2017,
+      "level": 4,
+      "raw_mean": 4.0,
+      "region": "Middle East & North Africa"
+    }
+  ],
+  "v2exdfvths": [
+    {
+      "country": "CHE",
+      "slug": "switzerland",
+      "country_name": "Switzerland",
+      "year": 2017,
+      "level": 0,
+      "raw_mean": 0.0,
+      "region": "Western Europe & North America"
+    },
+    {
+      "country": "BRB",
+      "slug": "barbados",
+      "country_name": "Barbados",
+      "year": 2017,
+      "level": 1,
+      "raw_mean": 1.0,
+      "region": "Latin America & Caribbean"
+    },
+    {
+      "country": "MNE",
+      "slug": "montenegro",
+      "country_name": "Montenegro",
+      "year": 2017,
+      "level": 2,
+      "raw_mean": 2.0,
+      "region": "Eastern Europe & Central Asia"
+    },
+    {
+      "country": "ZWE",
+      "slug": "zimbabwe",
+      "country_name": "Zimbabwe",
+      "year": 2018,
+      "level": 3,
+      "raw_mean": 3.0,
+      "region": "Sub-Saharan Africa"
+    },
+    {
+      "country": "ARE",
+      "slug": "united-arab-emirates",
+      "country_name": "United Arab Emirates",
+      "year": 2017,
+      "level": 4,
+      "raw_mean": 4.0,
+      "region": "Middle East & North Africa"
+    }
+  ],
+  "v2exdjcbhg": [
+    {
+      "country": "CMR",
+      "slug": "cameroon",
+      "country_name": "Cameroon",
+      "year": 2018,
+      "level": 0,
+      "raw_mean": 0.0,
+      "region": "Sub-Saharan Africa"
+    },
+    {
+      "country": "HRV",
+      "slug": "croatia",
+      "country_name": "Croatia",
+      "year": 2016,
+      "level": 1,
+      "raw_mean": 1.0,
+      "region": "Eastern Europe & Central Asia"
+    },
+    {
+      "country": "TTO",
+      "slug": "trinidad-and-tobago",
+      "country_name": "Trinidad and Tobago",
+      "year": 2017,
+      "level": 2,
+      "raw_mean": 2.0,
+      "region": "Latin America & Caribbean"
+    }
+  ],
+  "v2exdjdshg": [
+    {
+      "country": "ARM",
+      "slug": "armenia",
+      "country_name": "Armenia",
+      "year": 2017,
+      "level": 0,
+      "raw_mean": 0.0,
+      "region": "Eastern Europe & Central Asia"
+    },
+    {
+      "country": "SDN",
+      "slug": "sudan",
+      "country_name": "Sudan",
+      "year": 2017,
       "level": 1,
       "raw_mean": 1.0,
       "region": "Sub-Saharan Africa"
@@ -69,122 +5634,2826 @@
       "country": "MYS",
       "slug": "malaysia",
       "country_name": "Malaysia",
-      "year": 2020,
+      "year": 2018,
       "level": 2,
-      "raw_mean": 2.1429,
-      "region": "Southeast Asia"
+      "raw_mean": 2.0,
+      "region": "East & Southeast Asia & Pacific"
     },
     {
-      "country": "ECU",
-      "slug": "ecuador",
-      "country_name": "Ecuador",
-      "year": 2020,
+      "country": "DNK",
+      "slug": "denmark",
+      "country_name": "Denmark",
+      "year": 2018,
       "level": 3,
-      "raw_mean": 3.1111,
-      "region": "Latin America"
-    },
-    {
-      "country": "DEU",
-      "slug": "germany",
-      "country_name": "Germany",
-      "year": 2020,
-      "level": 4,
-      "raw_mean": 4.0,
-      "region": "Western Europe"
+      "raw_mean": 3.0,
+      "region": "Western Europe & North America"
     }
   ],
-  "v2clkill": [
+  "v2exembez": [
     {
-      "country": "SYR",
-      "slug": "syria",
-      "country_name": "Syria",
-      "year": 2020,
+      "country": "VEN",
+      "slug": "venezuela",
+      "country_name": "Venezuela",
+      "year": 2018,
       "level": 0,
-      "raw_mean": 0.3333,
-      "region": "MENA"
+      "raw_mean": 0.0714,
+      "region": "Latin America & Caribbean"
     },
     {
-      "country": "GNQ",
-      "slug": "equatorial-guinea",
-      "country_name": "Equatorial Guinea",
-      "year": 2020,
+      "country": "NGA",
+      "slug": "nigeria",
+      "country_name": "Nigeria",
+      "year": 2018,
       "level": 1,
-      "raw_mean": 0.875,
+      "raw_mean": 1.0,
       "region": "Sub-Saharan Africa"
     },
     {
-      "country": "CHN",
-      "slug": "china",
-      "country_name": "China",
-      "year": 2020,
+      "country": "MDV",
+      "slug": "maldives",
+      "country_name": "Maldives",
+      "year": 2017,
       "level": 2,
-      "raw_mean": 1.9231,
-      "region": "East Asia"
-    },
-    {
-      "country": "KAZ",
-      "slug": "kazakhstan",
-      "country_name": "Kazakhstan",
-      "year": 2020,
-      "level": 3,
-      "raw_mean": 3.0,
-      "region": "Central Asia"
-    },
-    {
-      "country": "URY",
-      "slug": "uruguay",
-      "country_name": "Uruguay",
-      "year": 2020,
-      "level": 4,
-      "raw_mean": 4.0,
-      "region": "Latin America"
-    }
-  ],
-  "v2juncind": [
-    {
-      "country": "NIC",
-      "slug": "nicaragua",
-      "country_name": "Nicaragua",
-      "year": 2020,
-      "level": 0,
-      "raw_mean": 0.1429,
-      "region": "Latin America"
-    },
-    {
-      "country": "BGD",
-      "slug": "bangladesh",
-      "country_name": "Bangladesh",
-      "year": 2020,
-      "level": 1,
-      "raw_mean": 0.875,
+      "raw_mean": 2.0,
       "region": "South Asia"
     },
     {
-      "country": "ETH",
-      "slug": "ethiopia",
-      "country_name": "Ethiopia",
-      "year": 2020,
-      "level": 2,
-      "raw_mean": 2.0,
-      "region": "Sub-Saharan Africa"
-    },
-    {
-      "country": "POL",
-      "slug": "poland",
-      "country_name": "Poland",
-      "year": 2020,
+      "country": "FJI",
+      "slug": "fiji",
+      "country_name": "Fiji",
+      "year": 2017,
       "level": 3,
       "raw_mean": 3.0,
-      "region": "Eastern Europe"
+      "region": "East & Southeast Asia & Pacific"
+    },
+    {
+      "country": "SWE",
+      "slug": "sweden",
+      "country_name": "Sweden",
+      "year": 2017,
+      "level": 4,
+      "raw_mean": 4.0,
+      "region": "Western Europe & North America"
+    }
+  ],
+  "v2exremhog": [
+    {
+      "country": "THA",
+      "slug": "thailand",
+      "country_name": "Thailand",
+      "year": 2017,
+      "level": 0,
+      "raw_mean": 0.1111,
+      "region": "East & Southeast Asia & Pacific"
+    },
+    {
+      "country": "CPV",
+      "slug": "cabo-verde",
+      "country_name": "Cabo Verde",
+      "year": 2018,
+      "level": 1,
+      "raw_mean": 1.0,
+      "region": "Sub-Saharan Africa"
     },
     {
       "country": "NZL",
       "slug": "new-zealand",
       "country_name": "New Zealand",
-      "year": 2020,
+      "year": 2018,
+      "level": 2,
+      "raw_mean": 2.0,
+      "region": "Western Europe & North America"
+    },
+    {
+      "country": "NPL",
+      "slug": "nepal",
+      "country_name": "Nepal",
+      "year": 2018,
+      "level": 3,
+      "raw_mean": 2.8333,
+      "region": "South Asia"
+    }
+  ],
+  "v2exremhsp": [
+    {
+      "country": "QAT",
+      "slug": "qatar",
+      "country_name": "Qatar",
+      "year": 2018,
+      "level": 0,
+      "raw_mean": 0.0,
+      "region": "Middle East & North Africa"
+    },
+    {
+      "country": "GRC",
+      "slug": "greece",
+      "country_name": "Greece",
+      "year": 2017,
+      "level": 1,
+      "raw_mean": 1.0,
+      "region": "Western Europe & North America"
+    },
+    {
+      "country": "BRB",
+      "slug": "barbados",
+      "country_name": "Barbados",
+      "year": 2016,
+      "level": 2,
+      "raw_mean": 2.0,
+      "region": "Latin America & Caribbean"
+    }
+  ],
+  "v2exrescon": [
+    {
+      "country": "VEN",
+      "slug": "venezuela",
+      "country_name": "Venezuela",
+      "year": 2016,
+      "level": 0,
+      "raw_mean": 0.1333,
+      "region": "Latin America & Caribbean"
+    },
+    {
+      "country": "SSD",
+      "slug": "south-sudan",
+      "country_name": "South Sudan",
+      "year": 2017,
+      "level": 1,
+      "raw_mean": 1.0,
+      "region": "Sub-Saharan Africa"
+    },
+    {
+      "country": "RUS",
+      "slug": "russia",
+      "country_name": "Russian Federation",
+      "year": 2017,
+      "level": 2,
+      "raw_mean": 2.0,
+      "region": "Eastern Europe & Central Asia"
+    },
+    {
+      "country": "TUN",
+      "slug": "tunisia",
+      "country_name": "Tunisia",
+      "year": 2018,
+      "level": 3,
+      "raw_mean": 3.0,
+      "region": "Middle East & North Africa"
+    },
+    {
+      "country": "NZL",
+      "slug": "new-zealand",
+      "country_name": "New Zealand",
+      "year": 2018,
+      "level": 4,
+      "raw_mean": 3.875,
+      "region": "Western Europe & North America"
+    }
+  ],
+  "v2exthftps": [
+    {
+      "country": "VEN",
+      "slug": "venezuela",
+      "country_name": "Venezuela",
+      "year": 2018,
+      "level": 0,
+      "raw_mean": 0.1429,
+      "region": "Latin America & Caribbean"
+    },
+    {
+      "country": "AGO",
+      "slug": "angola",
+      "country_name": "Angola",
+      "year": 2016,
+      "level": 1,
+      "raw_mean": 1.0,
+      "region": "Sub-Saharan Africa"
+    },
+    {
+      "country": "LBN",
+      "slug": "lebanon",
+      "country_name": "Lebanon",
+      "year": 2017,
+      "level": 2,
+      "raw_mean": 2.0,
+      "region": "Middle East & North Africa"
+    },
+    {
+      "country": "BTN",
+      "slug": "bhutan",
+      "country_name": "Bhutan",
+      "year": 2016,
+      "level": 3,
+      "raw_mean": 3.0,
+      "region": "South Asia"
+    },
+    {
+      "country": "NZL",
+      "slug": "new-zealand",
+      "country_name": "New Zealand",
+      "year": 2016,
       "level": 4,
       "raw_mean": 4.0,
-      "region": "Oceania"
+      "region": "Western Europe & North America"
+    }
+  ],
+  "v2peapsecon": [
+    {
+      "country": "YEM",
+      "slug": "yemen",
+      "country_name": "Yemen",
+      "year": 2017,
+      "level": 0,
+      "raw_mean": 0.1111,
+      "region": "Middle East & North Africa"
+    },
+    {
+      "country": "GNB",
+      "slug": "guinea-bissau",
+      "country_name": "Guinea-Bissau",
+      "year": 2018,
+      "level": 1,
+      "raw_mean": 1.0,
+      "region": "Sub-Saharan Africa"
+    },
+    {
+      "country": "ECU",
+      "slug": "ecuador",
+      "country_name": "Ecuador",
+      "year": 2016,
+      "level": 2,
+      "raw_mean": 2.0,
+      "region": "Latin America & Caribbean"
+    },
+    {
+      "country": "BTN",
+      "slug": "bhutan",
+      "country_name": "Bhutan",
+      "year": 2018,
+      "level": 3,
+      "raw_mean": 3.0,
+      "region": "South Asia"
+    },
+    {
+      "country": "FRA",
+      "slug": "france",
+      "country_name": "France",
+      "year": 2017,
+      "level": 4,
+      "raw_mean": 4.0,
+      "region": "Western Europe & North America"
+    }
+  ],
+  "v2peapsgen": [
+    {
+      "country": "AFG",
+      "slug": "afghanistan",
+      "country_name": "Afghanistan",
+      "year": 2018,
+      "level": 1,
+      "raw_mean": 1.0,
+      "region": "South Asia"
+    },
+    {
+      "country": "FJI",
+      "slug": "fiji",
+      "country_name": "Fiji",
+      "year": 2018,
+      "level": 2,
+      "raw_mean": 2.0,
+      "region": "East & Southeast Asia & Pacific"
+    },
+    {
+      "country": "DZA",
+      "slug": "algeria",
+      "country_name": "Algeria",
+      "year": 2017,
+      "level": 3,
+      "raw_mean": 3.0,
+      "region": "Middle East & North Africa"
+    },
+    {
+      "country": "FIN",
+      "slug": "finland",
+      "country_name": "Finland",
+      "year": 2016,
+      "level": 4,
+      "raw_mean": 4.0,
+      "region": "Western Europe & North America"
+    }
+  ],
+  "v2peapsgeo": [
+    {
+      "country": "PNG",
+      "slug": "papua-new-guinea",
+      "country_name": "Papua New Guinea",
+      "year": 2017,
+      "level": 0,
+      "raw_mean": 0.2,
+      "region": "East & Southeast Asia & Pacific"
+    },
+    {
+      "country": "NGA",
+      "slug": "nigeria",
+      "country_name": "Nigeria",
+      "year": 2016,
+      "level": 1,
+      "raw_mean": 1.0,
+      "region": "Sub-Saharan Africa"
+    },
+    {
+      "country": "TUN",
+      "slug": "tunisia",
+      "country_name": "Tunisia",
+      "year": 2016,
+      "level": 2,
+      "raw_mean": 2.0,
+      "region": "Middle East & North Africa"
+    },
+    {
+      "country": "MNE",
+      "slug": "montenegro",
+      "country_name": "Montenegro",
+      "year": 2017,
+      "level": 3,
+      "raw_mean": 3.0,
+      "region": "Eastern Europe & Central Asia"
+    },
+    {
+      "country": "LUX",
+      "slug": "luxembourg",
+      "country_name": "Luxembourg",
+      "year": 2017,
+      "level": 4,
+      "raw_mean": 4.0,
+      "region": "Western Europe & North America"
+    }
+  ],
+  "v2peapspol": [
+    {
+      "country": "SSD",
+      "slug": "south-sudan",
+      "country_name": "South Sudan",
+      "year": 2016,
+      "level": 1,
+      "raw_mean": 1.0,
+      "region": "Sub-Saharan Africa"
+    },
+    {
+      "country": "TUR",
+      "slug": "turkey",
+      "country_name": "Turkey",
+      "year": 2017,
+      "level": 2,
+      "raw_mean": 2.0,
+      "region": "Eastern Europe & Central Asia"
+    },
+    {
+      "country": "IDN",
+      "slug": "indonesia",
+      "country_name": "Indonesia",
+      "year": 2017,
+      "level": 3,
+      "raw_mean": 3.0,
+      "region": "East & Southeast Asia & Pacific"
+    },
+    {
+      "country": "NOR",
+      "slug": "norway",
+      "country_name": "Norway",
+      "year": 2018,
+      "level": 4,
+      "raw_mean": 4.0,
+      "region": "Western Europe & North America"
+    }
+  ],
+  "v2peapssoc": [
+    {
+      "country": "SSD",
+      "slug": "south-sudan",
+      "country_name": "South Sudan",
+      "year": 2016,
+      "level": 0,
+      "raw_mean": 0.4286,
+      "region": "Sub-Saharan Africa"
+    },
+    {
+      "country": "BGD",
+      "slug": "bangladesh",
+      "country_name": "Bangladesh",
+      "year": 2018,
+      "level": 1,
+      "raw_mean": 1.0,
+      "region": "South Asia"
+    },
+    {
+      "country": "TUN",
+      "slug": "tunisia",
+      "country_name": "Tunisia",
+      "year": 2016,
+      "level": 2,
+      "raw_mean": 2.0,
+      "region": "Middle East & North Africa"
+    },
+    {
+      "country": "TTO",
+      "slug": "trinidad-and-tobago",
+      "country_name": "Trinidad and Tobago",
+      "year": 2017,
+      "level": 3,
+      "raw_mean": 3.0,
+      "region": "Latin America & Caribbean"
+    },
+    {
+      "country": "NOR",
+      "slug": "norway",
+      "country_name": "Norway",
+      "year": 2016,
+      "level": 4,
+      "raw_mean": 4.0,
+      "region": "Western Europe & North America"
+    }
+  ],
+  "v2peasbecon": [
+    {
+      "country": "GTM",
+      "slug": "guatemala",
+      "country_name": "Guatemala",
+      "year": 2018,
+      "level": 0,
+      "raw_mean": 0.5,
+      "region": "Latin America & Caribbean"
+    },
+    {
+      "country": "GNB",
+      "slug": "guinea-bissau",
+      "country_name": "Guinea-Bissau",
+      "year": 2018,
+      "level": 1,
+      "raw_mean": 1.0,
+      "region": "Sub-Saharan Africa"
+    },
+    {
+      "country": "MDA",
+      "slug": "moldova",
+      "country_name": "Moldova",
+      "year": 2018,
+      "level": 2,
+      "raw_mean": 2.0,
+      "region": "Eastern Europe & Central Asia"
+    },
+    {
+      "country": "CAN",
+      "slug": "canada",
+      "country_name": "Canada",
+      "year": 2016,
+      "level": 3,
+      "raw_mean": 3.0,
+      "region": "Western Europe & North America"
+    },
+    {
+      "country": "JPN",
+      "slug": "japan",
+      "country_name": "Japan",
+      "year": 2016,
+      "level": 4,
+      "raw_mean": 3.75,
+      "region": "East & Southeast Asia & Pacific"
+    }
+  ],
+  "v2peasbegeo": [
+    {
+      "country": "PNG",
+      "slug": "papua-new-guinea",
+      "country_name": "Papua New Guinea",
+      "year": 2018,
+      "level": 0,
+      "raw_mean": 0.2,
+      "region": "East & Southeast Asia & Pacific"
+    },
+    {
+      "country": "GNB",
+      "slug": "guinea-bissau",
+      "country_name": "Guinea-Bissau",
+      "year": 2018,
+      "level": 1,
+      "raw_mean": 1.0,
+      "region": "Sub-Saharan Africa"
+    },
+    {
+      "country": "DZA",
+      "slug": "algeria",
+      "country_name": "Algeria",
+      "year": 2017,
+      "level": 2,
+      "raw_mean": 2.0,
+      "region": "Middle East & North Africa"
+    },
+    {
+      "country": "CHL",
+      "slug": "chile",
+      "country_name": "Chile",
+      "year": 2017,
+      "level": 3,
+      "raw_mean": 3.0,
+      "region": "Latin America & Caribbean"
+    },
+    {
+      "country": "DNK",
+      "slug": "denmark",
+      "country_name": "Denmark",
+      "year": 2016,
+      "level": 4,
+      "raw_mean": 4.0,
+      "region": "Western Europe & North America"
+    }
+  ],
+  "v2peasbepol": [
+    {
+      "country": "IRQ",
+      "slug": "iraq",
+      "country_name": "Iraq",
+      "year": 2017,
+      "level": 0,
+      "raw_mean": 0.1667,
+      "region": "Middle East & North Africa"
+    },
+    {
+      "country": "HTI",
+      "slug": "haiti",
+      "country_name": "Haiti",
+      "year": 2018,
+      "level": 1,
+      "raw_mean": 1.0,
+      "region": "Latin America & Caribbean"
+    },
+    {
+      "country": "HRV",
+      "slug": "croatia",
+      "country_name": "Croatia",
+      "year": 2018,
+      "level": 2,
+      "raw_mean": 2.0,
+      "region": "Eastern Europe & Central Asia"
+    },
+    {
+      "country": "AUT",
+      "slug": "austria",
+      "country_name": "Austria",
+      "year": 2018,
+      "level": 3,
+      "raw_mean": 3.0,
+      "region": "Western Europe & North America"
+    },
+    {
+      "country": "JPN",
+      "slug": "japan",
+      "country_name": "Japan",
+      "year": 2017,
+      "level": 4,
+      "raw_mean": 3.5,
+      "region": "East & Southeast Asia & Pacific"
+    }
+  ],
+  "v2peasbgen": [
+    {
+      "country": "TJK",
+      "slug": "tajikistan",
+      "country_name": "Tajikistan",
+      "year": 2017,
+      "level": 1,
+      "raw_mean": 1.0,
+      "region": "Eastern Europe & Central Asia"
+    },
+    {
+      "country": "MEX",
+      "slug": "mexico",
+      "country_name": "Mexico",
+      "year": 2018,
+      "level": 2,
+      "raw_mean": 2.0,
+      "region": "Latin America & Caribbean"
+    },
+    {
+      "country": "THA",
+      "slug": "thailand",
+      "country_name": "Thailand",
+      "year": 2016,
+      "level": 3,
+      "raw_mean": 3.0,
+      "region": "East & Southeast Asia & Pacific"
+    },
+    {
+      "country": "NLD",
+      "slug": "netherlands",
+      "country_name": "Netherlands",
+      "year": 2018,
+      "level": 4,
+      "raw_mean": 4.0,
+      "region": "Western Europe & North America"
+    }
+  ],
+  "v2peasbsoc": [
+    {
+      "country": "CAF",
+      "slug": "central-african-republic",
+      "country_name": "Central African Republic",
+      "year": 2018,
+      "level": 0,
+      "raw_mean": 0.4,
+      "region": "Sub-Saharan Africa"
+    },
+    {
+      "country": "BGD",
+      "slug": "bangladesh",
+      "country_name": "Bangladesh",
+      "year": 2018,
+      "level": 1,
+      "raw_mean": 1.0,
+      "region": "South Asia"
+    },
+    {
+      "country": "SLV",
+      "slug": "el-salvador",
+      "country_name": "El Salvador",
+      "year": 2017,
+      "level": 2,
+      "raw_mean": 2.0,
+      "region": "Latin America & Caribbean"
+    },
+    {
+      "country": "GBR",
+      "slug": "united-kingdom",
+      "country_name": "United Kingdom",
+      "year": 2017,
+      "level": 3,
+      "raw_mean": 3.0,
+      "region": "Western Europe & North America"
+    },
+    {
+      "country": "LTU",
+      "slug": "lithuania",
+      "country_name": "Lithuania",
+      "year": 2017,
+      "level": 4,
+      "raw_mean": 3.7778,
+      "region": "Eastern Europe & Central Asia"
+    }
+  ],
+  "v2peasjgen": [
+    {
+      "country": "SOM",
+      "slug": "somalia",
+      "country_name": "Somalia",
+      "year": 2018,
+      "level": 0,
+      "raw_mean": 0.25,
+      "region": "Sub-Saharan Africa"
+    },
+    {
+      "country": "YEM",
+      "slug": "yemen",
+      "country_name": "Yemen",
+      "year": 2017,
+      "level": 1,
+      "raw_mean": 0.8889,
+      "region": "Middle East & North Africa"
+    },
+    {
+      "country": "FJI",
+      "slug": "fiji",
+      "country_name": "Fiji",
+      "year": 2016,
+      "level": 2,
+      "raw_mean": 2.0,
+      "region": "East & Southeast Asia & Pacific"
+    },
+    {
+      "country": "ECU",
+      "slug": "ecuador",
+      "country_name": "Ecuador",
+      "year": 2016,
+      "level": 3,
+      "raw_mean": 3.0,
+      "region": "Latin America & Caribbean"
+    },
+    {
+      "country": "NOR",
+      "slug": "norway",
+      "country_name": "Norway",
+      "year": 2018,
+      "level": 4,
+      "raw_mean": 4.0,
+      "region": "Western Europe & North America"
+    }
+  ],
+  "v2peasjgeo": [
+    {
+      "country": "PNG",
+      "slug": "papua-new-guinea",
+      "country_name": "Papua New Guinea",
+      "year": 2018,
+      "level": 0,
+      "raw_mean": 0.2,
+      "region": "East & Southeast Asia & Pacific"
+    },
+    {
+      "country": "YEM",
+      "slug": "yemen",
+      "country_name": "Yemen",
+      "year": 2017,
+      "level": 1,
+      "raw_mean": 1.0,
+      "region": "Middle East & North Africa"
+    },
+    {
+      "country": "MWI",
+      "slug": "malawi",
+      "country_name": "Malawi",
+      "year": 2018,
+      "level": 2,
+      "raw_mean": 2.0,
+      "region": "Sub-Saharan Africa"
+    },
+    {
+      "country": "MNE",
+      "slug": "montenegro",
+      "country_name": "Montenegro",
+      "year": 2018,
+      "level": 3,
+      "raw_mean": 3.0,
+      "region": "Eastern Europe & Central Asia"
+    },
+    {
+      "country": "CHE",
+      "slug": "switzerland",
+      "country_name": "Switzerland",
+      "year": 2017,
+      "level": 4,
+      "raw_mean": 4.0,
+      "region": "Western Europe & North America"
+    }
+  ],
+  "v2peasjpol": [
+    {
+      "country": "ZMB",
+      "slug": "zambia",
+      "country_name": "Zambia",
+      "year": 2017,
+      "level": 0,
+      "raw_mean": 0.4,
+      "region": "Sub-Saharan Africa"
+    },
+    {
+      "country": "SUR",
+      "slug": "suriname",
+      "country_name": "Suriname",
+      "year": 2016,
+      "level": 1,
+      "raw_mean": 1.0,
+      "region": "Latin America & Caribbean"
+    },
+    {
+      "country": "LKA",
+      "slug": "sri-lanka",
+      "country_name": "Sri Lanka",
+      "year": 2017,
+      "level": 2,
+      "raw_mean": 2.0,
+      "region": "South Asia"
+    },
+    {
+      "country": "VUT",
+      "slug": "vanuatu",
+      "country_name": "Vanuatu",
+      "year": 2016,
+      "level": 3,
+      "raw_mean": 3.0,
+      "region": "East & Southeast Asia & Pacific"
+    },
+    {
+      "country": "NOR",
+      "slug": "norway",
+      "country_name": "Norway",
+      "year": 2017,
+      "level": 4,
+      "raw_mean": 4.0,
+      "region": "Western Europe & North America"
+    }
+  ],
+  "v2peasjsoc": [
+    {
+      "country": "BHR",
+      "slug": "bahrain",
+      "country_name": "Bahrain",
+      "year": 2018,
+      "level": 0,
+      "raw_mean": 0.5,
+      "region": "Middle East & North Africa"
+    },
+    {
+      "country": "CAF",
+      "slug": "central-african-republic",
+      "country_name": "Central African Republic",
+      "year": 2016,
+      "level": 1,
+      "raw_mean": 1.0,
+      "region": "Sub-Saharan Africa"
+    },
+    {
+      "country": "KAZ",
+      "slug": "kazakhstan",
+      "country_name": "Kazakhstan",
+      "year": 2017,
+      "level": 2,
+      "raw_mean": 2.0,
+      "region": "Eastern Europe & Central Asia"
+    },
+    {
+      "country": "SYC",
+      "slug": "seychelles",
+      "country_name": "Seychelles",
+      "year": 2018,
+      "level": 3,
+      "raw_mean": 3.0,
+      "region": "Other"
+    },
+    {
+      "country": "NOR",
+      "slug": "norway",
+      "country_name": "Norway",
+      "year": 2017,
+      "level": 4,
+      "raw_mean": 4.0,
+      "region": "Western Europe & North America"
+    }
+  ],
+  "v2peasjsoecon": [
+    {
+      "country": "TCD",
+      "slug": "chad",
+      "country_name": "Chad",
+      "year": 2018,
+      "level": 1,
+      "raw_mean": 1.0,
+      "region": "Sub-Saharan Africa"
+    },
+    {
+      "country": "SYR",
+      "slug": "syria",
+      "country_name": "Syria",
+      "year": 2017,
+      "level": 2,
+      "raw_mean": 2.0,
+      "region": "Middle East & North Africa"
+    },
+    {
+      "country": "PRT",
+      "slug": "portugal",
+      "country_name": "Portugal",
+      "year": 2017,
+      "level": 3,
+      "raw_mean": 3.0,
+      "region": "Western Europe & North America"
+    },
+    {
+      "country": "EST",
+      "slug": "estonia",
+      "country_name": "Estonia",
+      "year": 2016,
+      "level": 4,
+      "raw_mean": 3.875,
+      "region": "Eastern Europe & Central Asia"
+    }
+  ],
+  "v2peedueq": [
+    {
+      "country": "SSD",
+      "slug": "south-sudan",
+      "country_name": "South Sudan",
+      "year": 2016,
+      "level": 0,
+      "raw_mean": 0.1111,
+      "region": "Sub-Saharan Africa"
+    },
+    {
+      "country": "PNG",
+      "slug": "papua-new-guinea",
+      "country_name": "Papua New Guinea",
+      "year": 2018,
+      "level": 1,
+      "raw_mean": 1.0,
+      "region": "East & Southeast Asia & Pacific"
+    },
+    {
+      "country": "GUY",
+      "slug": "guyana",
+      "country_name": "Guyana",
+      "year": 2017,
+      "level": 2,
+      "raw_mean": 2.0,
+      "region": "Latin America & Caribbean"
+    },
+    {
+      "country": "CAN",
+      "slug": "canada",
+      "country_name": "Canada",
+      "year": 2016,
+      "level": 3,
+      "raw_mean": 3.0,
+      "region": "Western Europe & North America"
+    },
+    {
+      "country": "EST",
+      "slug": "estonia",
+      "country_name": "Estonia",
+      "year": 2018,
+      "level": 4,
+      "raw_mean": 4.0,
+      "region": "Eastern Europe & Central Asia"
+    }
+  ],
+  "v2pehealth": [
+    {
+      "country": "SSD",
+      "slug": "south-sudan",
+      "country_name": "South Sudan",
+      "year": 2016,
+      "level": 0,
+      "raw_mean": 0.0,
+      "region": "Sub-Saharan Africa"
+    },
+    {
+      "country": "VEN",
+      "slug": "venezuela",
+      "country_name": "Venezuela",
+      "year": 2016,
+      "level": 1,
+      "raw_mean": 1.0,
+      "region": "Latin America & Caribbean"
+    },
+    {
+      "country": "IRN",
+      "slug": "iran",
+      "country_name": "Iran",
+      "year": 2018,
+      "level": 2,
+      "raw_mean": 2.0,
+      "region": "Middle East & North Africa"
+    },
+    {
+      "country": "BGR",
+      "slug": "bulgaria",
+      "country_name": "Bulgaria",
+      "year": 2018,
+      "level": 3,
+      "raw_mean": 3.0,
+      "region": "Eastern Europe & Central Asia"
+    },
+    {
+      "country": "DEU",
+      "slug": "germany",
+      "country_name": "Germany",
+      "year": 2018,
+      "level": 4,
+      "raw_mean": 4.0,
+      "region": "Western Europe & North America"
+    }
+  ],
+  "v2pepwrgen": [
+    {
+      "country": "SAU",
+      "slug": "saudi-arabia",
+      "country_name": "Saudi Arabia",
+      "year": 2017,
+      "level": 0,
+      "raw_mean": 0.3333,
+      "region": "Middle East & North Africa"
+    },
+    {
+      "country": "ARM",
+      "slug": "armenia",
+      "country_name": "Armenia",
+      "year": 2016,
+      "level": 1,
+      "raw_mean": 1.0,
+      "region": "Eastern Europe & Central Asia"
+    },
+    {
+      "country": "GHA",
+      "slug": "ghana",
+      "country_name": "Ghana",
+      "year": 2018,
+      "level": 2,
+      "raw_mean": 2.0,
+      "region": "Sub-Saharan Africa"
+    },
+    {
+      "country": "CRI",
+      "slug": "costa-rica",
+      "country_name": "Costa Rica",
+      "year": 2018,
+      "level": 3,
+      "raw_mean": 3.0,
+      "region": "Latin America & Caribbean"
+    },
+    {
+      "country": "DNK",
+      "slug": "denmark",
+      "country_name": "Denmark",
+      "year": 2018,
+      "level": 4,
+      "raw_mean": 3.75,
+      "region": "Western Europe & North America"
+    }
+  ],
+  "v2pepwrgeo": [
+    {
+      "country": "MRT",
+      "slug": "mauritania",
+      "country_name": "Mauritania",
+      "year": 2018,
+      "level": 0,
+      "raw_mean": 0.5,
+      "region": "Middle East & North Africa"
+    },
+    {
+      "country": "MDG",
+      "slug": "madagascar",
+      "country_name": "Madagascar",
+      "year": 2017,
+      "level": 1,
+      "raw_mean": 1.0,
+      "region": "Sub-Saharan Africa"
+    },
+    {
+      "country": "PAN",
+      "slug": "panama",
+      "country_name": "Panama",
+      "year": 2016,
+      "level": 2,
+      "raw_mean": 2.0,
+      "region": "Latin America & Caribbean"
+    },
+    {
+      "country": "PAK",
+      "slug": "pakistan",
+      "country_name": "Pakistan",
+      "year": 2017,
+      "level": 3,
+      "raw_mean": 3.0,
+      "region": "South Asia"
+    },
+    {
+      "country": "NZL",
+      "slug": "new-zealand",
+      "country_name": "New Zealand",
+      "year": 2018,
+      "level": 4,
+      "raw_mean": 4.0,
+      "region": "Western Europe & North America"
+    }
+  ],
+  "v2pepwrort": [
+    {
+      "country": "QAT",
+      "slug": "qatar",
+      "country_name": "Qatar",
+      "year": 2016,
+      "level": 0,
+      "raw_mean": 0.0,
+      "region": "Middle East & North Africa"
+    },
+    {
+      "country": "JAM",
+      "slug": "jamaica",
+      "country_name": "Jamaica",
+      "year": 2016,
+      "level": 1,
+      "raw_mean": 1.0,
+      "region": "Latin America & Caribbean"
+    },
+    {
+      "country": "ZAF",
+      "slug": "south-africa",
+      "country_name": "South Africa",
+      "year": 2017,
+      "level": 2,
+      "raw_mean": 2.0,
+      "region": "Sub-Saharan Africa"
+    },
+    {
+      "country": "DNK",
+      "slug": "denmark",
+      "country_name": "Denmark",
+      "year": 2017,
+      "level": 3,
+      "raw_mean": 3.0,
+      "region": "Western Europe & North America"
+    }
+  ],
+  "v2pepwrses": [
+    {
+      "country": "TKM",
+      "slug": "turkmenistan",
+      "country_name": "Turkmenistan",
+      "year": 2018,
+      "level": 0,
+      "raw_mean": 0.2857,
+      "region": "Eastern Europe & Central Asia"
+    },
+    {
+      "country": "IRQ",
+      "slug": "iraq",
+      "country_name": "Iraq",
+      "year": 2017,
+      "level": 1,
+      "raw_mean": 1.0,
+      "region": "Middle East & North Africa"
+    },
+    {
+      "country": "BWA",
+      "slug": "botswana",
+      "country_name": "Botswana",
+      "year": 2016,
+      "level": 2,
+      "raw_mean": 2.0,
+      "region": "Sub-Saharan Africa"
+    },
+    {
+      "country": "LUX",
+      "slug": "luxembourg",
+      "country_name": "Luxembourg",
+      "year": 2016,
+      "level": 3,
+      "raw_mean": 3.0,
+      "region": "Western Europe & North America"
+    },
+    {
+      "country": "POL",
+      "slug": "poland",
+      "country_name": "Poland",
+      "year": 2018,
+      "level": 4,
+      "raw_mean": 3.5,
+      "region": "Eastern Europe & Central Asia"
+    }
+  ],
+  "v2pepwrsoc": [
+    {
+      "country": "QAT",
+      "slug": "qatar",
+      "country_name": "Qatar",
+      "year": 2018,
+      "level": 0,
+      "raw_mean": 0.2222,
+      "region": "Middle East & North Africa"
+    },
+    {
+      "country": "HTI",
+      "slug": "haiti",
+      "country_name": "Haiti",
+      "year": 2017,
+      "level": 1,
+      "raw_mean": 1.0,
+      "region": "Latin America & Caribbean"
+    },
+    {
+      "country": "SYC",
+      "slug": "seychelles",
+      "country_name": "Seychelles",
+      "year": 2016,
+      "level": 2,
+      "raw_mean": 2.0,
+      "region": "Other"
+    },
+    {
+      "country": "ROU",
+      "slug": "romania",
+      "country_name": "Romania",
+      "year": 2017,
+      "level": 3,
+      "raw_mean": 3.0,
+      "region": "Eastern Europe & Central Asia"
+    },
+    {
+      "country": "LUX",
+      "slug": "luxembourg",
+      "country_name": "Luxembourg",
+      "year": 2017,
+      "level": 4,
+      "raw_mean": 4.0,
+      "region": "Western Europe & North America"
+    }
+  ],
+  "v2psbars": [
+    {
+      "country": "ARE",
+      "slug": "united-arab-emirates",
+      "country_name": "United Arab Emirates",
+      "year": 2016,
+      "level": 0,
+      "raw_mean": 0.0,
+      "region": "Middle East & North Africa"
+    },
+    {
+      "country": "TJK",
+      "slug": "tajikistan",
+      "country_name": "Tajikistan",
+      "year": 2018,
+      "level": 1,
+      "raw_mean": 1.0,
+      "region": "Eastern Europe & Central Asia"
+    },
+    {
+      "country": "BDI",
+      "slug": "burundi",
+      "country_name": "Burundi",
+      "year": 2018,
+      "level": 2,
+      "raw_mean": 2.0,
+      "region": "Sub-Saharan Africa"
+    },
+    {
+      "country": "FJI",
+      "slug": "fiji",
+      "country_name": "Fiji",
+      "year": 2016,
+      "level": 3,
+      "raw_mean": 3.0,
+      "region": "East & Southeast Asia & Pacific"
+    },
+    {
+      "country": "TTO",
+      "slug": "trinidad-and-tobago",
+      "country_name": "Trinidad and Tobago",
+      "year": 2016,
+      "level": 4,
+      "raw_mean": 4.0,
+      "region": "Latin America & Caribbean"
+    }
+  ],
+  "v2pscnslnl": [
+    {
+      "country": "MRT",
+      "slug": "mauritania",
+      "country_name": "Mauritania",
+      "year": 2018,
+      "level": 0,
+      "raw_mean": 0.2,
+      "region": "Middle East & North Africa"
+    },
+    {
+      "country": "KHM",
+      "slug": "cambodia",
+      "country_name": "Cambodia",
+      "year": 2016,
+      "level": 1,
+      "raw_mean": 1.0,
+      "region": "East & Southeast Asia & Pacific"
+    }
+  ],
+  "v2pscohesv": [
+    {
+      "country": "AFG",
+      "slug": "afghanistan",
+      "country_name": "Afghanistan",
+      "year": 2017,
+      "level": 0,
+      "raw_mean": 0.4444,
+      "region": "South Asia"
+    },
+    {
+      "country": "KWT",
+      "slug": "kuwait",
+      "country_name": "Kuwait",
+      "year": 2016,
+      "level": 1,
+      "raw_mean": 1.0909,
+      "region": "Middle East & North Africa"
+    },
+    {
+      "country": "MWI",
+      "slug": "malawi",
+      "country_name": "Malawi",
+      "year": 2018,
+      "level": 2,
+      "raw_mean": 2.0,
+      "region": "Sub-Saharan Africa"
+    },
+    {
+      "country": "CUB",
+      "slug": "cuba",
+      "country_name": "Cuba",
+      "year": 2018,
+      "level": 3,
+      "raw_mean": 3.0,
+      "region": "Latin America & Caribbean"
+    }
+  ],
+  "v2pscomprg": [
+    {
+      "country": "SOM",
+      "slug": "somalia",
+      "country_name": "Somalia",
+      "year": 2018,
+      "level": 0,
+      "raw_mean": 0.0,
+      "region": "Sub-Saharan Africa"
+    },
+    {
+      "country": "IRQ",
+      "slug": "iraq",
+      "country_name": "Iraq",
+      "year": 2018,
+      "level": 1,
+      "raw_mean": 1.0,
+      "region": "Middle East & North Africa"
+    },
+    {
+      "country": "DEU",
+      "slug": "germany",
+      "country_name": "Germany",
+      "year": 2017,
+      "level": 2,
+      "raw_mean": 2.0,
+      "region": "Western Europe & North America"
+    }
+  ],
+  "v2psnatpar": [
+    {
+      "country": "FIN",
+      "slug": "finland",
+      "country_name": "Finland",
+      "year": 2016,
+      "level": 0,
+      "raw_mean": 0.0,
+      "region": "Western Europe & North America"
+    },
+    {
+      "country": "PAK",
+      "slug": "pakistan",
+      "country_name": "Pakistan",
+      "year": 2016,
+      "level": 1,
+      "raw_mean": 1.0,
+      "region": "South Asia"
+    },
+    {
+      "country": "CUB",
+      "slug": "cuba",
+      "country_name": "Cuba",
+      "year": 2018,
+      "level": 2,
+      "raw_mean": 2.0,
+      "region": "Latin America & Caribbean"
+    }
+  ],
+  "v2psoppaut": [
+    {
+      "country": "CUB",
+      "slug": "cuba",
+      "country_name": "Cuba",
+      "year": 2017,
+      "level": 0,
+      "raw_mean": 0.0,
+      "region": "Latin America & Caribbean"
+    },
+    {
+      "country": "SYR",
+      "slug": "syria",
+      "country_name": "Syria",
+      "year": 2016,
+      "level": 1,
+      "raw_mean": 1.0,
+      "region": "Middle East & North Africa"
+    },
+    {
+      "country": "GNQ",
+      "slug": "equatorial-guinea",
+      "country_name": "Equatorial Guinea",
+      "year": 2017,
+      "level": 2,
+      "raw_mean": 2.0,
+      "region": "Sub-Saharan Africa"
+    },
+    {
+      "country": "MDA",
+      "slug": "moldova",
+      "country_name": "Moldova",
+      "year": 2018,
+      "level": 3,
+      "raw_mean": 3.0,
+      "region": "Eastern Europe & Central Asia"
+    },
+    {
+      "country": "FRA",
+      "slug": "france",
+      "country_name": "France",
+      "year": 2017,
+      "level": 4,
+      "raw_mean": 4.0,
+      "region": "Western Europe & North America"
+    }
+  ],
+  "v2psorgs": [
+    {
+      "country": "SAU",
+      "slug": "saudi-arabia",
+      "country_name": "Saudi Arabia",
+      "year": 2016,
+      "level": 0,
+      "raw_mean": 0.0,
+      "region": "Middle East & North Africa"
+    },
+    {
+      "country": "BDI",
+      "slug": "burundi",
+      "country_name": "Burundi",
+      "year": 2017,
+      "level": 1,
+      "raw_mean": 1.0,
+      "region": "Sub-Saharan Africa"
+    },
+    {
+      "country": "BLR",
+      "slug": "belarus",
+      "country_name": "Belarus",
+      "year": 2018,
+      "level": 2,
+      "raw_mean": 2.0,
+      "region": "Eastern Europe & Central Asia"
+    },
+    {
+      "country": "LKA",
+      "slug": "sri-lanka",
+      "country_name": "Sri Lanka",
+      "year": 2018,
+      "level": 3,
+      "raw_mean": 3.0,
+      "region": "South Asia"
+    },
+    {
+      "country": "SWE",
+      "slug": "sweden",
+      "country_name": "Sweden",
+      "year": 2017,
+      "level": 4,
+      "raw_mean": 4.0,
+      "region": "Western Europe & North America"
+    }
+  ],
+  "v2psparban": [
+    {
+      "country": "CUB",
+      "slug": "cuba",
+      "country_name": "Cuba",
+      "year": 2017,
+      "level": 0,
+      "raw_mean": 0.0,
+      "region": "Latin America & Caribbean"
+    },
+    {
+      "country": "SYR",
+      "slug": "syria",
+      "country_name": "Syria",
+      "year": 2017,
+      "level": 1,
+      "raw_mean": 1.0,
+      "region": "Middle East & North Africa"
+    },
+    {
+      "country": "GNQ",
+      "slug": "equatorial-guinea",
+      "country_name": "Equatorial Guinea",
+      "year": 2018,
+      "level": 2,
+      "raw_mean": 2.0,
+      "region": "Sub-Saharan Africa"
+    },
+    {
+      "country": "TJK",
+      "slug": "tajikistan",
+      "country_name": "Tajikistan",
+      "year": 2016,
+      "level": 3,
+      "raw_mean": 2.75,
+      "region": "Eastern Europe & Central Asia"
+    },
+    {
+      "country": "SLB",
+      "slug": "solomon-islands",
+      "country_name": "Solomon Islands",
+      "year": 2016,
+      "level": 4,
+      "raw_mean": 4.0,
+      "region": "East & Southeast Asia & Pacific"
+    }
+  ],
+  "v2psplats": [
+    {
+      "country": "ARE",
+      "slug": "united-arab-emirates",
+      "country_name": "United Arab Emirates",
+      "year": 2016,
+      "level": 0,
+      "raw_mean": 0.0,
+      "region": "Middle East & North Africa"
+    },
+    {
+      "country": "VNM",
+      "slug": "vietnam",
+      "country_name": "Viet Nam",
+      "year": 2017,
+      "level": 1,
+      "raw_mean": 1.0,
+      "region": "East & Southeast Asia & Pacific"
+    },
+    {
+      "country": "MOZ",
+      "slug": "mozambique",
+      "country_name": "Mozambique",
+      "year": 2018,
+      "level": 2,
+      "raw_mean": 2.0,
+      "region": "Sub-Saharan Africa"
+    },
+    {
+      "country": "BTN",
+      "slug": "bhutan",
+      "country_name": "Bhutan",
+      "year": 2018,
+      "level": 3,
+      "raw_mean": 3.0,
+      "region": "South Asia"
+    },
+    {
+      "country": "URY",
+      "slug": "uruguay",
+      "country_name": "Uruguay",
+      "year": 2016,
+      "level": 4,
+      "raw_mean": 4.0,
+      "region": "Latin America & Caribbean"
+    }
+  ],
+  "v2psprbrch": [
+    {
+      "country": "QAT",
+      "slug": "qatar",
+      "country_name": "Qatar",
+      "year": 2016,
+      "level": 0,
+      "raw_mean": 0.0,
+      "region": "Middle East & North Africa"
+    },
+    {
+      "country": "SSD",
+      "slug": "south-sudan",
+      "country_name": "South Sudan",
+      "year": 2018,
+      "level": 1,
+      "raw_mean": 1.0,
+      "region": "Sub-Saharan Africa"
+    },
+    {
+      "country": "BOL",
+      "slug": "bolivia",
+      "country_name": "Bolivia",
+      "year": 2017,
+      "level": 2,
+      "raw_mean": 2.0,
+      "region": "Latin America & Caribbean"
+    },
+    {
+      "country": "UZB",
+      "slug": "uzbekistan",
+      "country_name": "Uzbekistan",
+      "year": 2017,
+      "level": 3,
+      "raw_mean": 3.0,
+      "region": "Eastern Europe & Central Asia"
+    },
+    {
+      "country": "SWE",
+      "slug": "sweden",
+      "country_name": "Sweden",
+      "year": 2018,
+      "level": 4,
+      "raw_mean": 3.9167,
+      "region": "Western Europe & North America"
+    }
+  ],
+  "v2psprlnks": [
+    {
+      "country": "QAT",
+      "slug": "qatar",
+      "country_name": "Qatar",
+      "year": 2017,
+      "level": 0,
+      "raw_mean": 0.1111,
+      "region": "Middle East & North Africa"
+    },
+    {
+      "country": "TJK",
+      "slug": "tajikistan",
+      "country_name": "Tajikistan",
+      "year": 2018,
+      "level": 1,
+      "raw_mean": 1.0,
+      "region": "Eastern Europe & Central Asia"
+    },
+    {
+      "country": "PAK",
+      "slug": "pakistan",
+      "country_name": "Pakistan",
+      "year": 2018,
+      "level": 2,
+      "raw_mean": 2.0,
+      "region": "South Asia"
+    },
+    {
+      "country": "CHL",
+      "slug": "chile",
+      "country_name": "Chile",
+      "year": 2016,
+      "level": 3,
+      "raw_mean": 3.0,
+      "region": "Latin America & Caribbean"
+    },
+    {
+      "country": "DNK",
+      "slug": "denmark",
+      "country_name": "Denmark",
+      "year": 2017,
+      "level": 4,
+      "raw_mean": 4.0,
+      "region": "Western Europe & North America"
+    }
+  ],
+  "v2pssunpar": [
+    {
+      "country": "ERI",
+      "slug": "eritrea",
+      "country_name": "Eritrea",
+      "year": 2016,
+      "level": 0,
+      "raw_mean": 0.0,
+      "region": "Sub-Saharan Africa"
+    },
+    {
+      "country": "YEM",
+      "slug": "yemen",
+      "country_name": "Yemen",
+      "year": 2016,
+      "level": 1,
+      "raw_mean": 1.0,
+      "region": "Middle East & North Africa"
+    },
+    {
+      "country": "DNK",
+      "slug": "denmark",
+      "country_name": "Denmark",
+      "year": 2016,
+      "level": 2,
+      "raw_mean": 2.0,
+      "region": "Western Europe & North America"
+    }
+  ],
+  "v2lgcomslo": [
+    {
+      "country": "QAT",
+      "slug": "qatar",
+      "country_name": "Qatar",
+      "year": 2018,
+      "level": 1,
+      "raw_mean": 1.0,
+      "region": "Middle East & North Africa"
+    },
+    {
+      "country": "KAZ",
+      "slug": "kazakhstan",
+      "country_name": "Kazakhstan",
+      "year": 2018,
+      "level": 2,
+      "raw_mean": 2.0,
+      "region": "Eastern Europe & Central Asia"
+    },
+    {
+      "country": "CHE",
+      "slug": "switzerland",
+      "country_name": "Switzerland",
+      "year": 2017,
+      "level": 3,
+      "raw_mean": 3.0,
+      "region": "Western Europe & North America"
+    }
+  ],
+  "v2lgcrrpt": [
+    {
+      "country": "PNG",
+      "slug": "papua-new-guinea",
+      "country_name": "Papua New Guinea",
+      "year": 2017,
+      "level": 0,
+      "raw_mean": 0.2,
+      "region": "East & Southeast Asia & Pacific"
+    },
+    {
+      "country": "TJK",
+      "slug": "tajikistan",
+      "country_name": "Tajikistan",
+      "year": 2016,
+      "level": 1,
+      "raw_mean": 1.0,
+      "region": "Eastern Europe & Central Asia"
+    },
+    {
+      "country": "TZA",
+      "slug": "tanzania",
+      "country_name": "Tanzania",
+      "year": 2017,
+      "level": 2,
+      "raw_mean": 2.0,
+      "region": "Sub-Saharan Africa"
+    },
+    {
+      "country": "ESP",
+      "slug": "spain",
+      "country_name": "Spain",
+      "year": 2017,
+      "level": 3,
+      "raw_mean": 3.0,
+      "region": "Western Europe & North America"
+    },
+    {
+      "country": "URY",
+      "slug": "uruguay",
+      "country_name": "Uruguay",
+      "year": 2016,
+      "level": 4,
+      "raw_mean": 3.5,
+      "region": "Latin America & Caribbean"
+    }
+  ],
+  "v2lgdomchm": [
+    {
+      "country": "SVN",
+      "slug": "slovenia",
+      "country_name": "Slovenia",
+      "year": 2018,
+      "level": 0,
+      "raw_mean": 0.0,
+      "region": "Eastern Europe & Central Asia"
+    },
+    {
+      "country": "JAM",
+      "slug": "jamaica",
+      "country_name": "Jamaica",
+      "year": 2016,
+      "level": 1,
+      "raw_mean": 1.0,
+      "region": "Latin America & Caribbean"
+    },
+    {
+      "country": "BDI",
+      "slug": "burundi",
+      "country_name": "Burundi",
+      "year": 2018,
+      "level": 2,
+      "raw_mean": 2.0,
+      "region": "Sub-Saharan Africa"
+    },
+    {
+      "country": "JOR",
+      "slug": "jordan",
+      "country_name": "Jordan",
+      "year": 2018,
+      "level": 3,
+      "raw_mean": 2.7778,
+      "region": "Middle East & North Africa"
+    }
+  ],
+  "v2lgdsadlo": [
+    {
+      "country": "QAT",
+      "slug": "qatar",
+      "country_name": "Qatar",
+      "year": 2017,
+      "level": 0,
+      "raw_mean": 0.2,
+      "region": "Middle East & North Africa"
+    },
+    {
+      "country": "CRI",
+      "slug": "costa-rica",
+      "country_name": "Costa Rica",
+      "year": 2016,
+      "level": 1,
+      "raw_mean": 1.0,
+      "region": "Latin America & Caribbean"
+    },
+    {
+      "country": "NOR",
+      "slug": "norway",
+      "country_name": "Norway",
+      "year": 2016,
+      "level": 2,
+      "raw_mean": 2.0,
+      "region": "Western Europe & North America"
+    },
+    {
+      "country": "XKX",
+      "slug": "kosovo",
+      "country_name": "Kosovo",
+      "year": 2018,
+      "level": 3,
+      "raw_mean": 3.25,
+      "region": "Eastern Europe & Central Asia"
+    }
+  ],
+  "v2lgdsadlobin": [
+    {
+      "country": "SSD",
+      "slug": "south-sudan",
+      "country_name": "South Sudan",
+      "year": 2017,
+      "level": 1,
+      "raw_mean": 1.0,
+      "region": "Sub-Saharan Africa"
+    }
+  ],
+  "v2lgfunds": [
+    {
+      "country": "TKM",
+      "slug": "turkmenistan",
+      "country_name": "Turkmenistan",
+      "year": 2018,
+      "level": 0,
+      "raw_mean": 0.0,
+      "region": "Eastern Europe & Central Asia"
+    },
+    {
+      "country": "ISR",
+      "slug": "israel",
+      "country_name": "Israel",
+      "year": 2016,
+      "level": 1,
+      "raw_mean": 1.0,
+      "region": "Western Europe & North America"
+    }
+  ],
+  "v2lginvstp": [
+    {
+      "country": "QAT",
+      "slug": "qatar",
+      "country_name": "Qatar",
+      "year": 2018,
+      "level": 0,
+      "raw_mean": 0.0,
+      "region": "Middle East & North Africa"
+    },
+    {
+      "country": "CUB",
+      "slug": "cuba",
+      "country_name": "Cuba",
+      "year": 2018,
+      "level": 1,
+      "raw_mean": 1.0,
+      "region": "Latin America & Caribbean"
+    },
+    {
+      "country": "SLB",
+      "slug": "solomon-islands",
+      "country_name": "Solomon Islands",
+      "year": 2018,
+      "level": 2,
+      "raw_mean": 2.0,
+      "region": "East & Southeast Asia & Pacific"
+    },
+    {
+      "country": "NGA",
+      "slug": "nigeria",
+      "country_name": "Nigeria",
+      "year": 2016,
+      "level": 3,
+      "raw_mean": 3.0,
+      "region": "Sub-Saharan Africa"
+    },
+    {
+      "country": "NLD",
+      "slug": "netherlands",
+      "country_name": "Netherlands",
+      "year": 2018,
+      "level": 4,
+      "raw_mean": 3.8889,
+      "region": "Western Europe & North America"
+    }
+  ],
+  "v2lglegplo": [
+    {
+      "country": "ARE",
+      "slug": "united-arab-emirates",
+      "country_name": "United Arab Emirates",
+      "year": 2018,
+      "level": 0,
+      "raw_mean": 0.0,
+      "region": "Middle East & North Africa"
+    },
+    {
+      "country": "BLR",
+      "slug": "belarus",
+      "country_name": "Belarus",
+      "year": 2016,
+      "level": 1,
+      "raw_mean": 1.0,
+      "region": "Eastern Europe & Central Asia"
+    },
+    {
+      "country": "LUX",
+      "slug": "luxembourg",
+      "country_name": "Luxembourg",
+      "year": 2018,
+      "level": 2,
+      "raw_mean": 2.0,
+      "region": "Western Europe & North America"
+    }
+  ],
+  "v2lglegpup": [
+    {
+      "country": "ETH",
+      "slug": "ethiopia",
+      "country_name": "Ethiopia",
+      "year": 2016,
+      "level": 0,
+      "raw_mean": 0.1429,
+      "region": "Sub-Saharan Africa"
+    },
+    {
+      "country": "AUT",
+      "slug": "austria",
+      "country_name": "Austria",
+      "year": 2017,
+      "level": 1,
+      "raw_mean": 0.8571,
+      "region": "Western Europe & North America"
+    },
+    {
+      "country": "BIH",
+      "slug": "bosnia-and-herzegovina",
+      "country_name": "Bosnia and Herzegovina",
+      "year": 2016,
+      "level": 2,
+      "raw_mean": 2.0,
+      "region": "Eastern Europe & Central Asia"
+    }
+  ],
+  "v2lgoppart": [
+    {
+      "country": "KAZ",
+      "slug": "kazakhstan",
+      "country_name": "Kazakhstan",
+      "year": 2017,
+      "level": 0,
+      "raw_mean": 0.0,
+      "region": "Eastern Europe & Central Asia"
+    },
+    {
+      "country": "MAR",
+      "slug": "morocco",
+      "country_name": "Morocco",
+      "year": 2017,
+      "level": 1,
+      "raw_mean": 1.0,
+      "region": "Middle East & North Africa"
+    },
+    {
+      "country": "NOR",
+      "slug": "norway",
+      "country_name": "Norway",
+      "year": 2017,
+      "level": 2,
+      "raw_mean": 2.0,
+      "region": "Western Europe & North America"
+    }
+  ],
+  "v2lgotovst": [
+    {
+      "country": "QAT",
+      "slug": "qatar",
+      "country_name": "Qatar",
+      "year": 2017,
+      "level": 0,
+      "raw_mean": 0.0,
+      "region": "Middle East & North Africa"
+    },
+    {
+      "country": "AZE",
+      "slug": "azerbaijan",
+      "country_name": "Azerbaijan",
+      "year": 2017,
+      "level": 1,
+      "raw_mean": 1.0,
+      "region": "Eastern Europe & Central Asia"
+    },
+    {
+      "country": "SGP",
+      "slug": "singapore",
+      "country_name": "Singapore",
+      "year": 2017,
+      "level": 2,
+      "raw_mean": 2.0,
+      "region": "East & Southeast Asia & Pacific"
+    },
+    {
+      "country": "FRA",
+      "slug": "france",
+      "country_name": "France",
+      "year": 2016,
+      "level": 3,
+      "raw_mean": 3.0,
+      "region": "Western Europe & North America"
+    },
+    {
+      "country": "CHL",
+      "slug": "chile",
+      "country_name": "Chile",
+      "year": 2018,
+      "level": 4,
+      "raw_mean": 3.5,
+      "region": "Latin America & Caribbean"
+    }
+  ],
+  "v2lgqstexp": [
+    {
+      "country": "PRK",
+      "slug": "north-korea",
+      "country_name": "North Korea",
+      "year": 2017,
+      "level": 0,
+      "raw_mean": 0.0,
+      "region": "East & Southeast Asia & Pacific"
+    },
+    {
+      "country": "LUX",
+      "slug": "luxembourg",
+      "country_name": "Luxembourg",
+      "year": 2016,
+      "level": 1,
+      "raw_mean": 1.0,
+      "region": "Western Europe & North America"
+    }
+  ],
+  "v2lgsrvlo": [
+    {
+      "country": "SVN",
+      "slug": "slovenia",
+      "country_name": "Slovenia",
+      "year": 2018,
+      "level": 0,
+      "raw_mean": 0.0,
+      "region": "Eastern Europe & Central Asia"
+    },
+    {
+      "country": "BWA",
+      "slug": "botswana",
+      "country_name": "Botswana",
+      "year": 2016,
+      "level": 1,
+      "raw_mean": 1.0,
+      "region": "Sub-Saharan Africa"
+    }
+  ],
+  "v2lgstafflo": [
+    {
+      "country": "SUR",
+      "slug": "suriname",
+      "country_name": "Suriname",
+      "year": 2016,
+      "level": 0,
+      "raw_mean": 0.0,
+      "region": "Latin America & Caribbean"
+    },
+    {
+      "country": "ISR",
+      "slug": "israel",
+      "country_name": "Israel",
+      "year": 2017,
+      "level": 1,
+      "raw_mean": 1.0,
+      "region": "Western Europe & North America"
+    }
+  ],
+  "v2svdomaut": [
+    {
+      "country": "SYR",
+      "slug": "syria",
+      "country_name": "Syria",
+      "year": 2017,
+      "level": 0,
+      "raw_mean": 0.4444,
+      "region": "Middle East & North Africa"
+    },
+    {
+      "country": "CAF",
+      "slug": "central-african-republic",
+      "country_name": "Central African Republic",
+      "year": 2018,
+      "level": 1,
+      "raw_mean": 1.0,
+      "region": "Sub-Saharan Africa"
+    },
+    {
+      "country": "SGP",
+      "slug": "singapore",
+      "country_name": "Singapore",
+      "year": 2018,
+      "level": 2,
+      "raw_mean": 2.0,
+      "region": "East & Southeast Asia & Pacific"
+    }
+  ],
+  "v2svinlaut": [
+    {
+      "country": "BHR",
+      "slug": "bahrain",
+      "country_name": "Bahrain",
+      "year": 2018,
+      "level": 0,
+      "raw_mean": 0.5,
+      "region": "Middle East & North Africa"
+    },
+    {
+      "country": "CAF",
+      "slug": "central-african-republic",
+      "country_name": "Central African Republic",
+      "year": 2018,
+      "level": 1,
+      "raw_mean": 1.0,
+      "region": "Sub-Saharan Africa"
+    },
+    {
+      "country": "NZL",
+      "slug": "new-zealand",
+      "country_name": "New Zealand",
+      "year": 2017,
+      "level": 2,
+      "raw_mean": 2.0,
+      "region": "Western Europe & North America"
+    }
+  ],
+  "v2stcritapparm": [
+    {
+      "country": "BHR",
+      "slug": "bahrain",
+      "country_name": "Bahrain",
+      "year": 2018,
+      "level": 1,
+      "raw_mean": 1.0,
+      "region": "Middle East & North Africa"
+    },
+    {
+      "country": "LBR",
+      "slug": "liberia",
+      "country_name": "Liberia",
+      "year": 2018,
+      "level": 2,
+      "raw_mean": 2.0,
+      "region": "Sub-Saharan Africa"
+    },
+    {
+      "country": "BEL",
+      "slug": "belgium",
+      "country_name": "Belgium",
+      "year": 2018,
+      "level": 3,
+      "raw_mean": 3.0,
+      "region": "Western Europe & North America"
+    },
+    {
+      "country": "CRI",
+      "slug": "costa-rica",
+      "country_name": "Costa Rica",
+      "year": 2016,
+      "level": 4,
+      "raw_mean": 3.75,
+      "region": "Latin America & Caribbean"
+    }
+  ],
+  "v2stcritrecadm": [
+    {
+      "country": "KHM",
+      "slug": "cambodia",
+      "country_name": "Cambodia",
+      "year": 2018,
+      "level": 1,
+      "raw_mean": 1.0,
+      "region": "East & Southeast Asia & Pacific"
+    },
+    {
+      "country": "PAN",
+      "slug": "panama",
+      "country_name": "Panama",
+      "year": 2016,
+      "level": 2,
+      "raw_mean": 2.0,
+      "region": "Latin America & Caribbean"
+    },
+    {
+      "country": "CAN",
+      "slug": "canada",
+      "country_name": "Canada",
+      "year": 2017,
+      "level": 3,
+      "raw_mean": 3.0,
+      "region": "Western Europe & North America"
+    },
+    {
+      "country": "DNK",
+      "slug": "denmark",
+      "country_name": "Denmark",
+      "year": 2018,
+      "level": 4,
+      "raw_mean": 3.6,
+      "region": "Western Europe & North America"
+    }
+  ],
+  "v2stfisccap": [
+    {
+      "country": "CAF",
+      "slug": "central-african-republic",
+      "country_name": "Central African Republic",
+      "year": 2016,
+      "level": 1,
+      "raw_mean": 1.0,
+      "region": "Sub-Saharan Africa"
+    },
+    {
+      "country": "SAU",
+      "slug": "saudi-arabia",
+      "country_name": "Saudi Arabia",
+      "year": 2017,
+      "level": 2,
+      "raw_mean": 2.0,
+      "region": "Middle East & North Africa"
+    },
+    {
+      "country": "ALB",
+      "slug": "albania",
+      "country_name": "Albania",
+      "year": 2017,
+      "level": 3,
+      "raw_mean": 3.0,
+      "region": "Eastern Europe & Central Asia"
+    },
+    {
+      "country": "THA",
+      "slug": "thailand",
+      "country_name": "Thailand",
+      "year": 2017,
+      "level": 4,
+      "raw_mean": 4.0,
+      "region": "East & Southeast Asia & Pacific"
+    }
+  ],
+  "v2strenadm": [
+    {
+      "country": "TGO",
+      "slug": "togo",
+      "country_name": "Togo",
+      "year": 2018,
+      "level": 2,
+      "raw_mean": 2.1111,
+      "region": "Sub-Saharan Africa"
+    },
+    {
+      "country": "VNM",
+      "slug": "vietnam",
+      "country_name": "Viet Nam",
+      "year": 2018,
+      "level": 3,
+      "raw_mean": 3.0,
+      "region": "East & Southeast Asia & Pacific"
+    },
+    {
+      "country": "FRA",
+      "slug": "france",
+      "country_name": "France",
+      "year": 2016,
+      "level": 4,
+      "raw_mean": 4.0,
+      "region": "Western Europe & North America"
+    }
+  ],
+  "v2strenarm": [
+    {
+      "country": "ISL",
+      "slug": "iceland",
+      "country_name": "Iceland",
+      "year": 2016,
+      "level": 1,
+      "raw_mean": 1.0,
+      "region": "Western Europe & North America"
+    },
+    {
+      "country": "SLB",
+      "slug": "solomon-islands",
+      "country_name": "Solomon Islands",
+      "year": 2017,
+      "level": 2,
+      "raw_mean": 2.0,
+      "region": "East & Southeast Asia & Pacific"
+    },
+    {
+      "country": "SSD",
+      "slug": "south-sudan",
+      "country_name": "South Sudan",
+      "year": 2016,
+      "level": 3,
+      "raw_mean": 3.0,
+      "region": "Sub-Saharan Africa"
+    },
+    {
+      "country": "SVN",
+      "slug": "slovenia",
+      "country_name": "Slovenia",
+      "year": 2018,
+      "level": 4,
+      "raw_mean": 4.0,
+      "region": "Eastern Europe & Central Asia"
+    }
+  ],
+  "v2dlcommon": [
+    {
+      "country": "SYR",
+      "slug": "syria",
+      "country_name": "Syria",
+      "year": 2016,
+      "level": 1,
+      "raw_mean": 0.9,
+      "region": "Middle East & North Africa"
+    },
+    {
+      "country": "ZMB",
+      "slug": "zambia",
+      "country_name": "Zambia",
+      "year": 2017,
+      "level": 2,
+      "raw_mean": 2.0,
+      "region": "Sub-Saharan Africa"
+    },
+    {
+      "country": "JAM",
+      "slug": "jamaica",
+      "country_name": "Jamaica",
+      "year": 2018,
+      "level": 3,
+      "raw_mean": 3.0,
+      "region": "Latin America & Caribbean"
+    },
+    {
+      "country": "ARM",
+      "slug": "armenia",
+      "country_name": "Armenia",
+      "year": 2018,
+      "level": 4,
+      "raw_mean": 4.0,
+      "region": "Eastern Europe & Central Asia"
+    }
+  ],
+  "v2dlconslt": [
+    {
+      "country": "PRK",
+      "slug": "north-korea",
+      "country_name": "North Korea",
+      "year": 2017,
+      "level": 0,
+      "raw_mean": 0.1429,
+      "region": "East & Southeast Asia & Pacific"
+    },
+    {
+      "country": "QAT",
+      "slug": "qatar",
+      "country_name": "Qatar",
+      "year": 2016,
+      "level": 1,
+      "raw_mean": 1.0,
+      "region": "Middle East & North Africa"
+    },
+    {
+      "country": "CAF",
+      "slug": "central-african-republic",
+      "country_name": "Central African Republic",
+      "year": 2018,
+      "level": 2,
+      "raw_mean": 2.0,
+      "region": "Sub-Saharan Africa"
+    },
+    {
+      "country": "KGZ",
+      "slug": "kyrgyzstan",
+      "country_name": "Kyrgyzstan",
+      "year": 2016,
+      "level": 3,
+      "raw_mean": 3.0,
+      "region": "Eastern Europe & Central Asia"
+    },
+    {
+      "country": "FRA",
+      "slug": "france",
+      "country_name": "France",
+      "year": 2018,
+      "level": 4,
+      "raw_mean": 4.0,
+      "region": "Western Europe & North America"
+    }
+  ],
+  "v2dlcountr": [
+    {
+      "country": "PRK",
+      "slug": "north-korea",
+      "country_name": "North Korea",
+      "year": 2016,
+      "level": 0,
+      "raw_mean": 0.0,
+      "region": "East & Southeast Asia & Pacific"
+    },
+    {
+      "country": "AZE",
+      "slug": "azerbaijan",
+      "country_name": "Azerbaijan",
+      "year": 2016,
+      "level": 1,
+      "raw_mean": 1.0,
+      "region": "Eastern Europe & Central Asia"
+    },
+    {
+      "country": "SWZ",
+      "slug": "eswatini",
+      "country_name": "Eswatini",
+      "year": 2018,
+      "level": 2,
+      "raw_mean": 2.0,
+      "region": "Sub-Saharan Africa"
+    },
+    {
+      "country": "TTO",
+      "slug": "trinidad-and-tobago",
+      "country_name": "Trinidad and Tobago",
+      "year": 2017,
+      "level": 3,
+      "raw_mean": 3.0,
+      "region": "Latin America & Caribbean"
+    },
+    {
+      "country": "CHE",
+      "slug": "switzerland",
+      "country_name": "Switzerland",
+      "year": 2017,
+      "level": 4,
+      "raw_mean": 4.1,
+      "region": "Western Europe & North America"
+    }
+  ],
+  "v2dlencmps": [
+    {
+      "country": "SSD",
+      "slug": "south-sudan",
+      "country_name": "South Sudan",
+      "year": 2017,
+      "level": 0,
+      "raw_mean": 0.5,
+      "region": "Sub-Saharan Africa"
+    },
+    {
+      "country": "PRK",
+      "slug": "north-korea",
+      "country_name": "North Korea",
+      "year": 2017,
+      "level": 1,
+      "raw_mean": 1.0,
+      "region": "East & Southeast Asia & Pacific"
+    },
+    {
+      "country": "AFG",
+      "slug": "afghanistan",
+      "country_name": "Afghanistan",
+      "year": 2017,
+      "level": 2,
+      "raw_mean": 2.0,
+      "region": "South Asia"
+    },
+    {
+      "country": "ISL",
+      "slug": "iceland",
+      "country_name": "Iceland",
+      "year": 2018,
+      "level": 3,
+      "raw_mean": 3.0,
+      "region": "Western Europe & North America"
+    },
+    {
+      "country": "URY",
+      "slug": "uruguay",
+      "country_name": "Uruguay",
+      "year": 2016,
+      "level": 4,
+      "raw_mean": 3.7333,
+      "region": "Latin America & Caribbean"
+    }
+  ],
+  "v2dlengage": [
+    {
+      "country": "PRK",
+      "slug": "north-korea",
+      "country_name": "North Korea",
+      "year": 2016,
+      "level": 0,
+      "raw_mean": 0.0,
+      "region": "East & Southeast Asia & Pacific"
+    },
+    {
+      "country": "ERI",
+      "slug": "eritrea",
+      "country_name": "Eritrea",
+      "year": 2017,
+      "level": 1,
+      "raw_mean": 1.0,
+      "region": "Sub-Saharan Africa"
+    },
+    {
+      "country": "RUS",
+      "slug": "russia",
+      "country_name": "Russian Federation",
+      "year": 2017,
+      "level": 2,
+      "raw_mean": 2.0,
+      "region": "Eastern Europe & Central Asia"
+    },
+    {
+      "country": "PAN",
+      "slug": "panama",
+      "country_name": "Panama",
+      "year": 2017,
+      "level": 3,
+      "raw_mean": 3.0,
+      "region": "Latin America & Caribbean"
+    },
+    {
+      "country": "ITA",
+      "slug": "italy",
+      "country_name": "Italy",
+      "year": 2017,
+      "level": 4,
+      "raw_mean": 4.0,
+      "region": "Western Europe & North America"
+    }
+  ],
+  "v2dlreason": [
+    {
+      "country": "PRK",
+      "slug": "north-korea",
+      "country_name": "North Korea",
+      "year": 2017,
+      "level": 0,
+      "raw_mean": 0.1429,
+      "region": "East & Southeast Asia & Pacific"
+    },
+    {
+      "country": "RUS",
+      "slug": "russia",
+      "country_name": "Russian Federation",
+      "year": 2016,
+      "level": 1,
+      "raw_mean": 1.0,
+      "region": "Eastern Europe & Central Asia"
+    },
+    {
+      "country": "SEN",
+      "slug": "senegal",
+      "country_name": "Senegal",
+      "year": 2018,
+      "level": 2,
+      "raw_mean": 2.0,
+      "region": "Sub-Saharan Africa"
+    },
+    {
+      "country": "CHE",
+      "slug": "switzerland",
+      "country_name": "Switzerland",
+      "year": 2018,
+      "level": 3,
+      "raw_mean": 3.0,
+      "region": "Western Europe & North America"
+    }
+  ],
+  "v2dlunivl": [
+    {
+      "country": "SSD",
+      "slug": "south-sudan",
+      "country_name": "South Sudan",
+      "year": 2016,
+      "level": 0,
+      "raw_mean": 0.1818,
+      "region": "Sub-Saharan Africa"
+    },
+    {
+      "country": "YEM",
+      "slug": "yemen",
+      "country_name": "Yemen",
+      "year": 2017,
+      "level": 1,
+      "raw_mean": 1.1818,
+      "region": "Middle East & North Africa"
+    },
+    {
+      "country": "KHM",
+      "slug": "cambodia",
+      "country_name": "Cambodia",
+      "year": 2018,
+      "level": 2,
+      "raw_mean": 2.0,
+      "region": "East & Southeast Asia & Pacific"
+    },
+    {
+      "country": "RUS",
+      "slug": "russia",
+      "country_name": "Russian Federation",
+      "year": 2016,
+      "level": 3,
+      "raw_mean": 3.0,
+      "region": "Eastern Europe & Central Asia"
+    },
+    {
+      "country": "PRT",
+      "slug": "portugal",
+      "country_name": "Portugal",
+      "year": 2016,
+      "level": 4,
+      "raw_mean": 4.0,
+      "region": "Western Europe & North America"
+    }
+  ],
+  "v2exl_legitideol": [
+    {
+      "country": "CHE",
+      "slug": "switzerland",
+      "country_name": "Switzerland",
+      "year": 2017,
+      "level": 0,
+      "raw_mean": 0.1667,
+      "region": "Western Europe & North America"
+    },
+    {
+      "country": "MWI",
+      "slug": "malawi",
+      "country_name": "Malawi",
+      "year": 2017,
+      "level": 1,
+      "raw_mean": 1.0,
+      "region": "Sub-Saharan Africa"
+    },
+    {
+      "country": "ARM",
+      "slug": "armenia",
+      "country_name": "Armenia",
+      "year": 2017,
+      "level": 2,
+      "raw_mean": 2.0,
+      "region": "Eastern Europe & Central Asia"
+    },
+    {
+      "country": "IRQ",
+      "slug": "iraq",
+      "country_name": "Iraq",
+      "year": 2016,
+      "level": 3,
+      "raw_mean": 3.0,
+      "region": "Middle East & North Africa"
+    },
+    {
+      "country": "CUB",
+      "slug": "cuba",
+      "country_name": "Cuba",
+      "year": 2018,
+      "level": 4,
+      "raw_mean": 4.0,
+      "region": "Latin America & Caribbean"
+    }
+  ],
+  "v2exl_legitideolcr": [],
+  "v2exl_legitlead": [
+    {
+      "country": "EST",
+      "slug": "estonia",
+      "country_name": "Estonia",
+      "year": 2016,
+      "level": 0,
+      "raw_mean": 0.0,
+      "region": "Eastern Europe & Central Asia"
+    },
+    {
+      "country": "PAN",
+      "slug": "panama",
+      "country_name": "Panama",
+      "year": 2016,
+      "level": 1,
+      "raw_mean": 1.0,
+      "region": "Latin America & Caribbean"
+    },
+    {
+      "country": "MOZ",
+      "slug": "mozambique",
+      "country_name": "Mozambique",
+      "year": 2018,
+      "level": 2,
+      "raw_mean": 2.0,
+      "region": "Sub-Saharan Africa"
+    },
+    {
+      "country": "PHL",
+      "slug": "philippines",
+      "country_name": "Philippines",
+      "year": 2018,
+      "level": 3,
+      "raw_mean": 3.0,
+      "region": "East & Southeast Asia & Pacific"
+    },
+    {
+      "country": "OMN",
+      "slug": "oman",
+      "country_name": "Oman",
+      "year": 2017,
+      "level": 4,
+      "raw_mean": 3.6,
+      "region": "Middle East & North Africa"
+    }
+  ],
+  "v2exl_legitperf": [
+    {
+      "country": "YEM",
+      "slug": "yemen",
+      "country_name": "Yemen",
+      "year": 2017,
+      "level": 1,
+      "raw_mean": 1.1111,
+      "region": "Middle East & North Africa"
+    },
+    {
+      "country": "GNB",
+      "slug": "guinea-bissau",
+      "country_name": "Guinea-Bissau",
+      "year": 2018,
+      "level": 2,
+      "raw_mean": 2.0,
+      "region": "Sub-Saharan Africa"
+    },
+    {
+      "country": "HND",
+      "slug": "honduras",
+      "country_name": "Honduras",
+      "year": 2016,
+      "level": 3,
+      "raw_mean": 3.0,
+      "region": "Latin America & Caribbean"
+    },
+    {
+      "country": "AUS",
+      "slug": "australia",
+      "country_name": "Australia",
+      "year": 2016,
+      "level": 4,
+      "raw_mean": 3.5,
+      "region": "Western Europe & North America"
+    }
+  ],
+  "v2exl_legitratio": [
+    {
+      "country": "TCD",
+      "slug": "chad",
+      "country_name": "Chad",
+      "year": 2017,
+      "level": 1,
+      "raw_mean": 1.2,
+      "region": "Sub-Saharan Africa"
+    },
+    {
+      "country": "MNE",
+      "slug": "montenegro",
+      "country_name": "Montenegro",
+      "year": 2018,
+      "level": 2,
+      "raw_mean": 2.0,
+      "region": "Eastern Europe & Central Asia"
+    },
+    {
+      "country": "VUT",
+      "slug": "vanuatu",
+      "country_name": "Vanuatu",
+      "year": 2018,
+      "level": 3,
+      "raw_mean": 3.0,
+      "region": "East & Southeast Asia & Pacific"
     }
   ]
 }
