@@ -1,21 +1,23 @@
-# Panel Member: Research Strategy
+# Research Strategy
 
-*Updated July 2026. IRT dropped — panel-mean deviation test replaces the sequential
-replacement experiment. Three prompt conditions across five models. Raw panel means replace
-calibration-weighted means. Training on all strong + partial Type C indicators (~174);
-evaluation on the full universe of ~205 mapped Type C indicators (primary), with a
-proportional stratified sample (one third per module, floor of 2, ~60–70 total) pre-registered
-as a computational fallback — see `notes/evaluation-indicator-scope.md`. Persona prompting
-retained as exploratory condition; see `notes/persona-prompting-design-archive.md`.*
+This study uses a three-condition identification design to separate two distinct sources
+of bias in AI annotation: reliance on pretraining knowledge rather than the provided
+evidence, and the use of syntactic cues such as country names and named institutions to
+activate prior beliefs rather than reasoning from what the text reports. Using V-Dem
+expert coding as the application, we assess how much each source contributes to
+calibration quality and what this implies for the reliability of AI annotation across
+different information environments.
 
 ## Research questions
 
-1. Which prompt condition and model scale produces AI ratings closest to the human expert
-   panel's raw mean across all ~205 evaluation indicators?
-2. Does LOO MAE degrade as source-coverage tier weakens — and if not, how many human
-   coders can AI replace before the raw panel mean shifts detectably?
-
----
+1. How much does each information source — pretrained knowledge, structured source
+   evidence, and country identity — contribute to AI calibration quality relative to
+   the human expert panel baseline?
+2. Does the contribution of source evidence degrade as source coverage weakens, and
+   what does this imply for the generalizability of AI annotation across the full
+   indicator set?
+3. Under the best-performing prompt condition and model, does adding one AI rating to
+   a thin human panel shift the raw panel mean detectably?
 
 ## Stage 1: Prompt engineering
 
@@ -39,34 +41,35 @@ for 2020: models appear to use country identity as a shortcut rather than reason
 evidence. Anonymization forces the coding model to reason from described political
 conditions alone.
 
-### The five models
+### The models
 
-All three conditions run on four base models. Fine-tuned Llama 70B is a fifth model that
-uses the anonymized prompt format without the few-shot block; calibration is embedded in
-the adapter weights.
+Three base models run all three prompt conditions. Two fine-tuned variants of Llama 70B
+run the corresponding condition only, with calibration embedded in the adapter weights
+rather than supplied via few-shot examples.
 
-| Model | Scale | Platform | Conditions |
-|---|---|---|---|
-| Llama 405B Instruct | 405B open | GW 8×A100 80GB | Codebook, Evidence, Anonymized |
-| Llama 3.3 70B Instruct | 70B open | GW A100 80GB | Codebook, Evidence, Anonymized |
-| Llama 3.2 9B Instruct | 9B open | GW V100 16GB | Codebook, Evidence, Anonymized |
-| Llama 3.3 70B (fine-tuned) | 70B ft | GW A100 80GB | Anonymized format, no few-shot |
+| Model | Scale | Platform |
+|---|---|---|
+| Llama 3.3 70B (fine-tuned, evidence) | 70B ft | GW GH200 (superChip) |
+| Llama 3.3 70B (fine-tuned, anonymized) | 70B ft | GW GH200 (superChip) |
+| Llama 405B Instruct | 405B open | GW 4-8x A100 80GB |
+| Llama 3.3 70B Instruct | 70B open | GW GH200 (superChip) |
+| Llama 3.2 9B Instruct | 9B open | GW GH200 (superChip) |
 
 Fine-tuning uses QLoRA on (anonymized section text, individual coder rating) pairs from
-V-Dem v15 — one row per coder per CYI, not panel means. Training window: 2013–2018.
-Training covers all strong + partial coverage Type C indicators (~174 indicators). Primary
+V-Dem v15 — one row per coder per country-year-indicator (CYI). Training window: 2016–2018.
+Training covers all 206 mapped Type C indicators. Primary
 evaluation: LOO MAE against panel mean on all ~205 evaluation indicators. Secondary:
 exact match rate and adjacent-category agreement.
 
 ### Country-year pool (calibration)
 
 **2019** as the primary evaluation year — clean one-year temporal holdout after the
-2013–2018 training window, full panels, no exogenous anomalies. 2020 is avoided as
+2016–2018 training window, full panels, no exogenous anomalies. 2020 is avoided as
 primary: COVID-19 emergency restrictions distort civil society, media, and judicial
 indicators and make the human panel means noisier targets than usual.
 
 Secondary robustness: **2023** — best-performing model only. Falls outside the
-2013–2018 training window; 2023 is the last year of intact State Department and Freedom
+2016–2018 training window; 2023 is the last year of intact State Department and Freedom
 House reporting before the 2024 format restructuring, making it the natural ceiling for
 the current pipeline. Source documents already ingested and confirmed clean (all 16 SD
 sections present in 193 files; all 7 FH sections present in 210 files). Panel sizes by
@@ -98,16 +101,13 @@ v2x_polyarchy quintile. The human baseline is ~0 by construction; any systematic
 deviation reveals directional compression bias — rating autocracies too generously or
 democracies too harshly. Report as a figure. See `notes/evaluation-metrics.md`.
 
----
-
 ## Stage 2: Coverage-tier generalization (embedded in main analysis)
 
 ### Design
 
-The fine-tuned Llama 70B adapter is trained on all strong + partial coverage Type C
-indicators (~174 indicators). The full ~205 evaluation indicators span all three
-source-coverage tiers (strong, partial, weak), providing a within-study generalization
-test without requiring a separate held-out training split.
+The fine-tuned Llama 70B adapter is trained on all 206 mapped Type C indicators,
+spanning all coverage tiers. Coverage tier is a within-study moderating variable at
+inference — no separate held-out training split required.
 
 Coverage tier enters as a moderating variable in the main results. The gradient from
 strong to weak coverage indicators tests whether calibration quality degrades as source
@@ -125,8 +125,6 @@ evidence weakens — and by how much.
 result supports a scalable V-Dem AI coder applicable across the full ~216 Type C indicator
 set, motivating application beyond the training distribution.
 
----
-
 ## Stage 3: Integration robustness (secondary / supplemental)
 
 ### Design
@@ -137,17 +135,14 @@ AI-augmented panel mean to the full human panel mean. Bootstrap B=500. Report me
 divergence ± 95% CI. No pool size cap — AI ratings for these CYs already exist from
 the calibration run, so there is no cost to using the full eligible set.
 
-k=2 and k=3 are contingent on persona exploratory results: if persona prompting on the
-best fine-tuned model produces reliably distinct ratings, those additional draws could
-serve as distinct AI panel members. The k=1 check is the primary and most realistic
-deployment scenario; k=2/k=3 would be added as secondary if persona results support them.
+k=1 is the primary and most realistic deployment scenario. k=2 and k=3 are not part of
+the registered design; whether to add them as secondary analyses depends on Stage 1
+results and is a post-hoc decision.
 
 ### Coder removal strategy
 
 Random removal (uniform draw) only. Worst/best-first bounds dropped given secondary
 status — keep the analysis simple.
-
----
 
 ## Stage 4: Augmentation of attrited panels (secondary)
 
@@ -162,8 +157,6 @@ Does AI augmentation move the panel mean toward the historical thick-panel refer
 This conflates panel thinning with temporal democratic change; frame as an application
 illustration, not a clean validation. Report the limitation explicitly.
 
----
-
 ## Source documents and pipeline
 
 Both stages use section extraction (State Dept + Freedom House), shared with the
@@ -177,11 +170,9 @@ new LLM call inserted between section extraction and the coding model.
 | Calibration (primary) | 2019 | Clean holdout; full panels; no COVID anomaly |
 | Robustness check | 2023 | Best model only; outside training window; last year of intact SD/FH reporting |
 | Replacement (k=1 check) | 2019 | All ≥8-coder CYs from evaluation pool; no extra ingestion needed |
-| Fine-tuning training | 2013–2018 | Post-lateral-coder; pre-attrition; 6 years |
+| Fine-tuning training | 2016–2018 | Post-lateral-coder; pre-attrition; 6 years |
 | Augmentation (attrition) | 2015 (ref) + 2022 (thin) | Post-2013 attrition window |
 | Deployment (historical) | 1975–1989 | FH from 1972; State Dept from 1977 |
-
----
 
 ## Compute
 
@@ -195,7 +186,7 @@ Full estimates are in `notes/hpc-execution-strategy.md`. Summary for the two sce
 | Llama 70B base | ~10–20 hrs | 1× GH200 preferred |
 | Llama 9B | ~5–10 hrs | 1× GH200 or V100 |
 | FT-anon 70B | ~4–8 hrs | Anonymized condition only |
-| Fine-tuning 70B (×2 runs) | ~75–80 hrs each | QLoRA, 2013–2018, GH200 |
+| Fine-tuning 70B (×2 runs) | ~75–80 hrs each | QLoRA, 2016–2018, GH200 |
 
 **Fallback (~60–70 indicators, ~11,200 calls per condition per model)**
 
@@ -210,8 +201,6 @@ All Llama models run on Pegasus via TRES resource requests.
 See `notes/hpc-execution-strategy.md` for confirmed partition names, GRES strings,
 per-condition breakdown, and full run sequence.
 
----
-
 ## Key open questions
 
 - [ ] Lock evaluation pool: year(s), minimum ratings per country-indicator, confirmed N
@@ -220,11 +209,13 @@ per-condition breakdown, and full run sequence.
       section-to-indicator assignments are evidentiarily relevant, not just thematically
       adjacent; update `config/indicator_sections.yaml` to cover all evaluation indicators;
       reference `initial-exploration/explore-indicators/02-indicator-selection.html`
-- [ ] Lock fine-tuning training window: 2013–2018 (post-lateral-coder drop; pre-attrition;
-      no overlap with 2019 test year or 2023 robustness check)
+- [ ] Lock fine-tuning training window: 2016–2018 (source document availability — SD and FH
+      reliably scraped from 2016; ~1.03M coder-CYI examples sufficient; captures post-Arab
+      Spring democratic backsliding period; no overlap with 2019 test year or 2023 robustness check)
 - [ ] Confirm Llama 405B availability on GW Pegasus (may require allocation request)
-- [x] Decide scope of persona exploratory condition: **retained**. Narrow 2-condition test
-      (strict / lenient framing) on the best fine-tuned model. If persona shifts produce
-      reliable, directional rating changes, k=2/k=3 from persona draws becomes viable.
+- [x] Persona prompting: post-hoc illustration only, run on best model after main results
+      are in. Not a registered condition. If persona framing (strict / lenient) produces
+      reliable directional shifts, that motivates a follow-on paper on synthetic panel
+      diversity — it does not affect the k=1 replacement check in this paper.
 - [ ] Decide whether fine-tuning runs on 9B as well as 70B (lower bound on scale ×
       generalization interaction)
