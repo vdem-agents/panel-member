@@ -1,18 +1,30 @@
 #!/usr/bin/env python3
 """
-Stage 3 batch runner for Condition 4: inference with the fine-tuned Llama 70B adapter.
+Stage 3 batch runner for fine-tuned Llama 70B inference (FT-raw and FT-anon).
 
-Identical in structure to run_coding_batch.py but fixed to condition="finetuned" and
-model="llama-70b-finetuned". The coding call uses anonymized section text with no
-few-shot block — calibration is in the adapter weights.
+Fine-tuned adapters run under three conditions — codebook, evidence-zeroshot,
+and anonymized-zeroshot — with no few-shot calibration block. Calibration is
+embedded in the adapter weights rather than the prompt.
 
-vLLM must be running with the LoRA adapter loaded before this script is called.
-The SLURM wrapper (slurm/run_inference_finetuned.sh) handles that startup. To
-launch manually:
+Select the adapter with --variant:
+  --variant raw   uses model key llama-70b-ft-raw (trained on raw section text)
+  --variant anon  uses model key llama-70b-ft-anon (trained on anonymized text)
 
+vLLM must be running with the correct adapter loaded before this script is called.
+The SLURM wrapper (slurm/run_inference_finetuned.sh) handles adapter startup.
+To launch manually (one adapter at a time):
+
+    # FT-raw adapter:
     vllm serve /path/to/llama-3.3-70b-instruct \\
         --enable-lora \\
-        --lora-modules llama-70b-vdem-ft=/path/to/adapter \\
+        --lora-modules llama-70b-vdem-ft-raw=/path/to/ft-raw-adapter \\
+        --dtype bfloat16 --quantization bitsandbytes --load-format bitsandbytes \\
+        --port 8000 --max-model-len 16384
+
+    # FT-anon adapter:
+    vllm serve /path/to/llama-3.3-70b-instruct \\
+        --enable-lora \\
+        --lora-modules llama-70b-vdem-ft-anon=/path/to/ft-anon-adapter \\
         --dtype bfloat16 --quantization bitsandbytes --load-format bitsandbytes \\
         --port 8000 --max-model-len 16384
 
@@ -21,17 +33,21 @@ Then set:
     export VLLM_API_KEY=local
 
 Prerequisites:
-  - data/processed-text/anonymized/{year}/{iso}/{indicator}.txt cached for all
-    target country-years (from anonymize_section.py)
-  - data/processed/panel_means.csv available for filtering
-  - vLLM running with the adapter as described above
+  - For evidence-zeroshot: processed-text files for all target country-years
+  - For anonymized-zeroshot: anonymized/{year}/{iso}/{indicator}.txt cached for
+    all target country-years (from anonymize_section.py)
+  - shared/vdem-data/panel_means.csv for country filtering
+  - vLLM running with the correct adapter as described above
 
-Output slots directly into substitution_eval.py alongside Conditions 1–3.
+Output slots directly into substitution_eval.py alongside base-model conditions.
+One JSONL file is written per condition run.
 
 Usage:
-    python3 -m pipeline.run_finetuned_batch \\
-        --year 2019 \\
-        --output data/output/runs/finetuned_2019.jsonl
+    python3 -m pipeline.run_finetuned_batch --variant raw --year 2019
+    python3 -m pipeline.run_finetuned_batch --variant anon --year 2019
+    python3 -m pipeline.run_finetuned_batch --variant raw --year 2019 \\
+        --conditions codebook evidence-zeroshot \\
+        --output-dir data/output/runs/
 """
 
 import argparse
@@ -41,46 +57,75 @@ from pathlib import Path
 import yaml
 
 from pipeline.run_coding_batch import run_batch
-from pipeline.vdem_config import LLM_CONFIGS
+from pipeline.vdem_config import LLM_CONFIGS, FT_CONDITIONS
 
 CONFIG_PATH = Path(__file__).parent.parent / "config" / "indicator_sections.yaml"
 
-FINETUNED_MODEL_KEY = "llama-70b-finetuned"
-FINETUNED_CONDITION = "finetuned"
+FT_MODEL_KEYS = {
+    "raw":  "llama-70b-ft-raw",
+    "anon": "llama-70b-ft-anon",
+}
 
 
 def main() -> None:
-    if FINETUNED_MODEL_KEY not in LLM_CONFIGS:
-        raise KeyError(
-            f"{FINETUNED_MODEL_KEY!r} not found in vdem_config.LLM_CONFIGS. "
-            "Check vdem_config.py."
-        )
-
     with open(CONFIG_PATH) as f:
         all_indicators = list(yaml.safe_load(f).keys())
 
     parser = argparse.ArgumentParser(
-        description="Condition 4 batch runner: fine-tuned Llama 70B inference"
+        description="Fine-tuned Llama 70B batch runner (FT-raw or FT-anon)"
+    )
+    parser.add_argument(
+        "--variant", choices=["raw", "anon"], required=True,
+        help="Which adapter to run: raw (FT-raw) or anon (FT-anon)",
     )
     parser.add_argument("--year", type=int, default=2019)
+    parser.add_argument(
+        "--conditions", nargs="+", default=FT_CONDITIONS,
+        choices=FT_CONDITIONS,
+        help=(
+            "Conditions to run (default: all three). "
+            "Each condition is a separate run_batch call with its own output JSONL."
+        ),
+    )
     parser.add_argument(
         "--indicators", nargs="+", default=all_indicators,
         help=f"Indicators to run (default: all {len(all_indicators)})",
     )
     parser.add_argument(
-        "--output",
-        default=f"data/output/runs/finetuned_{datetime.now():%Y%m%d_%H%M}.jsonl",
-        help="Output JSONL file (appended to if exists)",
+        "--output-dir",
+        default="data/output/runs",
+        help="Output directory; one JSONL per condition is written here (default: data/output/runs)",
+    )
+    parser.add_argument(
+        "--workers", type=int, default=4,
+        help="Concurrent requests to the vLLM server (default: 4)",
     )
     args = parser.parse_args()
 
-    run_batch(
-        year=args.year,
-        indicators=args.indicators,
-        condition=FINETUNED_CONDITION,
-        models=[FINETUNED_MODEL_KEY],
-        output_path=Path(args.output),
-    )
+    model_key = FT_MODEL_KEYS[args.variant]
+    if model_key not in LLM_CONFIGS:
+        raise KeyError(
+            f"{model_key!r} not found in vdem_config.LLM_CONFIGS. "
+            "Check vdem_config.py."
+        )
+
+    output_dir = Path(args.output_dir)
+    ts = datetime.now().strftime("%Y%m%d_%H%M")
+
+    for condition in args.conditions:
+        output_path = output_dir / f"ft_{args.variant}_{condition}_{args.year}_{ts}.jsonl"
+        print(f"\n{'=' * 60}")
+        print(f"Variant: FT-{args.variant} | Condition: {condition} | Year: {args.year}")
+        print(f"Model key: {model_key} | Output: {output_path}")
+        print(f"{'=' * 60}")
+        run_batch(
+            year=args.year,
+            indicators=args.indicators,
+            condition=condition,
+            models=[model_key],
+            output_path=output_path,
+            workers=args.workers,
+        )
 
 
 if __name__ == "__main__":
