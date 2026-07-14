@@ -17,4 +17,5 @@ venv/
 *_cache/
 *_files/
 analysis/*.html
+docs/*.html
 .ipynb_checkpoints/
