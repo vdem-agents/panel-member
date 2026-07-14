@@ -1,6 +1,6 @@
 # Panel Member: Outstanding Work
 
-*Updated 2026-07-10. Items are roughly ordered by pipeline dependency.*
+*Updated 2026-07-14. Items are roughly ordered by pipeline dependency.*
 
 ---
 
@@ -185,7 +185,7 @@ multiple genuinely distinct AI coders.
   **Date filter**: filter to `format(historical_date, "%m-%d") == "12-31"` before
   exporting — the dataset has two rows per coder-country-year (Jan 1 + Dec 31) as a
   structural feature. Without this filter, `prepare_finetune_data.py` produces ~2× the
-  training examples (~2–4M instead of ~1–2M), doubling fine-tuning time to ~20–36 A100
+  training examples (~1.8M instead of ~898K), doubling fine-tuning time to ~20–36 A100
   hours with no benefit (duplicated identical prompts and ratings).
 
 ---
@@ -210,15 +210,28 @@ multiple genuinely distinct AI coders.
 
 ## Infrastructure
 
-- [ ] **Audit country name harmonization between V-Dem and source-doc slugs** (#10).
-  `build_country_map()` in `run_coding_batch.py` matches processed-text slugs to V-Dem
-  ISO-3 codes via two stages: (1) `SLUG_OVERRIDES` hardcoded dict, (2) pycountry fuzzy
-  match. Two known risks: (a) unusual 2018 slugs like
-  `china-includes-tibet-hong-kong-and-macau-china` and `israel-golan-heights-west-bank-and-gaza`
-  may not fuzzy-match correctly; (b) `SLUG_OVERRIDES` is duplicated in both
-  `run_coding_batch.py` and `run_anonymize_batch.py` and must be kept in sync manually.
-  Verify all slugs across 2016–2021 resolve to the correct ISO-3 codes; consolidate
-  `SLUG_OVERRIDES` into a shared module.
+- [x] **Add zero-shot prompt conditions to the pipeline** (#20 — closed 2026-07-14).
+  `"evidence-zeroshot"` and `"anonymized-zeroshot"` implemented in `assemble_prompt.py`:
+  same text-loading path as their few-shot counterparts but `calibration_section = ""`.
+  `CONDITIONS_ZEROSHOT` and `ALL_CONDITIONS` added to `vdem_config.py`. Validation and
+  CLI choices updated in `assemble_prompt.py`, `code_country_year.py`, and
+  `run_coding_batch.py`. No special-casing needed in the batch runner.
+  **Still blocked on**: primary 3×5 results — do not run until best base model identified.
+
+- [x] **Reconcile `vdem_config.py` model list with experimental design docs** (#19 — closed 2026-07-14).
+  Removed `claude-sonnet` from `PRIMARY_MODELS`, `ALL_MODELS`, `MODEL_PRIORITY` in
+  `replacement_experiment.py`, and all pipeline docstring examples. `claude-sonnet` entry
+  also removed from `LLM_CONFIGS` entirely — anonymization uses Llama 70B, not Claude.
+  Default model in `code_country_year.py` CLI updated to `llama-70b`.
+
+- [x] **Audit country name harmonization between V-Dem and source-doc slugs** (#10 — closed 2026-07-14).
+  Audited all slugs across 2016–2023. Found 7 hard failures and 3 wrong fuzzy matches:
+  failures included both China multi-territory slug variants, `democratic-peoples-republic-of-korea`,
+  `israel-and-the-occupied-territories`, `israel-golan-heights-west-bank-and-gaza`,
+  `malaysia-2`, and `swaziland`; wrong matches were `niger` → Nigeria (should be NER),
+  `republic-of-korea` → PRK North Korea (should be KOR), and `kosovo` → Serbia (should be XKX).
+  All corrected. `SLUG_OVERRIDES` and `build_country_map()` consolidated into
+  `pipeline/country_map.py`; duplicated code removed from both batch runners.
 
 
 
@@ -267,12 +280,11 @@ multiple genuinely distinct AI coders.
 
 ## Paper / analysis (non-blocking)
 
-- [ ] **Revise paper framing artfully** (#7). `docs/overview.md` and `paper/outline.qmd`
-  have been updated with a quick reframe (July 2026) to lead with the learning question
-  and reposition V-Dem as the application. The current revision is intentionally rough —
-  prose, section titles, and contribution claims need a careful pass before submission or
-  pre-registration. Return to this after the pipeline is set up and the open design
-  issues (#1–#6) are resolved.
+- [x] **Revise paper framing** (#7 — closed 2026-07-14). `docs/overview.md` now leads with
+  the core decomposition question (what information — pretrained knowledge, structured
+  source evidence, country identity — do LLMs draw on when coding political texts?) and
+  positions V-Dem panel attrition as the application that makes the question consequential.
+  The three-condition design is described as an identification strategy throughout.
 
 - [ ] **Write `pipeline/select_cy_pool.py`**: filter `panel_means.csv` to 2019 rows
   with `n_coders ≥ 8` and save to `data/processed/cy_pool.csv`. No sampling, no cap —

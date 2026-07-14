@@ -6,10 +6,8 @@ For each (country, year, indicator) combination in the processed-text directory,
 calls anonymize_country_year_indicator() to generate and cache anonymized text.
 Already-cached files are skipped automatically, so re-running resumes where it left off.
 
-Run locally — anonymization uses the Claude API and does not require GPU.
-At ~60 RPM on the default API tier, 10,800 calls (150 countries × 6 years × 12
-indicators) takes roughly 3 hours. Run overnight or across sessions; interruptions
-are safe because each completed file is immediately cached to disk.
+Anonymization uses Llama 70B via vLLM (same infrastructure as the coding runs).
+Interruptions are safe because each completed file is immediately cached to disk.
 
 Usage:
     set -a && source .env && set +a
@@ -34,52 +32,12 @@ import sys
 import time
 from pathlib import Path
 
-import pycountry
 import yaml
 
 from pipeline.anonymize_section import anonymize_country_year_indicator, _anon_path
+from pipeline.country_map import build_country_map
 
 CONFIG_PATH = Path(__file__).parent.parent / "config" / "indicator_sections.yaml"
-PROCESSED_TEXT_DIR = Path(__file__).parent.parent / "data" / "processed-text"
-
-SLUG_OVERRIDES: dict[str, tuple[str, str] | None] = {
-    "burma":                          ("MMR", "Burma/Myanmar"),
-    "cote-divoire":                   ("CIV", "Côte d'Ivoire"),
-    "democratic-republic-of-the-congo": ("COD", "Democratic Republic of the Congo"),
-    "guinea-bissau":                  ("GNB", "Guinea-Bissau"),
-    "timor-leste":                    ("TLS", "Timor-Leste"),
-    "turkey":                         ("TUR", "Turkey"),
-    "israel-west-bank-and-gaza":      None,
-    "download-appendix-d-629-kb-2020-human-rights-report": None,
-}
-
-
-def build_country_map(year: int) -> dict[str, tuple[str, str]]:
-    """Return {iso: (slug, country_name)} for all countries with a State Dept text file."""
-    sd_dir = PROCESSED_TEXT_DIR / "state-dept" / str(year)
-    if not sd_dir.exists():
-        raise FileNotFoundError(
-            f"No processed State Dept text for {year} at {sd_dir}.\n"
-            "Run pipeline/ingest.py first."
-        )
-    country_map: dict[str, tuple[str, str]] = {}
-    for path in sorted(sd_dir.glob("*.txt")):
-        slug = path.stem
-        if slug in SLUG_OVERRIDES:
-            val = SLUG_OVERRIDES[slug]
-            if val is None:
-                continue
-            iso, name = val
-        else:
-            candidate = slug.replace("-", " ").title()
-            try:
-                match = pycountry.countries.search_fuzzy(candidate)[0]
-                iso, name = match.alpha_3, match.name
-            except LookupError:
-                print(f"  [warn] no ISO match for '{slug}' — skipped", file=sys.stderr)
-                continue
-        country_map[iso] = (slug, name)
-    return country_map
 
 
 def _anonymize_with_backoff(
@@ -133,8 +91,8 @@ def main() -> None:
     parser.add_argument("--indicators", nargs="+", default=all_indicators,
                         help="Indicators to anonymize (default: all in config, "
                              "including held-out)")
-    parser.add_argument("--model", default="claude-sonnet",
-                        help="Model key for anonymization (default: claude-sonnet)")
+    parser.add_argument("--model", default="llama-70b",
+                        help="Model key for anonymization (default: llama-70b)")
     parser.add_argument("--force", action="store_true",
                         help="Re-anonymize even if cached output exists")
     args = parser.parse_args()

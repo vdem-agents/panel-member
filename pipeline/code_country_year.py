@@ -9,12 +9,12 @@ Usage (CLI — spot-checking):
     python3 -m pipeline.code_country_year \\
         --iso NGA --slug nigeria --name Nigeria \\
         --year 2020 --indicator v2csreprss \\
-        --condition evidence --model claude-sonnet
+        --condition evidence --model llama-70b
 
 Usage (programmatic):
     from pipeline.code_country_year import code_country_year
     record = code_country_year("NGA", "nigeria", "Nigeria", 2020, "v2csreprss",
-                                "evidence", "claude-sonnet")
+                                "evidence", "llama-70b")
 """
 
 import json
@@ -99,15 +99,16 @@ def code_country_year(
         country_name: Display name in prompt, e.g. "Nigeria"
         year:         Target year, e.g. 2020
         indicator:    V-Dem indicator code, e.g. "v2csreprss"
-        condition:    "codebook" | "evidence" | "anonymized"
-        model_key:    Key in LLM_CONFIGS, e.g. "claude-sonnet"
+        condition:    "codebook" | "evidence" | "anonymized" | "evidence-zeroshot" | "anonymized-zeroshot"
+        model_key:    Key in LLM_CONFIGS, e.g. "llama-70b"
 
     Returns:
         Dict matching the JSONL output schema.
     """
     if model_key not in LLM_CONFIGS:
         raise ValueError(f"Unknown model {model_key!r}. Choose from: {list(LLM_CONFIGS)}")
-    if condition not in ("codebook", "evidence", "anonymized"):
+    if condition not in ("codebook", "evidence", "anonymized",
+                         "evidence-zeroshot", "anonymized-zeroshot"):
         raise ValueError(f"Unknown condition {condition!r}")
 
     cfg = LLM_CONFIGS[model_key]
@@ -176,9 +177,11 @@ if __name__ == "__main__":
     parser.add_argument("--name", required=True)
     parser.add_argument("--year", type=int, default=2020)
     parser.add_argument("--indicator", required=True)
-    parser.add_argument("--condition", choices=["codebook", "evidence", "anonymized"],
+    parser.add_argument("--condition",
+                        choices=["codebook", "evidence", "anonymized",
+                                 "evidence-zeroshot", "anonymized-zeroshot"],
                         default="evidence")
-    parser.add_argument("--model", default="claude-sonnet", choices=list(LLM_CONFIGS))
+    parser.add_argument("--model", default="llama-70b", choices=list(LLM_CONFIGS))
     args = parser.parse_args()
 
     record = code_country_year(

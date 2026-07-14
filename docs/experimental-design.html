@@ -1,0 +1,872 @@
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml" lang="en" xml:lang="en"><head>
+
+<meta charset="utf-8">
+<meta name="generator" content="quarto-1.7.31">
+
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
+
+
+<title>experimental-design</title>
+<style>
+code{white-space: pre-wrap;}
+span.smallcaps{font-variant: small-caps;}
+div.columns{display: flex; gap: min(4vw, 1.5em);}
+div.column{flex: auto; overflow-x: auto;}
+div.hanging-indent{margin-left: 1.5em; text-indent: -1.5em;}
+ul.task-list{list-style: none;}
+ul.task-list li input[type="checkbox"] {
+  width: 0.8em;
+  margin: 0 0.8em 0.2em -1em; /* quarto-specific, see https://github.com/quarto-dev/quarto-cli/issues/4556 */ 
+  vertical-align: middle;
+}
+</style>
+
+
+<script src="experimental-design_files/libs/clipboard/clipboard.min.js"></script>
+<script src="experimental-design_files/libs/quarto-html/quarto.js" type="module"></script>
+<script src="experimental-design_files/libs/quarto-html/tabsets/tabsets.js" type="module"></script>
+<script src="experimental-design_files/libs/quarto-html/popper.min.js"></script>
+<script src="experimental-design_files/libs/quarto-html/tippy.umd.min.js"></script>
+<script src="experimental-design_files/libs/quarto-html/anchor.min.js"></script>
+<link href="experimental-design_files/libs/quarto-html/tippy.css" rel="stylesheet">
+<link href="experimental-design_files/libs/quarto-html/quarto-syntax-highlighting-e1a5c8363afafaef2c763b6775fbf3ca.css" rel="stylesheet" id="quarto-text-highlighting-styles">
+<script src="experimental-design_files/libs/bootstrap/bootstrap.min.js"></script>
+<link href="experimental-design_files/libs/bootstrap/bootstrap-icons.css" rel="stylesheet">
+<link href="experimental-design_files/libs/bootstrap/bootstrap-81267100e462c21b3d6c0d5bf76a3417.min.css" rel="stylesheet" append-hash="true" id="quarto-bootstrap" data-mode="light">
+
+
+</head>
+
+<body class="fullcontent quarto-light">
+
+<div id="quarto-content" class="page-columns page-rows-contents page-layout-article">
+
+<main class="content" id="quarto-document-content">
+
+
+
+
+<section id="experimental-design" class="level1">
+<h1>Experimental Design</h1>
+<section id="overview" class="level2">
+<h2 class="anchored" data-anchor-id="overview">Overview</h2>
+<p>The experiment addresses a central decomposition question: when large language models code political texts, what information are they actually drawing on — pretrained political knowledge, structured source evidence, or country identity — and how much does each source contribute to calibration quality?</p>
+<p>The design answers this through three prompt conditions that constitute an identification strategy. The codebook-only condition provides no source text, measuring the baseline calibration available from pretraining alone. The evidence condition adds raw section text and few-shot calibration examples, isolating what structured primary source evidence contributes over pretrained knowledge. The anonymized condition strips country-identifying information from both the evidence and the calibration examples, isolating how much country identity, rather than described conditions, drives the ratings. A coverage-tier gradient — the evaluation indicator set spans strong, partial, and weak source coverage — serves as a within-study moderating variable that tests whether calibration quality degrades as source evidence weakens.</p>
+<p>The primary design is a <strong>3 × 5 experiment</strong> (3 prompt conditions × 5 models) run on the full universe of ~205 mapped Type C indicators. The same indicator set is used for all models: using different sets for small vs.&nbsp;large models would confound model scale with indicator difficulty in cross-model comparisons. A proportional stratified sample (one third per module, floor of 2, ~60–70 total, fixed seed) is pre-registered as a computational fallback if 405B inference cannot complete within 3 job submissions; see <code>notes/evaluation-indicator-scope.md</code> for rationale and compute implications. The two fine-tuned variants (FT-raw, trained on non-anonymized evidence; FT-anon, trained on anonymized evidence) are trained on all 206 mapped Type C indicators (~898K coder-CYI training examples from V-Dem v15 2016–2018) and evaluated on the same set as all other models.</p>
+<p>Five robustness analyses all run on 2023 data using the best-performing model from the primary 2019 analysis. Four retest the identification claims: a test-year replication, a few-shot calibration ablation (zero-shot conditions), an information shift test (transition-adjacent vs.&nbsp;stable country-years), and a re-identification test (does residual country-identity leakage drive the anonymization result?). A fifth — the agreement test — compares AI MAE to the average deviation of individual human coders from the same panel mean. Thin-panel augmentation (k=1 addition to panels ≤8 coders) is reported as an exploratory illustration in the appendix.</p>
+</section>
+<section id="part-1-identification-experiment" class="level2">
+<h2 class="anchored" data-anchor-id="part-1-identification-experiment">Part 1: Identification experiment</h2>
+<section id="conditions" class="level3">
+<h3 class="anchored" data-anchor-id="conditions">Conditions</h3>
+<table class="caption-top table">
+<colgroup>
+<col style="width: 25%">
+<col style="width: 25%">
+<col style="width: 25%">
+<col style="width: 25%">
+</colgroup>
+<thead>
+<tr class="header">
+<th>Label</th>
+<th>Prompt content</th>
+<th>Models</th>
+<th>New element</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td>Codebook-only</td>
+<td>Global framing + codebook text</td>
+<td>All</td>
+<td>—</td>
+</tr>
+<tr class="even">
+<td>Evidence</td>
+<td>+ raw section text + calibration examples</td>
+<td>All</td>
+<td>Source evidence + calibration anchors</td>
+</tr>
+<tr class="odd">
+<td>Anonymized</td>
+<td>+ anonymized section text + anonymized calibration examples</td>
+<td>All</td>
+<td>Country-identity stripped</td>
+</tr>
+<tr class="even">
+<td>Evidence, no calibration examples</td>
+<td>+ raw section text only</td>
+<td>Best base model</td>
+<td>Evidence without anchors</td>
+</tr>
+<tr class="odd">
+<td>Anonymized, no calibration examples</td>
+<td>+ anonymized section text only</td>
+<td>Best base model</td>
+<td>Anonymization without anchors</td>
+</tr>
+</tbody>
+</table>
+<p>The first three conditions are additive: Evidence adds source text and calibration examples to Codebook-only; Anonymized strips country identity from both the focal evidence and the calibration examples. Conditions 4 and 5 repeat the evidence and anonymization manipulations without the calibration block, allowing a direct read on how much of the observed improvement comes from the source text versus the few-shot anchors. These two conditions run on the best-performing base model only, on <strong>2023 data</strong>, as part of the robustness section — not the primary 2019 analysis. See the Few-shot calibration ablation section below.</p>
+</section>
+<section id="models" class="level3">
+<h3 class="anchored" data-anchor-id="models">Models</h3>
+<table class="caption-top table">
+<colgroup>
+<col style="width: 25%">
+<col style="width: 25%">
+<col style="width: 25%">
+<col style="width: 25%">
+</colgroup>
+<thead>
+<tr class="header">
+<th>Model</th>
+<th>Scale</th>
+<th>Platform</th>
+<th>Conditions</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td>Llama 405B Instruct*</td>
+<td>405B open</td>
+<td>GW 8×A100 80GB</td>
+<td>Codebook, Evidence, Anonymized</td>
+</tr>
+<tr class="even">
+<td>Llama 3.3 70B Instruct</td>
+<td>70B open</td>
+<td>GW GH200 (preferred) or A100 80GB</td>
+<td>Codebook, Evidence, Anonymized</td>
+</tr>
+<tr class="odd">
+<td>Llama 3.2 9B Instruct</td>
+<td>9B open</td>
+<td>GW GH200 or V100 16GB</td>
+<td>Codebook, Evidence, Anonymized</td>
+</tr>
+<tr class="even">
+<td>Llama 3.3 70B (FT-raw)</td>
+<td>70B ft</td>
+<td>GW GH200 (preferred) or A100 80GB</td>
+<td>All 3 conditions; no calibration block; trained on raw evidence</td>
+</tr>
+<tr class="odd">
+<td>Llama 3.3 70B (FT-anon)</td>
+<td>70B ft</td>
+<td>GW GH200 (preferred) or A100 80GB</td>
+<td>All 3 conditions; no calibration block; trained on anonymized evidence</td>
+</tr>
+</tbody>
+</table>
+<p><strong>*405B availability</strong>: Llama 405B requires 8×A100 80GB GPUs and approximately 810 GB of scratch storage. Its inclusion in the design is contingent on securing sufficient allocation on GW Pegasus. If the 405B runs cannot be completed within 3 job submissions, the primary comparison falls back to a four-model design (70B, 9B, FT-raw, FT-anon). The fallback criterion is fixed at pre-registration; see the checklist below.</p>
+<p>Both fine-tuned variants participate in all three primary conditions with the same codebook, evidence, and anonymization structure as the base models, but without a calibration block — calibration is embedded in the adapter weights rather than supplied via examples in the prompt. <strong>FT-raw</strong> is trained on non-anonymized evidence text; <strong>FT-anon</strong> on anonymized evidence text. Both are trained on all 206 mapped Type C indicators from 2016–2018 (~898K coder-CYI training examples each). The key comparisons: FT-raw vs.&nbsp;base 70B isolates what fine-tuning adds over few-shot calibration; FT-anon vs.&nbsp;FT-raw shows whether anonymization during training changes calibration independently of the anonymization manipulation at inference.</p>
+</section>
+<section id="country-year-pool-calibration" class="level3">
+<h3 class="anchored" data-anchor-id="country-year-pool-calibration">Country-year pool (calibration)</h3>
+<p>Primary: <strong>2019</strong> (~150–170 country-year-indicator cells per indicator with v15 raw panel means). 2019 is the clean one-year temporal holdout after the fine-tuning training window (2016–2018) with full panels and no exogenous anomalies. 2020 is avoided as a primary test year: COVID-19 emergency restrictions systematically distort civil society, judicial, and media indicators, making the human panel mean itself a noisier target.</p>
+<p>Robustness check: <strong>2023</strong> — best-performing model only. Falls outside the 2016–2018 training window; the last year of intact SD and Freedom House reporting before the 2024 format restructuring. Source documents already ingested and confirmed clean. Panel sizes by 2023 are smaller on average due to continued post-2013 attrition, making this a harder test of the replacement scenario.</p>
+</section>
+<section id="outcome" class="level3">
+<h3 class="anchored" data-anchor-id="outcome">Outcome</h3>
+<p><strong>AI MAE</strong>: <code>|AI_rating − panel_mean|</code> per CYI, bootstrapped at the CYI level (B=500). This is the primary metric for both the identification claims (comparing AI MAE across prompt conditions) and the substitution check in the robustness section (comparing AI MAE against the average human coder’s deviation from the same panel mean). Because the panel mean is a fixed reference shared by all models, the model with the lowest AI MAE is also the model that performs best on the substitution check.</p>
+<p>Primary display is a <strong>coefficient plot</strong> (Figure 1): rows = condition × model combinations, x-axis = aggregate AI MAE. The identification claims are reported as a <strong>delta coefficient plot</strong> (Figure 2): three panels showing Δ(Evidence − Codebook), Δ(Anonymized − Codebook), and Δ(Anonymized − Evidence), with rows = models and a reference line at 0. Negative values indicate the added element improved calibration. Δ(Anonymized − Codebook) is the primary identification result: it shows that the information gain from source evidence holds even when country identity is stripped, ruling out anchoring bias as the source of apparent calibration. Δ(Anonymized − Evidence) shows the additional gain from removing country identity from text that already provides source evidence.</p>
+<p>Supplementary display: a module-level summary table (indicators grouped by V-Dem module, coverage tier noted) reporting condition × model AI MAE. Secondary: signed deviation by democracy quintile.</p>
+</section>
+<section id="significance-of-each-comparison" class="level3">
+<h3 class="anchored" data-anchor-id="significance-of-each-comparison">Significance of each comparison</h3>
+<table class="caption-top table">
+<colgroup>
+<col style="width: 50%">
+<col style="width: 50%">
+</colgroup>
+<thead>
+<tr class="header">
+<th>Comparison</th>
+<th>Isolates</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td>Codebook vs.&nbsp;Evidence (same model)</td>
+<td>Combined value of source evidence and calibration examples</td>
+</tr>
+<tr class="even">
+<td>Codebook vs.&nbsp;Anonymized (same model)</td>
+<td>Combined value of anonymized evidence and calibration examples</td>
+</tr>
+<tr class="odd">
+<td>Evidence vs.&nbsp;Anonymized (same model)</td>
+<td>Marginal cost of exposing country identity in the evidence</td>
+</tr>
+<tr class="even">
+<td>Evidence vs.&nbsp;Evidence, no calibration examples (best base model)</td>
+<td>Marginal value of the few-shot calibration block</td>
+</tr>
+<tr class="odd">
+<td>Anonymized vs.&nbsp;Anonymized, no calibration examples (best base model)</td>
+<td>Marginal value of calibration examples under anonymization</td>
+</tr>
+<tr class="even">
+<td>Anonymized (70B base) vs.&nbsp;Fine-tuned 70B</td>
+<td>Marginal value of embedding calibration in model weights vs.&nbsp;prompt</td>
+</tr>
+<tr class="odd">
+<td>Models (same condition)</td>
+<td>Scale effects on calibration</td>
+</tr>
+<tr class="even">
+<td>Quintile signed deviation</td>
+<td>Regime-type anchoring bias</td>
+</tr>
+</tbody>
+</table>
+</section>
+</section>
+<section id="part-2-robustness-and-validation-analyses" class="level2">
+<h2 class="anchored" data-anchor-id="part-2-robustness-and-validation-analyses">Part 2: Robustness and validation analyses</h2>
+<p>All five analyses run on 2023 data using the best-performing model from the primary 2019 analysis.</p>
+<section id="identification-robustness" class="level3">
+<h3 class="anchored" data-anchor-id="identification-robustness">Identification robustness</h3>
+<p>These four analyses retest the paper’s identification claims on the 2023 holdout.</p>
+</section>
+<section id="test-year-replication-2023" class="level3">
+<h3 class="anchored" data-anchor-id="test-year-replication-2023">Test-year replication (2023)</h3>
+<p>The winning model from the primary analysis is re-run on 2023 data under all three primary conditions. The delta estimates from Figure 2 — Δ(Evidence − Codebook), Δ(Anonymized − Codebook), and Δ(Anonymized − Evidence) — are recomputed for 2023 and compared to the 2019 estimates. If the identification results replicate in direction and magnitude, the decomposition generalizes beyond the primary test year. Source documents for 2023 are already ingested and confirmed clean (issue #14, closed 2026-07-12).</p>
+</section>
+<section id="few-shot-calibration-ablation-2023" class="level3">
+<h3 class="anchored" data-anchor-id="few-shot-calibration-ablation-2023">Few-shot calibration ablation (2023)</h3>
+<p>The evidence and anonymized conditions both include a few-shot calibration block — five examples spanning the 0–4 scale — alongside the source evidence. This ablation isolates what those examples contribute over the source evidence alone.</p>
+<p>The best-performing base model from the primary 3×5 analysis is re-run on <strong>2023 data</strong> under two additional conditions: evidence without calibration examples and anonymized text without calibration examples. Source documents for 2023 are already ingested and confirmed clean, so no additional ingestion is required.</p>
+<table class="caption-top table">
+<colgroup>
+<col style="width: 50%">
+<col style="width: 50%">
+</colgroup>
+<thead>
+<tr class="header">
+<th>Comparison</th>
+<th>What it isolates</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td>Evidence (zero-shot) vs.&nbsp;Codebook-only</td>
+<td>Model reads the text even without calibration anchors</td>
+</tr>
+<tr class="even">
+<td>Evidence (few-shot) vs.&nbsp;Evidence (zero-shot)</td>
+<td>Marginal contribution of calibration examples given named evidence</td>
+</tr>
+<tr class="odd">
+<td>Anonymized (zero-shot) vs.&nbsp;Codebook-only</td>
+<td>Text still helps without country identity or calibration anchors</td>
+</tr>
+<tr class="even">
+<td>Anonymized (few-shot) vs.&nbsp;Anonymized (zero-shot)</td>
+<td>Marginal contribution of calibration examples when country identity is also stripped</td>
+</tr>
+</tbody>
+</table>
+<p>The key prediction follows from the anchoring mechanism: in the evidence condition the model has two scale anchors — the few-shot examples and country-identity priors activated by the named country. In the anonymized condition, country identity is stripped, so the model relies more heavily on the calibration examples to map described conditions onto the 0–4 scale. The predicted signature is that the gap between few-shot and zero-shot performance is <strong>larger under anonymization than under raw evidence</strong> — removing the country-identity anchor raises the value of the calibration examples. See hypothesis 7.</p>
+<p><strong>Figure</strong>: coefficient plot with two panels — Δ(few-shot − zero-shot) for the evidence condition (Panel A) and the anonymized condition (Panel B) — each showing bootstrapped CIs around the AI MAE difference. Reference line at 0; negative values indicate few-shot improves on zero-shot.</p>
+</section>
+<section id="information-shift-test-2023" class="level3">
+<h3 class="anchored" data-anchor-id="information-shift-test-2023">Information shift test (2023)</h3>
+<p>The identification design rests on the claim that the model reads and uses the provided evidence rather than drawing on stored knowledge of the country. The stiffest test of this is country-years where political conditions changed substantially: if the model is genuinely reading the text, it should update more in response to evidence precisely where that evidence carries new information — that is, where the country’s political situation differs from what pretraining would lead the model to expect.</p>
+<p>Country-years in the 2023 evaluation pool are tagged as transition-adjacent using the V-Dem Episodes of Regime Transformation (ERT) dataset (onset or peak year flag). The continuous moderator is |Δv2x_polyarchy| from year t−1 to t. AI MAE is computed separately for transition-adjacent and stable country-years under each condition. The pre-registered hypothesis: Δ(Evidence − Codebook) is more negative — that is, the gain from adding evidence is larger — in transition-adjacent country-years than in stable ones.</p>
+<p><strong>Figure</strong>: Coefficient plot with two panels — Δ(Evidence − Codebook) and Δ(Anonymized − Codebook) — each showing three dots with bootstrapped CIs: all country-years, stable, and transition-adjacent. Reference line at 0.</p>
+</section>
+<section id="re-identification-test" class="level3">
+<h3 class="anchored" data-anchor-id="re-identification-test">Re-identification test</h3>
+<p>The anonymization condition assumes that stripping country names, named institutions, and recognizable events removes enough identifying information to prevent the coding model from anchoring on prior beliefs about the country. This assumption is tested directly.</p>
+<p>After each anonymized coding call in the 2023 run, a follow-up message is sent with the full conversation as context: <em>“Based only on the political conditions described in the text you just reviewed, what are your top three guesses for which country this describes? List them in order of confidence and briefly note the cue that led to each.”</em> The rating from the first call is already locked before the follow-up is sent, so the identification prompt cannot contaminate the rating.</p>
+<p>Re-identification has been shown to succeed at surprisingly high rates even in formally anonymized text, as language models can reconstruct country identity from indirect cues — institutional descriptions, event sequences, and geographic references — that rule-based anonymization does not remove. The purpose here is both to characterize how often this occurs and to test whether residual leakage is driving the compression signature observed in the main results.</p>
+<p><strong>Metrics</strong>: top-1 accuracy (first guess correct) and top-3 accuracy (correct country appears in any of the three guesses), bootstrapped at the CYI level (B=500). The primary diagnostic is the signed deviation (AI rating − panel mean) for correctly re-identified versus non-re-identified cases. If correctly re-identified cases show larger directional bias — rated too high for autocracies, too low for democracies — this confirms that residual country-identity leakage in the anonymized text is the mechanism behind any remaining compression.</p>
+<p><strong>Figures</strong>: - <em>Accuracy</em>: coefficient plot, rows = regime type (Panel A) and region (Panel B), x-axis = re-identification accuracy, vertical reference line at overall accuracy. - <em>Signed deviation</em>: same two-panel structure, x-axis = mean signed deviation by re-identified vs.&nbsp;not, reference line at 0.</p>
+</section>
+<section id="applied-performance" class="level3">
+<h3 class="anchored" data-anchor-id="applied-performance">Applied performance</h3>
+</section>
+<section id="agreement-test-2023" class="level3">
+<h3 class="anchored" data-anchor-id="agreement-test-2023">Agreement test (2023)</h3>
+<p>The best-performing model from the primary 2019 analysis is evaluated on 2023 data by comparing its AI MAE against the human panel MAE — the average deviation of individual human coders from the same panel mean. Both are computed against the full panel mean for each CYI. If AI MAE is at or below the human panel MAE, the AI deviates from the panel consensus by no more than a typical human coder. This is reported for all three primary conditions to show whether the result holds across the full prompt design, not only under the best condition.</p>
+</section>
+</section>
+<section id="part-3-exploratory-and-sensitivity-analyses" class="level2">
+<h2 class="anchored" data-anchor-id="part-3-exploratory-and-sensitivity-analyses">Part 3: Exploratory and sensitivity analyses</h2>
+<section id="thin-panel-augmentation-exploratory-appendix" class="level3">
+<h3 class="anchored" data-anchor-id="thin-panel-augmentation-exploratory-appendix">Thin-panel augmentation (exploratory / appendix)</h3>
+<p>For each country-year in the 2023 evaluation pool with ≤8 distinct coders, add one AI rating from the best-calibrated model and compare the AI-augmented panel mean to the human-only panel mean.</p>
+<pre><code>divergence = |mean(human_panel + AI_rating) − mean(human_panel)|</code></pre>
+<p>Bootstrap across country-years (B=500). Report mean divergence with 95% CI. 2023 is the natural year for this test: panel sizes have thinned substantially relative to 2019 due to continued post-2013 attrition, making thin panels the norm rather than the exception. k=1 is the only registered scenario. Reported as an applied illustration; motivates the substitution experiment in <code>notes/substitution-experiment-future-paper.md</code>.</p>
+</section>
+<section id="coverage-tier-moderation-and-evidence-transfer-exploratory-appendix" class="level3">
+<h3 class="anchored" data-anchor-id="coverage-tier-moderation-and-evidence-transfer-exploratory-appendix">Coverage-tier moderation and evidence transfer (exploratory / appendix)</h3>
+<p>The full evaluation set spans three source-coverage tiers (strong, partial, weak). A pre-registered question (hypothesis 6) is whether AI MAE is higher for weak-coverage indicators than for strong-coverage ones. A sharper unregistered question sits inside it: for indicators with no directly relevant section in either source document, does the evidence packet provide <em>any</em> calibration benefit over codebook-only, or is source text only useful when it directly addresses the indicator?</p>
+<p>Of the 206 indicators in <code>config/indicator_sections.yaml</code>: - <strong>3 indicators</strong> have no section mapping in either source (<code>v2dlcommon</code>, <code>v2dlcountr</code>, <code>v2exl_legitlead</code>) — they receive the executive summary alone as their evidence packet. - <strong>26 indicators</strong> have no State Dept section but do have a Freedom House section — they receive FH text plus the SD executive summary. - The remaining indicators have at least one direct section in each source.</p>
+<p>The question is whether Δ(Evidence − Codebook) &lt; 0 for the no-direct-section group. If the executive summary alone (general political context, not indicator-specific text) still reduces deviation from the panel mean, the model is transferring general political knowledge encoded in the source document to a specific coding task — a form of cross-indicator transfer. If the gap is near zero or positive, the evidence benefit requires direct section relevance and does not generalize to unmapped indicators.</p>
+<p>This is unregistered and exploratory: it runs on the same output already generated for the main analysis, requires no additional inference, and is reported as a post-hoc decomposition of the coverage-tier gradient rather than a primary finding.</p>
+<p><strong>Analysis</strong>: compute Δ(Evidence − Codebook) AI MAE separately for three groups — no-section indicators (exec summary only), single-source indicators (FH only), and dual-source indicators (both SD and FH sections). Compare group means with bootstrapped CIs. <strong>Figure</strong>: coefficient plot with three rows (one per mapping tier), x-axis = Δ(Evidence − Codebook), reference line at 0.</p>
+</section>
+<section id="persona-variation-and-temperature-sensitivity-feasibility-checks-for-future-work" class="level3">
+<h3 class="anchored" data-anchor-id="persona-variation-and-temperature-sensitivity-feasibility-checks-for-future-work">Persona variation and temperature sensitivity (feasibility checks for future work)</h3>
+<p>These are not registered analyses for the current paper. Persona variation (strict vs. lenient framing) and temperature sampling (draws at temperature &gt; 0) are run as post-hoc illustrations after the main results are in. Their purpose is to establish whether the AI produces meaningfully distinct ratings under different framings — a prerequisite for the substitution experiment planned as a follow-on paper (see <code>notes/substitution-experiment-future-paper.md</code>). Results are reported as supplementary diagnostics, not findings of the current paper.</p>
+</section>
+</section>
+<section id="outcome-variables" class="level2">
+<h2 class="anchored" data-anchor-id="outcome-variables">Outcome variables</h2>
+<table class="caption-top table">
+<colgroup>
+<col style="width: 33%">
+<col style="width: 33%">
+<col style="width: 33%">
+</colgroup>
+<thead>
+<tr class="header">
+<th>Variable</th>
+<th>Definition</th>
+<th>Role</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td>AI MAE</td>
+<td><code>mean(\|AI_rating − panel_mean\|)</code> per CYI, bootstrap CIs</td>
+<td>Calibration primary</td>
+</tr>
+<tr class="even">
+<td>Human panel MAE</td>
+<td><code>mean(\|rating_i − panel_mean\|)</code> averaged across coders per CYI</td>
+<td>Substitution benchmark (robustness)</td>
+</tr>
+<tr class="odd">
+<td>Δ(Evidence − Codebook) MAE</td>
+<td><code>AI MAE_evidence − AI MAE_codebook</code>, per model, bootstrap CIs</td>
+<td>Identification claim 1: value of source evidence</td>
+</tr>
+<tr class="even">
+<td>Δ(Anonymized − Codebook) MAE</td>
+<td><code>AI MAE_anon − AI MAE_codebook</code>, per model, bootstrap CIs</td>
+<td>Identification claim 2: clean information gain free of country-identity anchoring</td>
+</tr>
+<tr class="odd">
+<td>Δ(Anonymized − Evidence) MAE</td>
+<td><code>AI MAE_anon − AI MAE_evidence</code>, per model, bootstrap CIs</td>
+<td>Identification claim 3: cost of exposing country identity</td>
+</tr>
+<tr class="even">
+<td>Exact match rate</td>
+<td><code>% (AI_rating == round(panel_mean))</code></td>
+<td>Calibration secondary</td>
+</tr>
+<tr class="odd">
+<td>Adjacent agreement</td>
+<td><code>% (\|AI_rating − round(panel_mean)\| ≤ 1)</code></td>
+<td>Calibration secondary</td>
+</tr>
+<tr class="even">
+<td>Signed deviation by quintile</td>
+<td><code>mean(AI_rating − panel_mean)</code> by v2x_polyarchy quintile</td>
+<td>Compression diagnostic</td>
+</tr>
+<tr class="odd">
+<td>Top-1 re-identification accuracy</td>
+<td><code>% (first country guess == true country)</code>, bootstrap CIs, by regime type and region</td>
+<td>Anonymization integrity</td>
+</tr>
+<tr class="even">
+<td>Top-3 re-identification accuracy</td>
+<td><code>% (true country in top 3 guesses)</code>, bootstrap CIs, by regime type and region</td>
+<td>Anonymization integrity</td>
+</tr>
+<tr class="odd">
+<td>Signed deviation by re-identification</td>
+<td><code>mean(AI_rating − panel_mean)</code> for re-identified vs.&nbsp;not, by regime type</td>
+<td>Anchoring mechanism test</td>
+</tr>
+<tr class="even">
+<td>divergence_k</td>
+<td><code>\|mean_aug_k − mean_full\|</code></td>
+<td>Replacement check</td>
+</tr>
+<tr class="odd">
+<td>Augmentation gain</td>
+<td><code>\|mean_aug_k − mean_ref\| &lt; \|mean_thin − mean_ref\|</code>?</td>
+<td>Panel augmentation</td>
+</tr>
+</tbody>
+</table>
+<p>AI MAE against the raw panel mean is the primary metric. Bootstrap resampling at the CYI level (B=500) yields confidence intervals and a paired significance test for each delta metric. The human panel MAE — the average deviation of individual human coders from the same panel mean — serves as the substitution benchmark in the robustness section; because the panel mean is a fixed reference, model selection on AI MAE is equivalent to selection on the substitution criterion. Formal paired difference tests are reported in the appendix; the main figures communicate the same comparisons visually. Supplementary display: a module-level summary table (indicators grouped by V-Dem module, coverage tier noted) reporting AI MAE by condition and model. See <code>notes/evaluation-metrics.md</code> for full rationale.</p>
+</section>
+<section id="indicators" class="level2">
+<h2 class="anchored" data-anchor-id="indicators">Indicators</h2>
+<section id="training-set-206-indicators" class="level3">
+<h3 class="anchored" data-anchor-id="training-set-206-indicators">Training set (206 indicators)</h3>
+<p>All mapped Type C indicators from V-Dem v15, 2016–2018 — all coverage tiers included. Full list: <code>initial-exploration/explore-indicators/02-indicator-selection.html</code>.</p>
+</section>
+<section id="evaluation-set-205-indicators" class="level3">
+<h3 class="anchored" data-anchor-id="evaluation-set-205-indicators">Evaluation set (~205 indicators)</h3>
+<p>The full universe of all mapped Type C indicators in <code>config/indicator_sections.yaml</code> (~205 total). Same set for all models — a prerequisite for clean cross-model comparison (different indicator sets for different models would confound model scale with indicator difficulty). Spans all three coverage tiers, preserving the tier-gradient as a within-study moderating variable. Section mapping complete per issue #1 (closed 2026-07-11). Few-shot examples locked when <code>data/fewshot_examples.json</code> is populated (issue #8).</p>
+<p><strong>Pre-registered fallback</strong>: if 405B inference cannot complete within 3 job submissions (the binding HPC constraint — only 2 eight-A100 nodes cluster-wide), the evaluation set falls back to a proportional stratified random sample: one third of each module’s indicators, rounded to the nearest integer, with a floor of 2 per module (~60–70 total). The floor prevents small modules (e.g., Sovereignty with 3 indicators, Executive legitimation with 4) from being underrepresented. The sampling rule, random seed, and trigger condition are all fixed at pre-registration, before any inference runs. See <code>notes/evaluation-indicator-scope.md</code> for the full rationale and per-model compute comparison.</p>
+<p>Expect AI MAE to vary with observability tier and coverage tier. Report calibration results by both dimensions.</p>
+</section>
+</section>
+<section id="pre-registration" class="level2">
+<h2 class="anchored" data-anchor-id="pre-registration">Pre-registration</h2>
+<p>The following hypotheses, sample decisions, and analysis choices are locked before any LLM calls are made or v15 coder-level data is accessed for the evaluation pool. Model weights, fine-tuning hyperparameters, and adapter checkpoint identifiers are recorded in the replication package rather than here.</p>
+<section id="hypotheses" class="level3">
+<h3 class="anchored" data-anchor-id="hypotheses">Hypotheses</h3>
+<p>The three identification comparisons yield directional predictions:</p>
+<ol type="1">
+<li><p><strong>Evidence improves on codebook-only</strong> (Δ(Evidence − Codebook) &lt; 0): providing source text and calibration examples reduces deviation from the human panel mean relative to codebook text alone.</p></li>
+<li><p><strong>Anonymization improves on raw evidence</strong> (Δ(Anonymized − Evidence) &lt; 0): stripping country identity from both the evidence and calibration examples reduces deviation further, reflecting the cost of named-entity anchoring in the evidence condition.</p></li>
+<li><p><strong>Clean information gain is independent of anchoring</strong> (Δ(Anonymized − Codebook) &lt; 0): the gain from anonymized evidence over codebook-only holds even without country identity, establishing that the model is reading and using the source text rather than relying on pretrained knowledge of the country.</p></li>
+<li><p><strong>Evidence matters more in transition years</strong>: Δ(Evidence − Codebook) is more negative for country-years tagged as transition-adjacent (ERT onset or peak year) than for stable country-years, reflecting that source evidence contributes most when stored knowledge of the country is most outdated.</p></li>
+<li><p><strong>Re-identification predicts bias</strong>: in the anonymized condition, cases where the model correctly identifies the country show larger directional deviation from the panel mean — positive for autocracies, negative for democracies — consistent with anchoring on a known country prior.</p></li>
+<li><p><strong>Calibration degrades with weaker source coverage</strong>: AI MAE is higher for weak-coverage indicators than for strong-coverage indicators, across all conditions and models.</p></li>
+<li><p><strong>Few-shot calibration contributes more under anonymization than under raw evidence</strong>: the improvement from adding calibration examples — Δ(few-shot − zero-shot) AI MAE — is larger in the anonymized condition than in the evidence condition. When country identity is present in the evidence, the model can use country-identity priors as a secondary scale anchor, reducing its dependence on the few-shot examples. When country identity is stripped, that anchor is gone and the calibration examples carry more weight. The predicted signature is a larger few-shot gap under anonymization than under raw evidence.</p></li>
+</ol>
+</section>
+<section id="evaluation-sample" class="level3">
+<h3 class="anchored" data-anchor-id="evaluation-sample">Evaluation sample</h3>
+<ul>
+<li><strong>Primary year</strong>: 2019. All country-year-indicator cells with a raw panel mean in V-Dem v15 and a processed source document in both State Department and Freedom House archives.</li>
+<li><strong>Minimum coders</strong>: [ ] to be confirmed before running.</li>
+<li><strong>Robustness year</strong>: 2023, best-performing model only. Source documents confirmed clean (issue #14, closed 2026-07-12).</li>
+<li><strong>k=1 replacement pool</strong>: country-years in the 2019 evaluation pool with ≥8 distinct coders. No sampling cap.</li>
+</ul>
+</section>
+<section id="primary-outcomes" class="level3">
+<h3 class="anchored" data-anchor-id="primary-outcomes">Primary outcomes</h3>
+<p>AI MAE against the raw panel mean is the primary metric throughout. The three delta metrics — Δ(Evidence − Codebook), Δ(Anonymized − Codebook), Δ(Anonymized − Evidence) — are the direct tests of hypotheses 1–3. All are bootstrapped at the CYI level (B=500, CI = 2.5–97.5%). Signed deviation by v2x_polyarchy quintile is the compression diagnostic. Exact match rate and adjacent agreement are secondary calibration summaries.</p>
+</section>
+<section id="modeling-choices-locked-before-running" class="level3">
+<h3 class="anchored" data-anchor-id="modeling-choices-locked-before-running">Modeling choices locked before running</h3>
+<ul>
+<li><strong>Fine-tuning window</strong>: 2016–2018. Rationale: source documents reliably available from 2016; no overlap with 2019 test year or 2023 robustness year; captures the post-Arab Spring democratic backsliding period.</li>
+<li><strong>No-calibration-example conditions</strong>: run only after the best-performing base model is identified from the primary 3×5 results, on 2023 data as part of the robustness section. Uses the identical prompt structure as conditions 2 and 3 minus the calibration block. Not part of the primary 2019 analysis.</li>
+<li><strong>Anonymization</strong>: system prompt for the anonymization agent locked before any anonymized condition runs; applied identically to focal evidence and calibration examples.</li>
+<li><strong>405B fallback</strong>: if Llama 405B cannot complete inference within 3 job submissions, the primary comparison falls back to a four-model design (70B, 9B, FT-raw, FT-anon). Trigger criterion is fixed here, before any inference runs.</li>
+<li><label><input type="checkbox">Indicator fallback seed: fixed random seed for the proportional stratified sample (~60–70 indicators) recorded before any inference runs.</label></li>
+<li><label><input type="checkbox">Divergence threshold for the k=1 replacement check: value and justification (in rating points on the 0–4 scale) confirmed before running.</label></li>
+</ul>
+</section>
+<section id="robustness-analyses-locked-before-running" class="level3">
+<h3 class="anchored" data-anchor-id="robustness-analyses-locked-before-running">Robustness analyses locked before running</h3>
+<ul>
+<li><strong>Information shift</strong>: ERT onset/peak year flag is the primary transition-adjacent indicator; |Δv2x_polyarchy| is the continuous moderator. Threshold for the continuous moderator fixed before running. Applied to 2023 data.</li>
+<li><strong>Re-identification</strong>: follow-up prompt text locked before the 2023 anonymized condition runs. Top-1 accuracy: first guess matches true country. Top-3 accuracy: true country appears in any of the three guesses. Signed deviation by re-identification status is pre-specified as the primary mechanism test (hypothesis 5).</li>
+</ul>
+</section>
+</section>
+</section>
+
+</main>
+<!-- /main column -->
+<script id="quarto-html-after-body" type="application/javascript">
+  window.document.addEventListener("DOMContentLoaded", function (event) {
+    const icon = "";
+    const anchorJS = new window.AnchorJS();
+    anchorJS.options = {
+      placement: 'right',
+      icon: icon
+    };
+    anchorJS.add('.anchored');
+    const isCodeAnnotation = (el) => {
+      for (const clz of el.classList) {
+        if (clz.startsWith('code-annotation-')) {                     
+          return true;
+        }
+      }
+      return false;
+    }
+    const onCopySuccess = function(e) {
+      // button target
+      const button = e.trigger;
+      // don't keep focus
+      button.blur();
+      // flash "checked"
+      button.classList.add('code-copy-button-checked');
+      var currentTitle = button.getAttribute("title");
+      button.setAttribute("title", "Copied!");
+      let tooltip;
+      if (window.bootstrap) {
+        button.setAttribute("data-bs-toggle", "tooltip");
+        button.setAttribute("data-bs-placement", "left");
+        button.setAttribute("data-bs-title", "Copied!");
+        tooltip = new bootstrap.Tooltip(button, 
+          { trigger: "manual", 
+            customClass: "code-copy-button-tooltip",
+            offset: [0, -8]});
+        tooltip.show();    
+      }
+      setTimeout(function() {
+        if (tooltip) {
+          tooltip.hide();
+          button.removeAttribute("data-bs-title");
+          button.removeAttribute("data-bs-toggle");
+          button.removeAttribute("data-bs-placement");
+        }
+        button.setAttribute("title", currentTitle);
+        button.classList.remove('code-copy-button-checked');
+      }, 1000);
+      // clear code selection
+      e.clearSelection();
+    }
+    const getTextToCopy = function(trigger) {
+        const codeEl = trigger.previousElementSibling.cloneNode(true);
+        for (const childEl of codeEl.children) {
+          if (isCodeAnnotation(childEl)) {
+            childEl.remove();
+          }
+        }
+        return codeEl.innerText;
+    }
+    const clipboard = new window.ClipboardJS('.code-copy-button:not([data-in-quarto-modal])', {
+      text: getTextToCopy
+    });
+    clipboard.on('success', onCopySuccess);
+    if (window.document.getElementById('quarto-embedded-source-code-modal')) {
+      const clipboardModal = new window.ClipboardJS('.code-copy-button[data-in-quarto-modal]', {
+        text: getTextToCopy,
+        container: window.document.getElementById('quarto-embedded-source-code-modal')
+      });
+      clipboardModal.on('success', onCopySuccess);
+    }
+      var localhostRegex = new RegExp(/^(?:http|https):\/\/localhost\:?[0-9]*\//);
+      var mailtoRegex = new RegExp(/^mailto:/);
+        var filterRegex = new RegExp('/' + window.location.host + '/');
+      var isInternal = (href) => {
+          return filterRegex.test(href) || localhostRegex.test(href) || mailtoRegex.test(href);
+      }
+      // Inspect non-navigation links and adorn them if external
+     var links = window.document.querySelectorAll('a[href]:not(.nav-link):not(.navbar-brand):not(.toc-action):not(.sidebar-link):not(.sidebar-item-toggle):not(.pagination-link):not(.no-external):not([aria-hidden]):not(.dropdown-item):not(.quarto-navigation-tool):not(.about-link)');
+      for (var i=0; i<links.length; i++) {
+        const link = links[i];
+        if (!isInternal(link.href)) {
+          // undo the damage that might have been done by quarto-nav.js in the case of
+          // links that we want to consider external
+          if (link.dataset.originalHref !== undefined) {
+            link.href = link.dataset.originalHref;
+          }
+        }
+      }
+    function tippyHover(el, contentFn, onTriggerFn, onUntriggerFn) {
+      const config = {
+        allowHTML: true,
+        maxWidth: 500,
+        delay: 100,
+        arrow: false,
+        appendTo: function(el) {
+            return el.parentElement;
+        },
+        interactive: true,
+        interactiveBorder: 10,
+        theme: 'quarto',
+        placement: 'bottom-start',
+      };
+      if (contentFn) {
+        config.content = contentFn;
+      }
+      if (onTriggerFn) {
+        config.onTrigger = onTriggerFn;
+      }
+      if (onUntriggerFn) {
+        config.onUntrigger = onUntriggerFn;
+      }
+      window.tippy(el, config); 
+    }
+    const noterefs = window.document.querySelectorAll('a[role="doc-noteref"]');
+    for (var i=0; i<noterefs.length; i++) {
+      const ref = noterefs[i];
+      tippyHover(ref, function() {
+        // use id or data attribute instead here
+        let href = ref.getAttribute('data-footnote-href') || ref.getAttribute('href');
+        try { href = new URL(href).hash; } catch {}
+        const id = href.replace(/^#\/?/, "");
+        const note = window.document.getElementById(id);
+        if (note) {
+          return note.innerHTML;
+        } else {
+          return "";
+        }
+      });
+    }
+    const xrefs = window.document.querySelectorAll('a.quarto-xref');
+    const processXRef = (id, note) => {
+      // Strip column container classes
+      const stripColumnClz = (el) => {
+        el.classList.remove("page-full", "page-columns");
+        if (el.children) {
+          for (const child of el.children) {
+            stripColumnClz(child);
+          }
+        }
+      }
+      stripColumnClz(note)
+      if (id === null || id.startsWith('sec-')) {
+        // Special case sections, only their first couple elements
+        const container = document.createElement("div");
+        if (note.children && note.children.length > 2) {
+          container.appendChild(note.children[0].cloneNode(true));
+          for (let i = 1; i < note.children.length; i++) {
+            const child = note.children[i];
+            if (child.tagName === "P" && child.innerText === "") {
+              continue;
+            } else {
+              container.appendChild(child.cloneNode(true));
+              break;
+            }
+          }
+          if (window.Quarto?.typesetMath) {
+            window.Quarto.typesetMath(container);
+          }
+          return container.innerHTML
+        } else {
+          if (window.Quarto?.typesetMath) {
+            window.Quarto.typesetMath(note);
+          }
+          return note.innerHTML;
+        }
+      } else {
+        // Remove any anchor links if they are present
+        const anchorLink = note.querySelector('a.anchorjs-link');
+        if (anchorLink) {
+          anchorLink.remove();
+        }
+        if (window.Quarto?.typesetMath) {
+          window.Quarto.typesetMath(note);
+        }
+        if (note.classList.contains("callout")) {
+          return note.outerHTML;
+        } else {
+          return note.innerHTML;
+        }
+      }
+    }
+    for (var i=0; i<xrefs.length; i++) {
+      const xref = xrefs[i];
+      tippyHover(xref, undefined, function(instance) {
+        instance.disable();
+        let url = xref.getAttribute('href');
+        let hash = undefined; 
+        if (url.startsWith('#')) {
+          hash = url;
+        } else {
+          try { hash = new URL(url).hash; } catch {}
+        }
+        if (hash) {
+          const id = hash.replace(/^#\/?/, "");
+          const note = window.document.getElementById(id);
+          if (note !== null) {
+            try {
+              const html = processXRef(id, note.cloneNode(true));
+              instance.setContent(html);
+            } finally {
+              instance.enable();
+              instance.show();
+            }
+          } else {
+            // See if we can fetch this
+            fetch(url.split('#')[0])
+            .then(res => res.text())
+            .then(html => {
+              const parser = new DOMParser();
+              const htmlDoc = parser.parseFromString(html, "text/html");
+              const note = htmlDoc.getElementById(id);
+              if (note !== null) {
+                const html = processXRef(id, note);
+                instance.setContent(html);
+              } 
+            }).finally(() => {
+              instance.enable();
+              instance.show();
+            });
+          }
+        } else {
+          // See if we can fetch a full url (with no hash to target)
+          // This is a special case and we should probably do some content thinning / targeting
+          fetch(url)
+          .then(res => res.text())
+          .then(html => {
+            const parser = new DOMParser();
+            const htmlDoc = parser.parseFromString(html, "text/html");
+            const note = htmlDoc.querySelector('main.content');
+            if (note !== null) {
+              // This should only happen for chapter cross references
+              // (since there is no id in the URL)
+              // remove the first header
+              if (note.children.length > 0 && note.children[0].tagName === "HEADER") {
+                note.children[0].remove();
+              }
+              const html = processXRef(null, note);
+              instance.setContent(html);
+            } 
+          }).finally(() => {
+            instance.enable();
+            instance.show();
+          });
+        }
+      }, function(instance) {
+      });
+    }
+        let selectedAnnoteEl;
+        const selectorForAnnotation = ( cell, annotation) => {
+          let cellAttr = 'data-code-cell="' + cell + '"';
+          let lineAttr = 'data-code-annotation="' +  annotation + '"';
+          const selector = 'span[' + cellAttr + '][' + lineAttr + ']';
+          return selector;
+        }
+        const selectCodeLines = (annoteEl) => {
+          const doc = window.document;
+          const targetCell = annoteEl.getAttribute("data-target-cell");
+          const targetAnnotation = annoteEl.getAttribute("data-target-annotation");
+          const annoteSpan = window.document.querySelector(selectorForAnnotation(targetCell, targetAnnotation));
+          const lines = annoteSpan.getAttribute("data-code-lines").split(",");
+          const lineIds = lines.map((line) => {
+            return targetCell + "-" + line;
+          })
+          let top = null;
+          let height = null;
+          let parent = null;
+          if (lineIds.length > 0) {
+              //compute the position of the single el (top and bottom and make a div)
+              const el = window.document.getElementById(lineIds[0]);
+              top = el.offsetTop;
+              height = el.offsetHeight;
+              parent = el.parentElement.parentElement;
+            if (lineIds.length > 1) {
+              const lastEl = window.document.getElementById(lineIds[lineIds.length - 1]);
+              const bottom = lastEl.offsetTop + lastEl.offsetHeight;
+              height = bottom - top;
+            }
+            if (top !== null && height !== null && parent !== null) {
+              // cook up a div (if necessary) and position it 
+              let div = window.document.getElementById("code-annotation-line-highlight");
+              if (div === null) {
+                div = window.document.createElement("div");
+                div.setAttribute("id", "code-annotation-line-highlight");
+                div.style.position = 'absolute';
+                parent.appendChild(div);
+              }
+              div.style.top = top - 2 + "px";
+              div.style.height = height + 4 + "px";
+              div.style.left = 0;
+              let gutterDiv = window.document.getElementById("code-annotation-line-highlight-gutter");
+              if (gutterDiv === null) {
+                gutterDiv = window.document.createElement("div");
+                gutterDiv.setAttribute("id", "code-annotation-line-highlight-gutter");
+                gutterDiv.style.position = 'absolute';
+                const codeCell = window.document.getElementById(targetCell);
+                const gutter = codeCell.querySelector('.code-annotation-gutter');
+                gutter.appendChild(gutterDiv);
+              }
+              gutterDiv.style.top = top - 2 + "px";
+              gutterDiv.style.height = height + 4 + "px";
+            }
+            selectedAnnoteEl = annoteEl;
+          }
+        };
+        const unselectCodeLines = () => {
+          const elementsIds = ["code-annotation-line-highlight", "code-annotation-line-highlight-gutter"];
+          elementsIds.forEach((elId) => {
+            const div = window.document.getElementById(elId);
+            if (div) {
+              div.remove();
+            }
+          });
+          selectedAnnoteEl = undefined;
+        };
+          // Handle positioning of the toggle
+      window.addEventListener(
+        "resize",
+        throttle(() => {
+          elRect = undefined;
+          if (selectedAnnoteEl) {
+            selectCodeLines(selectedAnnoteEl);
+          }
+        }, 10)
+      );
+      function throttle(fn, ms) {
+      let throttle = false;
+      let timer;
+        return (...args) => {
+          if(!throttle) { // first call gets through
+              fn.apply(this, args);
+              throttle = true;
+          } else { // all the others get throttled
+              if(timer) clearTimeout(timer); // cancel #2
+              timer = setTimeout(() => {
+                fn.apply(this, args);
+                timer = throttle = false;
+              }, ms);
+          }
+        };
+      }
+        // Attach click handler to the DT
+        const annoteDls = window.document.querySelectorAll('dt[data-target-cell]');
+        for (const annoteDlNode of annoteDls) {
+          annoteDlNode.addEventListener('click', (event) => {
+            const clickedEl = event.target;
+            if (clickedEl !== selectedAnnoteEl) {
+              unselectCodeLines();
+              const activeEl = window.document.querySelector('dt[data-target-cell].code-annotation-active');
+              if (activeEl) {
+                activeEl.classList.remove('code-annotation-active');
+              }
+              selectCodeLines(clickedEl);
+              clickedEl.classList.add('code-annotation-active');
+            } else {
+              // Unselect the line
+              unselectCodeLines();
+              clickedEl.classList.remove('code-annotation-active');
+            }
+          });
+        }
+    const findCites = (el) => {
+      const parentEl = el.parentElement;
+      if (parentEl) {
+        const cites = parentEl.dataset.cites;
+        if (cites) {
+          return {
+            el,
+            cites: cites.split(' ')
+          };
+        } else {
+          return findCites(el.parentElement)
+        }
+      } else {
+        return undefined;
+      }
+    };
+    var bibliorefs = window.document.querySelectorAll('a[role="doc-biblioref"]');
+    for (var i=0; i<bibliorefs.length; i++) {
+      const ref = bibliorefs[i];
+      const citeInfo = findCites(ref);
+      if (citeInfo) {
+        tippyHover(citeInfo.el, function() {
+          var popup = window.document.createElement('div');
+          citeInfo.cites.forEach(function(cite) {
+            var citeDiv = window.document.createElement('div');
+            citeDiv.classList.add('hanging-indent');
+            citeDiv.classList.add('csl-entry');
+            var biblioDiv = window.document.getElementById('ref-' + cite);
+            if (biblioDiv) {
+              citeDiv.innerHTML = biblioDiv.innerHTML;
+            }
+            popup.appendChild(citeDiv);
+          });
+          return popup.innerHTML;
+        });
+      }
+    }
+  });
+  </script>
+</div> <!-- /content -->
+
+
+
+
+</body></html>

@@ -1,1 +1,0 @@
-../../shared/pipeline/check_section_coverage.py

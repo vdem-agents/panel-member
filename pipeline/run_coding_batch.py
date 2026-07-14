@@ -9,23 +9,23 @@ JSONL (checkpoint resume).
 Usage:
     set -a && source .env && set +a
 
-    # Condition 1 (codebook-only), all models, 2020:
+    # Condition 1 (codebook-only), all base models, 2019:
     python3 -m pipeline.run_coding_batch \\
-        --year 2020 --condition codebook \\
-        --models claude-sonnet llama-405b llama-70b llama-9b \\
-        --output data/output/runs/codebook_2020.jsonl
+        --year 2019 --condition codebook \\
+        --models llama-405b llama-70b llama-9b \\
+        --output data/output/runs/codebook_2019.jsonl
 
-    # Condition 2 (evidence), Claude only:
+    # Condition 2 (evidence), 70B only:
     python3 -m pipeline.run_coding_batch \\
-        --year 2020 --condition evidence \\
-        --models claude-sonnet \\
-        --output data/output/runs/evidence_2020_claude.jsonl
+        --year 2019 --condition evidence \\
+        --models llama-70b \\
+        --output data/output/runs/evidence_2019_70b.jsonl
 
     # Condition 3 (anonymized) — requires anonymize_section.py to have been run first.
     python3 -m pipeline.run_coding_batch \\
-        --year 2020 --condition anonymized \\
-        --models claude-sonnet llama-70b \\
-        --output data/output/runs/anonymized_2020.jsonl
+        --year 2019 --condition anonymized \\
+        --models llama-70b llama-9b \\
+        --output data/output/runs/anonymized_2019.jsonl
 
     # Re-running is safe: completed rows (country × year × indicator × condition × model)
     # are skipped automatically via the JSONL checkpoint.
@@ -39,12 +39,13 @@ Usage:
 Parameters:
     --year        Calendar year to code (default: 2020). Primary test year is 2019.
     --indicators  Subset of indicators to run (default: all in indicator_sections.yaml).
-    --condition   Prompt condition: codebook | evidence | anonymized (default: evidence).
-                    codebook   — codebook text only, no source evidence
-                    evidence   — adds raw State Dept / Freedom House sections + few-shot examples
-                    anonymized — same as evidence but country identity stripped from text and examples
+    --condition   Prompt condition (default: evidence).
+                    codebook            — codebook text only, no source evidence
+                    evidence            — raw State Dept / Freedom House sections + few-shot examples
+                    anonymized          — same as evidence but country identity stripped from text and examples
+                    evidence-zeroshot   — evidence without the few-shot calibration block (2023 ablation only)
+                    anonymized-zeroshot — anonymized without the few-shot calibration block (2023 ablation only)
     --models      One or more model keys from vdem_config.LLM_CONFIGS (default: PRIMARY_MODELS).
-                    claude-sonnet       — Claude API (requires ANTHROPIC_API_KEY)
                     llama-405b          — Together.xyz 405B (dev/testing)
                     llama-70b           — Together.xyz 70B (dev/testing)
                     llama-9b            — Together.xyz 9B (dev/testing)
@@ -72,57 +73,12 @@ from pathlib import Path
 import yaml
 
 from pipeline.code_country_year import code_country_year
+from pipeline.country_map import build_country_map
 from pipeline.extract_sections import configure_extraction_log
 from pipeline.vdem_config import LLM_CONFIGS, CONDITIONS, PRIMARY_MODELS
 
-try:
-    import pycountry
-except ImportError:
-    raise ImportError("pycountry required: pip install pycountry")
-
 CONFIG_PATH = Path(__file__).parent.parent / "config" / "indicator_sections.yaml"
-PROCESSED_TEXT_DIR = Path(__file__).parent.parent / "data" / "processed-text"
 PANEL_MEANS_PATH = Path(__file__).parent.parent.parent / "shared" / "vdem-data" / "panel_means.csv"
-
-# Slugs pycountry cannot match from title-cased name
-SLUG_OVERRIDES: dict[str, tuple[str, str] | None] = {
-    "burma": ("MMR", "Burma/Myanmar"),
-    "cote-divoire": ("CIV", "Côte d'Ivoire"),
-    "democratic-republic-of-the-congo": ("COD", "Democratic Republic of the Congo"),
-    "guinea-bissau": ("GNB", "Guinea-Bissau"),
-    "timor-leste": ("TLS", "Timor-Leste"),
-    "turkey": ("TUR", "Turkey"),
-    "israel-west-bank-and-gaza": None,   # combined report, skip
-    "download-appendix-d-629-kb-2020-human-rights-report": None,
-}
-
-
-def build_country_map(year: int) -> dict[str, tuple[str, str]]:
-    """Return {iso: (slug, country_name)} for all countries with a State Dept text file."""
-    sd_dir = PROCESSED_TEXT_DIR / "state-dept" / str(year)
-    if not sd_dir.exists():
-        raise FileNotFoundError(
-            f"No processed State Dept text for {year} at {sd_dir}.\n"
-            "Run pipeline/ingest.py first."
-        )
-    country_map: dict[str, tuple[str, str]] = {}
-    for path in sorted(sd_dir.glob("*.txt")):
-        slug = path.stem
-        if slug in SLUG_OVERRIDES:
-            val = SLUG_OVERRIDES[slug]
-            if val is None:
-                continue
-            iso, name = val
-        else:
-            candidate = slug.replace("-", " ").title()
-            try:
-                match = pycountry.countries.search_fuzzy(candidate)[0]
-                iso, name = match.alpha_3, match.name
-            except LookupError:
-                print(f"  [warn] no ISO match for '{slug}' — skipped", file=sys.stderr)
-                continue
-        country_map[iso] = (slug, name)
-    return country_map
 
 
 def load_panel_mean_isos(year: int, indicator: str) -> set[str]:
@@ -269,7 +225,10 @@ if __name__ == "__main__":
         help=f"Indicators to run (default: all {len(all_indicators)})"
     )
     parser.add_argument(
-        "--condition", choices=["codebook", "evidence", "anonymized"], default="evidence",
+        "--condition",
+        choices=["codebook", "evidence", "anonymized",
+                 "evidence-zeroshot", "anonymized-zeroshot"],
+        default="evidence",
         help="Prompt condition (default: evidence)"
     )
     parser.add_argument(

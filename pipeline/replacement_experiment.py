@@ -40,7 +40,6 @@ OUTPUT_DIR = Path(__file__).parent.parent / "data" / "output" / "replacement"
 # k=1 → best model, k=2 → best + 2nd best, k=3 → best + 2nd + 3rd.
 # Update this list after Stage 1 results are in.
 MODEL_PRIORITY = [
-    "claude-sonnet",
     "llama-405b",
     "llama-70b",
     "llama-9b",

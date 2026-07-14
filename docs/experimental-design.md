@@ -1,49 +1,45 @@
-# Panel Member: Experimental Design
+# Experimental Design
 
-*Updated July 2026. Five prompt conditions: three primary conditions run across all five
-models; two additional no-calibration-example conditions run on the best-performing base
-model to isolate the contribution of the few-shot calibration block. Inference on the full
-universe of ~205 mapped Type C indicators (primary); proportional stratified sample (one
-third per module, floor of 2, ~60–70 total) pre-registered as computational fallback — see
-`notes/evaluation-indicator-scope.md`. Training on all 206 mapped Type C indicators
-(~1.22M coder-CYI examples from V-Dem v15). Coverage-tier gradient as within-study
-moderating variable. Raw panel means throughout. Llama 405B is included in the primary
-design but is contingent on HPC availability — see the 405B note in the Models section.
-Persona prompting is a post-hoc illustration on the best model, not a registered
-condition; see `notes/persona-prompting-design-archive.md`.*
+## Overview
 
----
+The experiment addresses a central decomposition question: when large language models code
+political texts, what information are they actually drawing on — pretrained political
+knowledge, structured source evidence, or country identity — and how much does each source
+contribute to calibration quality?
 
-## Design overview
+The design answers this through three prompt conditions that constitute an identification
+strategy. The codebook-only condition provides no source text, measuring the baseline
+calibration available from pretraining alone. The evidence condition adds raw section text
+and few-shot calibration examples, isolating what structured primary source evidence
+contributes over pretrained knowledge. The anonymized condition strips country-identifying
+information from both the evidence and the calibration examples, isolating how much country
+identity, rather than described conditions, drives the ratings. A coverage-tier gradient
+— the evaluation indicator set spans strong, partial, and weak source coverage — serves as
+a within-study moderating variable that tests whether calibration quality degrades as
+source evidence weakens.
 
-The experiment addresses two questions:
+The primary design is a **3 × 5 experiment** (3 prompt conditions × 5 models) run on the
+full universe of ~205 mapped Type C indicators. The same indicator set is used for all
+models: using different sets for small vs. large models would confound model scale with
+indicator difficulty in cross-model comparisons. A proportional stratified sample (one
+third per module, floor of 2, ~60–70 total, fixed seed) is pre-registered as a
+computational fallback if 405B inference cannot complete within 3 job submissions; see
+`notes/evaluation-indicator-scope.md` for rationale and compute implications. The two
+fine-tuned variants (FT-raw, trained on non-anonymized evidence; FT-anon, trained on
+anonymized evidence) are trained on all 206 mapped Type C indicators (~898K coder-CYI
+training examples from V-Dem v15 2016–2018) and evaluated on the same set as all other
+models.
 
-**Question 1 (substitution)**: Which prompt condition and model scale produces AI ratings
-closest to the human expert panel's raw mean across the ~52–69 evaluation indicators, and
-does this vary with coverage tier?
+Five robustness analyses all run on 2023 data using the best-performing model from the
+primary 2019 analysis. Four retest the identification claims: a test-year replication,
+a few-shot calibration ablation (zero-shot conditions), an information shift test
+(transition-adjacent vs. stable country-years), and a re-identification test (does
+residual country-identity leakage drive the anonymization result?). A fifth — the
+agreement test — compares AI MAE to the average deviation of individual human coders
+from the same panel mean. Thin-panel augmentation (k=1 addition to panels ≤8 coders)
+is reported as an exploratory illustration in the appendix.
 
-**Question 2 (generalization)**: Does LOO MAE degrade as source-coverage tier weakens?
-The evaluation indicator set spans strong, partial, and weak coverage, making coverage
-tier a within-study moderating variable rather than a separate experimental condition.
-
-The primary design is a **3 × 5 experiment** (3 prompt conditions × 5 models) on the full
-universe of ~205 mapped Type C indicators, with a **k=1 replacement check** as supplementary
-analysis. Two additional conditions — evidence without calibration examples and anonymized
-text without calibration examples — run on the best-performing base model only, isolating
-the contribution of the few-shot calibration block from the contribution of source evidence
-and anonymization. The same indicator set is used for all models: using different sets for
-small vs. large models would confound model scale with indicator difficulty in cross-model
-comparisons. A proportional stratified sample (one third per module, floor of 2, ~60–70
-total, fixed seed) is pre-registered as a computational fallback if 405B inference cannot
-complete within 3 job submissions; see `notes/evaluation-indicator-scope.md` for rationale
-and compute implications. The two fine-tuned variants (FT-raw, trained on non-anonymized
-evidence; FT-anon, trained on anonymized evidence) are trained on all 206 mapped indicators
-(~1.22M coder-CYI training examples from V-Dem v15 2016–2018) and evaluated on the same
-set as all other models.
-
----
-
-## Part 1: Substitution experiment
+## Part 1: Identification experiment
 
 ### Conditions
 
@@ -60,7 +56,8 @@ to Codebook-only; Anonymized strips country identity from both the focal evidenc
 calibration examples. Conditions 4 and 5 repeat the evidence and anonymization manipulations
 without the calibration block, allowing a direct read on how much of the observed improvement
 comes from the source text versus the few-shot anchors. These two conditions run on the
-best-performing base model only and are not part of the primary cross-model comparison.
+best-performing base model only, on **2023 data**, as part of the robustness section — not
+the primary 2019 analysis. See the Few-shot calibration ablation section below.
 
 ### Models
 
@@ -83,7 +80,7 @@ evidence, and anonymization structure as the base models, but without a calibrat
 calibration is embedded in the adapter weights rather than supplied via examples in the
 prompt. **FT-raw** is trained on non-anonymized evidence text; **FT-anon** on anonymized
 evidence text. Both are trained on all 206 mapped Type C indicators from 2016–2018
-(~1.22M coder-CYI training examples each). The key comparisons: FT-raw vs. base 70B
+(~898K coder-CYI training examples each). The key comparisons: FT-raw vs. base 70B
 isolates what fine-tuning adds over few-shot calibration; FT-anon vs. FT-raw shows whether
 anonymization during training changes calibration independently of the anonymization
 manipulation at inference.
@@ -104,30 +101,15 @@ test of the replacement scenario.
 
 ### Outcome
 
-**LOO MAE**: for each CYI, compare `|AI_rating − panel_mean|` against the human baseline
-`mean(|rating_i − mean(panel \ {i})|)`. Bootstrap at the CYI level (B=500).
+**AI MAE**: `|AI_rating − panel_mean|` per CYI, bootstrapped at the CYI level (B=500). This is the primary metric for both the identification claims (comparing AI MAE across prompt conditions) and the substitution check in the robustness section (comparing AI MAE against the average human coder's deviation from the same panel mean). Because the panel mean is a fixed reference shared by all models, the model with the lowest AI MAE is also the model that performs best on the substitution check.
 
-Primary display is a **coefficient plot** (Figure 1): rows = condition × model combinations,
-x-axis = aggregate LOO MAE, horizontal reference line at the human LOO MAE. Dots left of
-the reference line indicate the AI deviates from the panel mean by less than a typical
-held-out human coder.
+Primary display is a **coefficient plot** (Figure 1): rows = condition × model combinations, x-axis = aggregate AI MAE. The identification claims are reported as a **delta coefficient plot** (Figure 2): three panels showing Δ(Evidence − Codebook), Δ(Anonymized − Codebook), and Δ(Anonymized − Evidence), with rows = models and a reference line at 0. Negative values indicate the added element improved calibration. Δ(Anonymized − Codebook) is the primary identification result: it shows that the information gain from source evidence holds even when country identity is stripped, ruling out anchoring bias as the source of apparent calibration. Δ(Anonymized − Evidence) shows the additional gain from removing country identity from text that already provides source evidence.
 
-The identification claims are reported as a **delta coefficient plot** (Figure 2): three
-panels showing Δ(Evidence − Codebook), Δ(Anonymized − Codebook), and
-Δ(Anonymized − Evidence), with rows = models and a reference line at 0. Negative values
-indicate the added element improved calibration. Δ(Anonymized − Codebook) is the primary
-identification result: it shows that the information gain from source evidence holds even
-when country identity is stripped, ruling out anchoring bias as the source of apparent
-calibration. Δ(Anonymized − Evidence) shows the additional gain from removing country
-identity from text that already provides source evidence.
+Supplementary display: a module-level summary table (indicators grouped by V-Dem module, coverage tier noted) reporting condition × model AI MAE. Secondary: signed deviation by democracy quintile.
 
-Supplementary display: a module-level summary table (indicators grouped by V-Dem module,
-coverage tier noted) reporting condition × model LOO MAE. Secondary: signed deviation by
-democracy quintile.
+### Significance of each comparison
 
-### What each comparison tells you
-
-| Comparison | What it isolates |
+| Comparison | Isolates |
 |---|---|
 | Codebook vs. Evidence (same model) | Combined value of source evidence and calibration examples |
 | Codebook vs. Anonymized (same model) | Combined value of anonymized evidence and calibration examples |
@@ -138,112 +120,14 @@ democracy quintile.
 | Models (same condition) | Scale effects on calibration |
 | Quintile signed deviation | Regime-type anchoring bias |
 
----
+## Part 2: Robustness and validation analyses
 
-## Part 2: Coverage-tier moderation (generalization embedded in main analysis)
+All five analyses run on 2023 data using the best-performing model from the primary 2019
+analysis.
 
-### Design
+### Identification robustness
 
-The fine-tuned Llama 70B adapter is trained on all 206 mapped Type C indicators.
-Coverage tier is a within-study moderating variable, not a separate experimental
-condition — the model is trained across all tiers and we observe how calibration
-quality varies across the strong → weak coverage gradient at inference.
-
-Section mapping is complete (GitHub issue #1, closed 2026-07-11). The evaluation set
-is the full universe of ~205 indicators in `config/indicator_sections.yaml`.
-`data/fewshot_examples.json` will be populated with 5 examples per indicator (one per
-ordinal level). See GitHub issue #8 for the population task.
-
-### Evaluation
-
-For all evaluation indicators (spanning coverage tiers), compute:
-- **LOO MAE** against panel mean (primary metric, comparable across all conditions)
-- **Exact match / adjacent agreement** (secondary)
-
-**Primary finding**: if LOO MAE is stable across the strong → weak coverage gradient,
-the result supports a scalable AI coder applicable across the full ~216 Type C indicator
-set. If the gradient is steep, it characterizes where the approach reaches its limits.
-
----
-
-## Part 3: Integration robustness (secondary / supplemental)
-
-### Design
-
-Simplified replacement experiment: k=1 only. For each country-year in the 2019
-evaluation pool with ≥8 distinct coders, add one AI rating from the best-calibrated
-model and compare the AI-augmented panel mean to the full human panel mean.
-
-```
-divergence = |mean(human_panel + AI_rating) − mean(human_panel)|
-```
-
-Bootstrap across country-years (B=500). Report mean divergence with 95% CI.
-
-**Purpose**: robustness check on calibration finding. If MAD is already low, this
-demonstrates that the low MAD translates to negligible panel-mean distortion under
-realistic deployment (k=1). Not the primary claim.
-
-k=1 is the primary and most policy-relevant scenario. k=2 and k=3 are not part of the
-registered design and are not contingent on any in-paper result.
-
----
-
-## Part 4: Augmentation of thinning panels (secondary)
-
-**Target**: countries with well-formed panels in 2015 (≥8 coders) and thin panels by
-2022 (≤5 coders) due to post-2013 coder departures.
-
-**Setup**:
-- `mean_ref` = 2015 thick-panel raw mean (treated as reference)
-- `mean_thin` = 2022 thin-panel raw mean (baseline)
-- `mean_aug_k` = 2022 thin panel + k AI ratings, k ∈ {1, 2}
-
-**Metric**: `|mean_aug_k − mean_ref| vs. |mean_thin − mean_ref|`. Does AI augmentation
-move the current thin-panel mean toward the historical thick-panel reference?
-
-**Limitation**: this conflates panel size with temporal democratic change. A country may
-have genuinely different democracy levels in 2015 and 2022. Frame as an application
-illustration, not causal identification. Report the limitation explicitly in the paper.
-
----
-
-## Exploratory and sensitivity analyses
-
-### Persona variation (post-hoc illustration)
-
-Add 2 persona conditions (strict framing / lenient framing) to the best-performing
-model. Run on a subset of indicators (suggest: 4 high-observability indicators to
-maximize sensitivity). This is not a registered condition — it runs after the main
-results are in, on the holdout test set, as an unregistered demonstration.
-
-The question is simply whether persona framing moves ratings reliably and directionally.
-If it does, that is an illustration of how one AI coder could stand in for multiple
-distinct panel members at low marginal cost — and a hook for a follow-on paper. If it
-does not, it adds to the evidence (Morocho et al. 2026; our own anchor-to-indicator
-null) that persona prompting does not reliably shift ordinal ratings in structured coding
-tasks. Either way it is reported as an illustration, not a finding of the current paper.
-
-Report: signed deviation (strict condition − neutral) and (lenient − neutral), by
-indicator and democracy quintile.
-
-### Temperature variation (sensitivity)
-
-Re-run the best model at temperature 0.7 on the evaluation pool. Compare the
-distribution of ratings across draws to the temperature=0 result. This is a measure of
-model uncertainty — the spread of the distribution indicates how much variance the model
-has around its modal answer.
-
-Not used as a source of distinct panel members in the main replacement experiment.
-Report as a diagnostic in the supplementary materials.
-
----
-
-## Robustness and validation analyses
-
-These three analyses address the two threats most likely to concern readers: whether the
-identification results replicate outside the primary test year, and whether the anonymization
-condition is working as intended.
+These four analyses retest the paper's identification claims on the 2023 holdout.
 
 ### Test-year replication (2023)
 
@@ -254,21 +138,52 @@ Codebook), and Δ(Anonymized − Evidence) — are recomputed for 2023 and compa
 decomposition generalizes beyond the primary test year. Source documents for 2023 are already
 ingested and confirmed clean (issue #14, closed 2026-07-12).
 
-### Information shift analysis
+### Few-shot calibration ablation (2023)
+
+The evidence and anonymized conditions both include a few-shot calibration block — five
+examples spanning the 0–4 scale — alongside the source evidence. This ablation isolates
+what those examples contribute over the source evidence alone.
+
+The best-performing base model from the primary 3×5 analysis is re-run on **2023 data**
+under two additional conditions: evidence without calibration examples and anonymized text
+without calibration examples. Source documents for 2023 are already ingested and confirmed
+clean, so no additional ingestion is required.
+
+| Comparison | What it isolates |
+|---|---|
+| Evidence (zero-shot) vs. Codebook-only | Model reads the text even without calibration anchors |
+| Evidence (few-shot) vs. Evidence (zero-shot) | Marginal contribution of calibration examples given named evidence |
+| Anonymized (zero-shot) vs. Codebook-only | Text still helps without country identity or calibration anchors |
+| Anonymized (few-shot) vs. Anonymized (zero-shot) | Marginal contribution of calibration examples when country identity is also stripped |
+
+The key prediction follows from the anchoring mechanism: in the evidence condition the
+model has two scale anchors — the few-shot examples and country-identity priors activated
+by the named country. In the anonymized condition, country identity is stripped, so the
+model relies more heavily on the calibration examples to map described conditions onto the
+0–4 scale. The predicted signature is that the gap between few-shot and zero-shot
+performance is **larger under anonymization than under raw evidence** — removing the
+country-identity anchor raises the value of the calibration examples. See hypothesis 7.
+
+**Figure**: coefficient plot with two panels — Δ(few-shot − zero-shot) for the evidence
+condition (Panel A) and the anonymized condition (Panel B) — each showing bootstrapped
+CIs around the AI MAE difference. Reference line at 0; negative values indicate few-shot
+improves on zero-shot.
+
+### Information shift test (2023)
 
 The identification design rests on the claim that the model reads and uses the provided
 evidence rather than drawing on stored knowledge of the country. The stiffest test of this
 is country-years where political conditions changed substantially: if the model is genuinely
 reading the text, it should update more in response to evidence precisely where that evidence
-carries new information — that is, where the country's political situation at the time of
-coding differs from what pretraining would lead the model to expect.
+carries new information — that is, where the country's political situation differs from what
+pretraining would lead the model to expect.
 
-Country-years are tagged as transition-adjacent using the V-Dem Episodes of Regime
-Transformation (ERT) dataset (onset or peak year flag). The continuous moderator is
-|Δv2x_polyarchy| from year t−1 to t. LOO MAE is computed separately for transition-adjacent
-and stable country-years under each condition. The pre-registered hypothesis:
-Δ(Evidence − Codebook) is more negative — that is, the gain from adding evidence is larger
-— in transition-adjacent country-years than in stable ones.
+Country-years in the 2023 evaluation pool are tagged as transition-adjacent using the V-Dem
+Episodes of Regime Transformation (ERT) dataset (onset or peak year flag). The continuous
+moderator is |Δv2x_polyarchy| from year t−1 to t. AI MAE is computed separately for
+transition-adjacent and stable country-years under each condition. The pre-registered
+hypothesis: Δ(Evidence − Codebook) is more negative — that is, the gain from adding evidence
+is larger — in transition-adjacent country-years than in stable ones.
 
 **Figure**: Coefficient plot with two panels — Δ(Evidence − Codebook) and
 Δ(Anonymized − Codebook) — each showing three dots with bootstrapped CIs: all country-years,
@@ -308,16 +223,88 @@ remaining compression.
 - *Signed deviation*: same two-panel structure, x-axis = mean signed deviation by
   re-identified vs. not, reference line at 0.
 
----
+### Applied performance
+
+### Agreement test (2023)
+
+The best-performing model from the primary 2019 analysis is evaluated on 2023 data by
+comparing its AI MAE against the human panel MAE — the average deviation of individual
+human coders from the same panel mean. Both are computed against the full panel mean for
+each CYI. If AI MAE is at or below the human panel MAE, the AI deviates from the panel
+consensus by no more than a typical human coder. This is reported for all three primary
+conditions to show whether the result holds across the full prompt design, not only under
+the best condition.
+
+## Part 3: Exploratory and sensitivity analyses
+
+### Thin-panel augmentation (exploratory / appendix)
+
+For each country-year in the 2023 evaluation pool with ≤8 distinct coders, add one AI
+rating from the best-calibrated model and compare the AI-augmented panel mean to the
+human-only panel mean.
+
+```
+divergence = |mean(human_panel + AI_rating) − mean(human_panel)|
+```
+
+Bootstrap across country-years (B=500). Report mean divergence with 95% CI. 2023 is the
+natural year for this test: panel sizes have thinned substantially relative to 2019 due to
+continued post-2013 attrition, making thin panels the norm rather than the exception.
+k=1 is the only registered scenario. Reported as an applied illustration; motivates the
+substitution experiment in `notes/substitution-experiment-future-paper.md`.
+
+### Coverage-tier moderation and evidence transfer (exploratory / appendix)
+
+The full evaluation set spans three source-coverage tiers (strong, partial, weak). A
+pre-registered question (hypothesis 6) is whether AI MAE is higher for weak-coverage
+indicators than for strong-coverage ones. A sharper unregistered question sits inside it:
+for indicators with no directly relevant section in either source document, does the
+evidence packet provide *any* calibration benefit over codebook-only, or is source text
+only useful when it directly addresses the indicator?
+
+Of the 206 indicators in `config/indicator_sections.yaml`:
+- **3 indicators** have no section mapping in either source (`v2dlcommon`, `v2dlcountr`,
+  `v2exl_legitlead`) — they receive the executive summary alone as their evidence packet.
+- **26 indicators** have no State Dept section but do have a Freedom House section —
+  they receive FH text plus the SD executive summary.
+- The remaining indicators have at least one direct section in each source.
+
+The question is whether Δ(Evidence − Codebook) < 0 for the no-direct-section group. If
+the executive summary alone (general political context, not indicator-specific text)
+still reduces deviation from the panel mean, the model is transferring general political
+knowledge encoded in the source document to a specific coding task — a form of
+cross-indicator transfer. If the gap is near zero or positive, the evidence benefit
+requires direct section relevance and does not generalize to unmapped indicators.
+
+This is unregistered and exploratory: it runs on the same output already generated for
+the main analysis, requires no additional inference, and is reported as a post-hoc
+decomposition of the coverage-tier gradient rather than a primary finding.
+
+**Analysis**: compute Δ(Evidence − Codebook) AI MAE separately for three groups —
+no-section indicators (exec summary only), single-source indicators (FH only), and
+dual-source indicators (both SD and FH sections). Compare group means with bootstrapped
+CIs. **Figure**: coefficient plot with three rows (one per mapping tier), x-axis =
+Δ(Evidence − Codebook), reference line at 0.
+
+### Persona variation and temperature sensitivity (feasibility checks for future work)
+
+These are not registered analyses for the current paper. Persona variation (strict vs.
+lenient framing) and temperature sampling (draws at temperature > 0) are run as
+post-hoc illustrations after the main results are in. Their purpose is to establish
+whether the AI produces meaningfully distinct ratings under different framings — a
+prerequisite for the substitution experiment planned as a follow-on paper (see
+`notes/substitution-experiment-future-paper.md`). Results are reported as supplementary
+diagnostics, not findings of the current paper.
 
 ## Outcome variables
 
 | Variable | Definition | Role |
 |---|---|---|
-| LOO MAE | `mean(\|AI_rating − panel_mean\|)` vs. `mean(\|rating_i − mean(panel \ {i})\|)` with bootstrap CIs | Calibration primary |
-| Δ(Evidence − Codebook) MAE | `LOO MAE_evidence − LOO MAE_codebook`, per model, bootstrap CIs | Identification claim 1: value of source evidence |
-| Δ(Anonymized − Codebook) MAE | `LOO MAE_anon − LOO MAE_codebook`, per model, bootstrap CIs | Identification claim 2: clean information gain free of country-identity anchoring |
-| Δ(Anonymized − Evidence) MAE | `LOO MAE_anon − LOO MAE_evidence`, per model, bootstrap CIs | Identification claim 3: cost of exposing country identity |
+| AI MAE | `mean(\|AI_rating − panel_mean\|)` per CYI, bootstrap CIs | Calibration primary |
+| Human panel MAE | `mean(\|rating_i − panel_mean\|)` averaged across coders per CYI | Substitution benchmark (robustness) |
+| Δ(Evidence − Codebook) MAE | `AI MAE_evidence − AI MAE_codebook`, per model, bootstrap CIs | Identification claim 1: value of source evidence |
+| Δ(Anonymized − Codebook) MAE | `AI MAE_anon − AI MAE_codebook`, per model, bootstrap CIs | Identification claim 2: clean information gain free of country-identity anchoring |
+| Δ(Anonymized − Evidence) MAE | `AI MAE_anon − AI MAE_evidence`, per model, bootstrap CIs | Identification claim 3: cost of exposing country identity |
 | Exact match rate | `% (AI_rating == round(panel_mean))` | Calibration secondary |
 | Adjacent agreement | `% (\|AI_rating − round(panel_mean)\| ≤ 1)` | Calibration secondary |
 | Signed deviation by quintile | `mean(AI_rating − panel_mean)` by v2x_polyarchy quintile | Compression diagnostic |
@@ -327,18 +314,7 @@ remaining compression.
 | divergence_k | `\|mean_aug_k − mean_full\|` | Replacement check |
 | Augmentation gain | `\|mean_aug_k − mean_ref\| < \|mean_thin − mean_ref\|`? | Panel augmentation |
 
-LOO MAE is the primary metric. The human LOO MAE is the reference: the typical error of a
-held-out human coder against the rest of their panel, averaged across all coders and
-country-year-indicator observations in the evaluation pool. It is not zero — individual
-coders genuinely disagree with the panel consensus, and that disagreement is what the AI
-is being asked to match. Bootstrap resampling at the CYI level (B=500) yields confidence
-intervals and a paired significance test for each delta metric. Formal paired difference
-tests are reported in the appendix; the main figures communicate the same comparisons
-visually. Supplementary display: a module-level summary table (indicators grouped by
-V-Dem module, coverage tier noted) reporting LOO MAE by condition and model.
-See `notes/evaluation-metrics.md` for full rationale.
-
----
+AI MAE against the raw panel mean is the primary metric. Bootstrap resampling at the CYI level (B=500) yields confidence intervals and a paired significance test for each delta metric. The human panel MAE — the average deviation of individual human coders from the same panel mean — serves as the substitution benchmark in the robustness section; because the panel mean is a fixed reference, model selection on AI MAE is equivalent to selection on the substitution criterion. Formal paired difference tests are reported in the appendix; the main figures communicate the same comparisons visually. Supplementary display: a module-level summary table (indicators grouped by V-Dem module, coverage tier noted) reporting AI MAE by condition and model. See `notes/evaluation-metrics.md` for full rationale.
 
 ## Indicators
 
@@ -366,10 +342,8 @@ trigger condition are all fixed at pre-registration, before any inference runs. 
 `notes/evaluation-indicator-scope.md` for the full rationale and per-model compute
 comparison.
 
-Expect LOO MAE to vary with observability tier and coverage tier. Report calibration
+Expect AI MAE to vary with observability tier and coverage tier. Report calibration
 results by both dimensions.
-
----
 
 ## Pre-registration
 
@@ -405,8 +379,17 @@ The three identification comparisons yield directional predictions:
    positive for autocracies, negative for democracies — consistent with anchoring on a
    known country prior.
 
-6. **Calibration degrades with weaker source coverage**: LOO MAE is higher for weak-coverage
+6. **Calibration degrades with weaker source coverage**: AI MAE is higher for weak-coverage
    indicators than for strong-coverage indicators, across all conditions and models.
+
+7. **Few-shot calibration contributes more under anonymization than under raw evidence**:
+   the improvement from adding calibration examples — Δ(few-shot − zero-shot) AI MAE —
+   is larger in the anonymized condition than in the evidence condition. When country
+   identity is present in the evidence, the model can use country-identity priors as a
+   secondary scale anchor, reducing its dependence on the few-shot examples. When country
+   identity is stripped, that anchor is gone and the calibration examples carry more weight.
+   The predicted signature is a larger few-shot gap under anonymization than under raw
+   evidence.
 
 ### Evaluation sample
 
@@ -420,7 +403,7 @@ The three identification comparisons yield directional predictions:
 
 ### Primary outcomes
 
-LOO MAE is the primary metric throughout. The three delta metrics —
+AI MAE against the raw panel mean is the primary metric throughout. The three delta metrics —
 Δ(Evidence − Codebook), Δ(Anonymized − Codebook), Δ(Anonymized − Evidence) — are the
 direct tests of hypotheses 1–3. All are bootstrapped at the CYI level (B=500,
 CI = 2.5–97.5%). Signed deviation by v2x_polyarchy quintile is the compression diagnostic.
@@ -432,8 +415,9 @@ Exact match rate and adjacent agreement are secondary calibration summaries.
   2016; no overlap with 2019 test year or 2023 robustness year; captures the post-Arab
   Spring democratic backsliding period.
 - **No-calibration-example conditions**: run only after the best-performing base model is
-  identified from the primary 3×5 results, using the identical prompt structure as
-  conditions 2 and 3 minus the calibration block.
+  identified from the primary 3×5 results, on 2023 data as part of the robustness section.
+  Uses the identical prompt structure as conditions 2 and 3 minus the calibration block.
+  Not part of the primary 2019 analysis.
 - **Anonymization**: system prompt for the anonymization agent locked before any anonymized
   condition runs; applied identically to focal evidence and calibration examples.
 - **405B fallback**: if Llama 405B cannot complete inference within 3 job submissions,
@@ -448,8 +432,7 @@ Exact match rate and adjacent agreement are secondary calibration summaries.
 
 - **Information shift**: ERT onset/peak year flag is the primary transition-adjacent
   indicator; |Δv2x_polyarchy| is the continuous moderator. Threshold for the continuous
-  moderator fixed before running. The transition/stable split is applied to 2019 data;
-  the same split is used for the 2023 replication without adjustment.
+  moderator fixed before running. Applied to 2023 data.
 - **Re-identification**: follow-up prompt text locked before the 2023 anonymized condition
   runs. Top-1 accuracy: first guess matches true country. Top-3 accuracy: true country
   appears in any of the three guesses. Signed deviation by re-identification status is

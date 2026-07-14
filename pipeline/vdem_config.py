@@ -5,7 +5,6 @@ All models use the OpenAI-compatible chat completions API. Swapping between Toge
 (development) and GW Pegasus vLLM (production) requires only changing the model key.
 
 Environment variables:
-  ANTHROPIC_API_KEY  — Claude (required for claude-sonnet)
   TOGETHER_API_KEY   — Together.xyz models (dev/testing)
   VLLM_API_KEY       — vLLM local server (can be any non-empty string if auth is off)
   VLLM_BASE_URL      — vLLM server address (default: http://localhost:8000/v1)
@@ -16,13 +15,6 @@ import os
 _VLLM_URL = os.environ.get("VLLM_BASE_URL", "http://localhost:8000/v1")
 
 LLM_CONFIGS = {
-    # ── Frontier model ──────────────────────────────────────────────────────────
-    "claude-sonnet": {
-        "base_url": "https://api.anthropic.com/v1",
-        "model": "claude-sonnet-4-6",
-        "api_key_env": "ANTHROPIC_API_KEY",
-    },
-
     # ── Open models via Together.xyz (dev / small-scale testing) ────────────────
     "llama-405b": {
         "base_url": "https://api.together.xyz/v1",
@@ -69,18 +61,26 @@ LLM_CONFIGS = {
     },
 }
 
-# Valid prompt conditions (in order of increasing richness)
+# Valid prompt conditions for the 3-condition primary experiment.
 # Fine-tuned Llama 70B (llama-70b-finetuned) uses the "anonymized" prompt format
 # without the few-shot block; it is handled as a separate model, not a condition.
 CONDITIONS = ["codebook", "evidence", "anonymized"]
 
-# Base models for the 3-condition substitution experiment
-PRIMARY_MODELS = ["claude-sonnet", "llama-405b", "llama-70b", "llama-9b"]
+# Zero-shot ablation conditions (2023 robustness only, best base model only).
+# Same as "evidence" and "anonymized" but with the few-shot calibration block omitted.
+# Run only after the best base model is identified from the primary 3×5 results.
+CONDITIONS_ZEROSHOT = ["evidence-zeroshot", "anonymized-zeroshot"]
 
-# All five models (base + fine-tuned); fine-tuned runs only under "anonymized" format
-ALL_MODELS = ["claude-sonnet", "llama-405b", "llama-70b", "llama-9b", "llama-70b-finetuned"]
+# All runnable conditions (primary + ablation)
+ALL_CONDITIONS = CONDITIONS + CONDITIONS_ZEROSHOT
+
+# Base models for the 3-condition substitution experiment (405B contingent on HPC availability)
+PRIMARY_MODELS = ["llama-405b", "llama-70b", "llama-9b"]
+
+# All models (base + fine-tuned); fine-tuned runs only under "anonymized" format
+ALL_MODELS = ["llama-405b", "llama-70b", "llama-9b", "llama-70b-finetuned"]
 
 # On GW Pegasus, swap in local variants:
-# PRIMARY_MODELS_LOCAL = ["claude-sonnet", "llama-405b-local", "llama-70b-local", "llama-9b-local"]
+# PRIMARY_MODELS_LOCAL = ["llama-405b-local", "llama-70b-local", "llama-9b-local"]
 
 PROMPT_VARIANT = "panel-member-v1"
