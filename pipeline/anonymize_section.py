@@ -51,10 +51,13 @@ Rewrite the provided text so that:
 5. Replace named government bodies with generic equivalents: "the parliament",
    "the security forces", "the intelligence service", "the supreme court", etc.
 6. Replace named NGOs and civil society organizations with [NGO] or [CIVIL SOCIETY GROUP]
-7. Replace specific named events (named protests, named laws, named operations) with
+7. Replace named armed groups, militias, insurgencies, and rebel movements with
+   [ARMED GROUP], [MILITANT GROUP], [REBEL GROUP], or a generic descriptor like
+   "the main insurgent group", "a jihadist militant group", etc.
+8. Replace specific named events (named protests, named laws, named operations) with
    generic descriptions: "a major protest", "a security operation", "legislation passed
    that year"
-8. Keep all substantive content intact — numbers, patterns of behavior, frequency
+9. Keep all substantive content intact — numbers, patterns of behavior, frequency
    descriptions, and evaluative language all stay the same. Only identifying labels change.
 
 Output the rewritten text only. No preamble, no explanation, no summary.\
