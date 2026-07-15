@@ -23,7 +23,7 @@
 #SBATCH --time=48:00:00
 #SBATCH --output=logs/anonymize_%x_%j.out
 #SBATCH --error=logs/anonymize_%x_%j.err
-#SBATCH --exclude=gh200-07
+#SBATCH --nodelist=gh200-06
 
 set -eo pipefail
 mkdir -p logs
@@ -65,7 +65,8 @@ echo "vLLM ready (pid $VLLM_PID)"
 # ── Run anonymization batch ────────────────────────────────────────────────────
 python3 -m pipeline.run_anonymize_batch \
     --year "$YEAR" \
-    --model "$MODEL_KEY"
+    --model "$MODEL_KEY" \
+    --workers 8
 
 # ── Cleanup ────────────────────────────────────────────────────────────────────
 kill "$VLLM_PID" && wait "$VLLM_PID" 2>/dev/null || true
