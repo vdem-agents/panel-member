@@ -93,8 +93,8 @@ def main() -> None:
     parser.add_argument("--indicators", nargs="+", default=all_indicators,
                         help="Indicators to anonymize (default: all in config, "
                              "including held-out)")
-    parser.add_argument("--model", default="llama-70b",
-                        help="Model key for anonymization (default: llama-70b)")
+    parser.add_argument("--model", default="llama-70b-local",
+                        help="Model key for anonymization (default: llama-70b-local)")
     parser.add_argument("--force", action="store_true",
                         help="Re-anonymize even if cached output exists")
     args = parser.parse_args()
