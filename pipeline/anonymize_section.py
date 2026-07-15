@@ -96,7 +96,7 @@ def anonymize_text(text: str, country_name: str, model_key: str = ANONYMIZER_MOD
             {"role": "user", "content": user_msg},
         ],
         temperature=0,
-        max_tokens=4096,
+        max_tokens=8192,
     )
     return (response.choices[0].message.content or "").strip()
 
