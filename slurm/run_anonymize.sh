@@ -20,7 +20,7 @@
 #SBATCH --gres=gpu:gh200:1
 #SBATCH --cpus-per-task=32
 #SBATCH --mem=200G
-#SBATCH --time=24:00:00
+#SBATCH --time=48:00:00
 #SBATCH --output=logs/anonymize_%x_%j.out
 #SBATCH --error=logs/anonymize_%x_%j.err
 
@@ -44,6 +44,7 @@ export VLLM_API_KEY="local"
 conda activate vllm
 vllm serve "$MODEL_PATH" \
     --dtype bfloat16 \
+    --quantization fp8 \
     --port "$VLLM_PORT" \
     --max-model-len 16384 \
     --gpu-memory-utilization 0.90 &
