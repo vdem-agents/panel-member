@@ -16,10 +16,10 @@
 #SBATCH --output=logs/setup_env_%j.out
 #SBATCH --error=logs/setup_env_%j.err
 
-set -euo pipefail
+set -eo pipefail
 mkdir -p logs
 
-source ~/.bashrc
+source ~/miniforge3/etc/profile.d/conda.sh
 
 echo "Creating panel-member conda environment..."
 conda create -n panel-member python=3.11 -y

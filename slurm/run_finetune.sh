@@ -28,7 +28,7 @@
 #SBATCH --output=logs/finetune.out
 #SBATCH --error=logs/finetune.err
 
-set -euo pipefail
+set -eo pipefail
 mkdir -p logs
 
 # ── Configuration ──────────────────────────────────────────────────────────────
