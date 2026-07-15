@@ -61,11 +61,10 @@ _fewshot_anon_cache: dict | None = None
 _template_cache: tuple[str, str] | None = None
 
 CODEBOOK_ONLY_SYSTEM = (
-    "You are a comparative politics researcher rating political conditions on V-Dem "
-    "indicators using globally calibrated standards. Compare every country to the full "
-    "worldwide distribution from the most repressive autocracies to the most open "
-    "democracies. Never apply a regional reference frame. Always apply the global "
-    "comparison frame."
+    "You are rating political conditions on V-Dem indicators using globally calibrated "
+    "standards. Compare every country to the full worldwide distribution from the most "
+    "repressive autocracies to the most open democracies. Never apply a regional "
+    "reference frame. Apply the global comparison frame."
 )
 
 
