@@ -42,15 +42,15 @@ export VLLM_BASE_URL="http://localhost:${VLLM_PORT}/v1"
 export VLLM_API_KEY="local"
 
 # ── Start vLLM ─────────────────────────────────────────────────────────────────
-conda activate vllm
-vllm serve "$MODEL_PATH" \
+VLLM_PYTHON=~/miniforge3/envs/vllm/bin/python
+"$VLLM_PYTHON" -m vllm.entrypoints.openai.api_server \
+    --model "$MODEL_PATH" \
     --dtype bfloat16 \
     --quantization fp8 \
     --port "$VLLM_PORT" \
     --max-model-len 16384 \
     --gpu-memory-utilization 0.90 &
 VLLM_PID=$!
-conda activate panel-member
 
 echo "Waiting for vLLM to be ready..."
 until curl -sf "http://localhost:${VLLM_PORT}/health" > /dev/null 2>&1; do
