@@ -37,6 +37,7 @@ flowchart TD
     EV --> PF["prepare_finetune_data.py\n(FT-raw: raw evidence)\n(FT-anon: anonymized)"]
     AV --> PF
     HR --> PF
+    PF --> AP
     PF --> TJ["training JSONL\n(×2 variants)"]
     TJ --> FT["finetune_llama.py\n(×2 runs)"]
     FT --> AD["LoRA adapters\nFT-raw · FT-anon"]
@@ -224,7 +225,6 @@ Two fine-tuned Llama-3.3-70B adapters are trained in parallel — one on raw evi
 
 **Key comparison**: FT-anon vs. base 70B (anonymized) isolates what embedding calibration in weights adds over in-context few-shot examples. FT-anon vs. FT-raw shows whether anonymizing the training data changes calibration independently of the anonymization manipulation at inference.
 
-> **Code gap**: `prepare_finetune_data.py` currently only generates FT-anon training data (hard-codes `condition="finetuned"`). FT-raw training data generation requires adding a `--raw` flag or a second condition path. See open issue tracker.
 
 ---
 

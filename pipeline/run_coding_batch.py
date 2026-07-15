@@ -72,6 +72,7 @@ from datetime import datetime
 from pathlib import Path
 
 import yaml
+from tqdm import tqdm
 
 from pipeline.code_country_year import code_country_year
 from pipeline.country_map import build_country_map
@@ -154,9 +155,9 @@ def run_batch(
     output_path.parent.mkdir(parents=True, exist_ok=True)
     configure_extraction_log(output_path.with_suffix(".extraction.log"))
 
-    print(f"Building country map for {year}...")
+    print(f"Building country map for {year}...", file=sys.stderr)
     country_map = build_country_map(year)
-    print(f"  {len(country_map)} countries with processed-text files")
+    print(f"  {len(country_map)} countries with processed-text files", file=sys.stderr)
 
     jobs: list[tuple] = []
     for indicator in indicators:
@@ -173,17 +174,19 @@ def run_batch(
         if (j[0], j[3], j[4], j[5], j[6]) not in done
     ]
 
+    ts = datetime.now().strftime("%H:%M:%S")
     print(
-        f"Jobs: {len(jobs)} total, {len(done)} done, {len(remaining)} remaining "
-        f"[{condition} | {year} | workers={workers}]"
+        f"[{ts}] Starting | jobs={len(jobs)} done={len(done)} remaining={len(remaining)} "
+        f"condition={condition} year={year} models={models} workers={workers}",
+        file=sys.stderr,
     )
     if not remaining:
-        print("Nothing to do.")
+        print("Nothing to do.", file=sys.stderr)
         return
 
     errors = 0
     write_lock = threading.Lock()
-    completed = 0
+    t_start = time.time()
 
     def _run_one(job: tuple) -> tuple[dict | None, Exception | None, str]:
         iso, slug, name, yr, indicator, cond, model_key = job
@@ -197,22 +200,36 @@ def run_batch(
     with open(output_path, "a") as out_f:
         with ThreadPoolExecutor(max_workers=workers) as pool:
             futures = {pool.submit(_run_one, job): job for job in remaining}
-            for future in as_completed(futures):
-                completed += 1
-                record, exc, label = future.result()
-                progress = f"[{completed}/{len(remaining)}]"
-                if exc is not None:
-                    errors += 1
-                    print(f"  {progress} {label} → ERROR: {exc}", file=sys.stderr)
-                else:
-                    with write_lock:
-                        out_f.write(json.dumps(record) + "\n")
-                        out_f.flush()
-                    print(f"  {progress} {label} → {record['rating']}")
+            with tqdm(total=len(remaining), unit="call", file=sys.stderr) as bar:
+                for n_done, future in enumerate(as_completed(futures), 1):
+                    record, exc, label = future.result()
+                    if exc is not None:
+                        errors += 1
+                        tqdm.write(f"  ERROR: {label} → {exc}", file=sys.stderr)
+                    else:
+                        with write_lock:
+                            out_f.write(json.dumps(record) + "\n")
+                            out_f.flush()
+                        tqdm.write(f"  {label} → {record['rating']}", file=sys.stderr)
 
-    print(f"\nDone. {len(remaining) - errors} succeeded, {errors} failed.")
+                    elapsed = time.time() - t_start
+                    rate = n_done / elapsed * 60 if elapsed > 0 else 0.0
+                    bar.set_postfix({"errors": errors, "rate": f"{rate:.1f}/min"})
+                    bar.update(1)
+
+                    if n_done % 100 == 0:
+                        eta = (len(remaining) - n_done) / (n_done / elapsed) if elapsed > 0 else 0.0
+                        tqdm.write(
+                            f"  [{datetime.now().strftime('%H:%M:%S')}] "
+                            f"{n_done}/{len(remaining)} | elapsed={elapsed/60:.1f}m "
+                            f"rate={rate:.1f}/min ETA={eta/60:.1f}m errors={errors}",
+                            file=sys.stderr,
+                        )
+
+    ts_end = datetime.now().strftime("%H:%M:%S")
+    print(f"\n[{ts_end}] Done. {len(remaining) - errors} succeeded, {errors} failed.", file=sys.stderr)
     if errors:
-        print("Re-run the same command to retry failed rows.")
+        print("Re-run the same command to retry failed rows.", file=sys.stderr)
 
 
 if __name__ == "__main__":
