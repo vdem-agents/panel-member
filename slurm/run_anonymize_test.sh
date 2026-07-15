@@ -1,28 +1,22 @@
 #!/bin/bash
-# SLURM job: anonymize all country-year-indicators for one year using Llama 70B.
+# SLURM job: spot-check anonymization quality on N random CYIs.
 #
-# Starts vLLM on the allocated node, waits for it to be ready, runs the
-# anonymization batch, then shuts vLLM down. Already-cached files are skipped
-# automatically, so the job can be resubmitted safely if it times out.
+# Starts vLLM, runs --sample N, writes the anonymized text to the log file,
+# then shuts vLLM down. Inspect output with:
+#   cat logs/anonymize_test_*_<jobid>.out
 #
-# Run once per year. For 2016–2018 (FT-anon training + few-shot examples):
-#   YEAR=2016 sbatch slurm/run_anonymize.sh
-#   YEAR=2017 sbatch slurm/run_anonymize.sh
-#   YEAR=2018 sbatch slurm/run_anonymize.sh
+# Usage:
+#   sbatch slurm/run_anonymize_test.sh              # 10 random CYIs, year 2019
+#   YEAR=2018 SAMPLE=20 sbatch slurm/run_anonymize_test.sh
 #
-# For Condition 3 inference prerequisites:
-#   YEAR=2019 sbatch slurm/run_anonymize.sh
-#
-# Adjust MODEL_PATH to your scratch directory before submitting.
-#
-#SBATCH --job-name=pm-anonymize
+#SBATCH --job-name=pm-anon-test
 #SBATCH --partition=superChip
 #SBATCH --gres=gpu:gh200:1
 #SBATCH --cpus-per-task=32
 #SBATCH --mem=200G
-#SBATCH --time=48:00:00
-#SBATCH --output=logs/anonymize_%x_%j.out
-#SBATCH --error=logs/anonymize_%x_%j.err
+#SBATCH --time=04:00:00
+#SBATCH --output=logs/anonymize_test_%x_%j.out
+#SBATCH --error=logs/anonymize_test_%x_%j.err
 #SBATCH --nodelist=gh200-06
 
 set -eo pipefail
@@ -30,8 +24,9 @@ mkdir -p logs
 
 # ── Configuration ──────────────────────────────────────────────────────────────
 YEAR=${YEAR:-2019}
+SAMPLE=${SAMPLE:-10}
 MODEL_KEY=llama-70b-local
-MODEL_PATH=/scratch/ejtgrp/models/llama-3.3-70b-instruct   # pre-downloaded weights
+MODEL_PATH=/scratch/ejtgrp/models/llama-3.3-70b-instruct
 VLLM_PORT=8000
 
 # ── Environment ────────────────────────────────────────────────────────────────
@@ -63,12 +58,13 @@ until curl -sf "http://localhost:${VLLM_PORT}/health" > /dev/null 2>&1; do
 done
 echo "vLLM ready (pid $VLLM_PID)"
 
-# ── Run anonymization batch ────────────────────────────────────────────────────
+# ── Run spot-check ─────────────────────────────────────────────────────────────
+echo "Spot-checking $SAMPLE random CYIs for year $YEAR..."
 python3 -m pipeline.run_anonymize_batch \
     --year "$YEAR" \
-    --model "$MODEL_KEY" \
-    --workers 8
+    --sample "$SAMPLE" \
+    --model "$MODEL_KEY"
 
 # ── Cleanup ────────────────────────────────────────────────────────────────────
 kill "$VLLM_PID" && wait "$VLLM_PID" 2>/dev/null || true
-echo "Done — year $YEAR anonymization complete."
+echo "Done — inspect output above."
