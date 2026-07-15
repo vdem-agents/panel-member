@@ -15,7 +15,7 @@
 #   Llama 3.3 70B:         ~140 GB
 #   Llama 3.1 405B:        ~810 GB  (download to a large-quota scratch directory)
 
-set -euo pipefail
+set -eo pipefail
 
 source .env   # loads HF_TOKEN
 

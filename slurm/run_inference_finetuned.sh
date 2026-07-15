@@ -20,7 +20,7 @@
 #SBATCH --output=logs/ft_infer_%j.out
 #SBATCH --error=logs/ft_infer_%j.err
 
-set -euo pipefail
+set -eo pipefail
 mkdir -p logs
 
 # ── Configuration ──────────────────────────────────────────────────────────────

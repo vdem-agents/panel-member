@@ -24,7 +24,7 @@
 #SBATCH --output=logs/anonymize_%x_%j.out
 #SBATCH --error=logs/anonymize_%x_%j.err
 
-set -euo pipefail
+set -eo pipefail
 mkdir -p logs
 
 # ── Configuration ──────────────────────────────────────────────────────────────

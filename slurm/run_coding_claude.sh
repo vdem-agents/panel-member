@@ -17,7 +17,7 @@
 #SBATCH --output=logs/claude_%j.out
 #SBATCH --error=logs/claude_%j.err
 
-set -euo pipefail
+set -eo pipefail
 mkdir -p logs
 
 # ── Configuration ──────────────────────────────────────────────────────────────

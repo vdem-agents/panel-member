@@ -17,7 +17,7 @@
 #SBATCH --output=logs/llama70b_%j.out
 #SBATCH --error=logs/llama70b_%j.err
 
-set -euo pipefail
+set -eo pipefail
 mkdir -p logs
 
 # ── Configuration ──────────────────────────────────────────────────────────────
