@@ -37,7 +37,7 @@ VLLM_PORT=8000
 # ── Environment ────────────────────────────────────────────────────────────────
 source ~/miniforge3/etc/profile.d/conda.sh
 module load cuda/13
-source .env
+set -a; source .env; set +a
 conda activate panel-member
 
 export VLLM_BASE_URL="http://localhost:${VLLM_PORT}/v1"
@@ -53,7 +53,8 @@ export PATH="$HOME/miniforge3/envs/vllm/bin:$PATH"
     --quantization fp8 \
     --port "$VLLM_PORT" \
     --max-model-len 16384 \
-    --gpu-memory-utilization 0.90 &
+    --gpu-memory-utilization 0.90 \
+    --safetensors-load-strategy prefetch &
 VLLM_PID=$!
 
 echo "Waiting for vLLM to be ready..."

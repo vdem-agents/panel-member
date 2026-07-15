@@ -2,21 +2,25 @@
 """
 Stage 2b: Anonymize extracted section text by removing country-identifying information.
 
-Reads the indicator-relevant sections for a given (country, year, indicator) triple,
-makes one LLM call to rewrite the text with all identifying labels replaced, and caches
-the result to disk. Used as input for Conditions 3 (anonymized few-shot) and 4 (fine-tuning).
+Caches at the section level — one file per (country, year, source, section_id) rather
+than per (country, year, indicator). Indicators that share source sections (e.g.
+exec_summary appears in every indicator's evidence) share a single anonymized file,
+reducing LLM calls from ~11,500 to ~4,000 per country-year.
 
-Motivation: bridge-coder preliminary results show compression bias (autocracies rated too
-high, democracies too low) even with few-shot calibration. Hypothesis: models use country
-identity as a regime-type anchor rather than reasoning from the described evidence.
-Anonymization tests this by equating the information available across conditions 2 and 3.
+Cache layout: data/processed-text/anonymized/{year}/{iso}/{source}_{section_id}.txt
+  e.g. anonymized/2019/NGA/state-dept_exec_summary.txt
+       anonymized/2019/NGA/state-dept_1a.txt
+       anonymized/2019/NGA/state-dept_irfr.txt        (for 2c indicators)
+       anonymized/2019/NGA/state-dept_6_women.txt     (for sec6_subsections)
+       anonymized/2019/NGA/freedom-house_exec_summary.txt
+       anonymized/2019/NGA/freedom-house_A.txt
 
-Cache: data/processed-text/anonymized/{year}/{iso}/{indicator}.txt
-Re-anonymize with --force to overwrite.
+Use load_anonymized_for_indicator() to assemble cached sections into the combined
+evidence text expected by the coding pipeline.
 
 Usage:
     python3 -m pipeline.anonymize_section \\
-        --iso NGA --slug nigeria --name Nigeria \\
+        --iso NGA --slug nigeria \\
         --year 2020 --indicator v2csreprss
 """
 
@@ -28,13 +32,23 @@ from pathlib import Path
 
 from openai import OpenAI
 
-from pipeline.extract_sections import get_evidence
+from pipeline.extract_sections import (
+    PROCESSED_DIR,
+    _parse_sec6_subsection,
+    parse_freedom_house,
+    parse_state_dept,
+)
 from pipeline.vdem_config import LLM_CONFIGS
 
 CONFIG_PATH = Path(__file__).parent.parent / "config" / "indicator_sections.yaml"
 ANON_DIR = Path(__file__).parent.parent / "data" / "processed-text" / "anonymized"
 
 ANONYMIZER_MODEL = "llama-70b-local"
+
+SOURCE_LABELS = {
+    "state-dept": "U.S. State Department Human Rights Report",
+    "freedom-house": "Freedom House Freedom in the World report",
+}
 
 ANONYMIZER_SYSTEM = """\
 You rewrite human rights report excerpts to remove information that identifies the
@@ -57,7 +71,9 @@ Rewrite the provided text so that:
 8. Replace specific named events (named protests, named laws, named operations) with
    generic descriptions: "a major protest", "a security operation", "legislation passed
    that year"
-9. Keep all substantive content intact — numbers, patterns of behavior, frequency
+9. Replace population figures (e.g. "Population 39,327" or "a population of 4.2 million")
+   with [POPULATION FIGURE]
+10. Keep all substantive content intact — numbers, patterns of behavior, frequency
    descriptions, and evaluative language all stay the same. Only identifying labels change.
 
 Output the rewritten text only. No preamble, no explanation, no summary.\
@@ -74,19 +90,42 @@ def _load_config() -> dict:
     return _config_cache
 
 
-def _anon_path(iso: str, year: int, indicator: str) -> Path:
-    return ANON_DIR / str(year) / iso / f"{indicator}.txt"
+def _anon_section_path(iso: str, year: int, source: str, section_id: str) -> Path:
+    return ANON_DIR / str(year) / iso / f"{source}_{section_id}.txt"
 
 
-def anonymize_text(text: str, country_name: str, model_key: str = ANONYMIZER_MODEL) -> str:
-    """Call the anonymization LLM on a block of combined extracted section text."""
+def _get_raw_section(slug: str, year: int, source: str, section_id: str) -> str | None:
+    """Extract raw text for one section from the processed document."""
+    if section_id == "irfr":
+        irfr_path = PROCESSED_DIR / "irfr" / str(year) / f"{slug}.txt"
+        return irfr_path.read_text(encoding="utf-8") if irfr_path.exists() else None
+
+    text_path = PROCESSED_DIR / source / str(year) / f"{slug}.txt"
+    if not text_path.exists():
+        return None
+
+    text = text_path.read_text(encoding="utf-8")
+    parsed = parse_state_dept(text) if source == "state-dept" else parse_freedom_house(text)
+
+    if section_id.startswith("6_"):
+        subsec_key = section_id[2:]
+        sec6_text = parsed.get("6")
+        if not sec6_text:
+            return None
+        return _parse_sec6_subsection(sec6_text, subsec_key, year)
+
+    return parsed.get(section_id)
+
+
+def anonymize_text(text: str, source_label: str, model_key: str = ANONYMIZER_MODEL) -> str:
+    """Call the anonymization LLM on one section of text."""
     cfg = LLM_CONFIGS[model_key]
     api_key = os.environ.get(cfg["api_key_env"])
     if not api_key:
         raise EnvironmentError(f"API key not set. Export {cfg['api_key_env']}.")
 
     user_msg = (
-        f"The following text describes {country_name}. "
+        f"The following is a section from a {source_label}. "
         f"Rewrite it to remove all identifying information as instructed.\n\n"
         f"{text}"
     )
@@ -104,55 +143,82 @@ def anonymize_text(text: str, country_name: str, model_key: str = ANONYMIZER_MOD
     return (response.choices[0].message.content or "").strip()
 
 
-def anonymize_country_year_indicator(
+def anonymize_one_section(
     iso: str,
     slug: str,
-    country_name: str,
     year: int,
-    indicator: str,
+    source: str,
+    section_id: str,
     force: bool = False,
     model_key: str = ANONYMIZER_MODEL,
 ) -> str | None:
     """
-    Anonymize extracted sections for one (country, year, indicator) triple.
-
-    Returns the anonymized text, or None if no source text exists.
-    Caches to disk; subsequent calls return the cache unless force=True.
+    Anonymize one (country, year, source, section) and cache the result.
+    Returns anonymized text, or None if the source section doesn't exist.
     """
-    out_path = _anon_path(iso, year, indicator)
-
+    out_path = _anon_section_path(iso, year, source, section_id)
     if out_path.exists() and not force:
         return out_path.read_text(encoding="utf-8")
 
-    config = _load_config()
-    ind_cfg = config.get(indicator, {})
-
-    chunks = []
-    for source, label in [
-        ("state-dept", "State Department Human Rights Report"),
-        ("freedom-house", "Freedom House Freedom in the World"),
-    ]:
-        if not ind_cfg.get(source):
-            continue
-        text = get_evidence(slug, year, indicator, source)
-        if text:
-            chunks.append(f"*{label}*\n\n{text}")
-
-    if not chunks:
+    raw_text = _get_raw_section(slug, year, source, section_id)
+    if not raw_text:
         return None
 
-    combined = "\n\n---\n\n".join(chunks)
-    anonymized = anonymize_text(combined, country_name, model_key=model_key)
+    label = SOURCE_LABELS.get(source, source)
+    anonymized = anonymize_text(raw_text, label, model_key=model_key)
 
     out_path.parent.mkdir(parents=True, exist_ok=True)
     out_path.write_text(anonymized, encoding="utf-8")
     return anonymized
 
 
+def load_anonymized_for_indicator(iso: str, year: int, indicator: str) -> str | None:
+    """
+    Assemble anonymized evidence for one (country, year, indicator) from cached
+    section files. Returns the combined text in the same format as the raw evidence
+    (source-labelled blocks separated by horizontal rules), or None if no cached
+    sections exist for this indicator.
+    """
+    config = _load_config()
+    ind_cfg = config.get(indicator, {})
+
+    outer_chunks = []
+    for source, label in [
+        ("state-dept", "State Department Human Rights Report"),
+        ("freedom-house", "Freedom House Freedom in the World"),
+    ]:
+        keys = ind_cfg.get(source, [])
+        if not keys:
+            continue
+
+        inner_chunks = []
+
+        exec_path = _anon_section_path(iso, year, source, "exec_summary")
+        if exec_path.exists():
+            inner_chunks.append(exec_path.read_text(encoding="utf-8"))
+
+        for key in keys:
+            if source == "state-dept" and key == "2c":
+                p = _anon_section_path(iso, year, "state-dept", "irfr")
+            elif source == "state-dept" and key == "6":
+                subsec = ind_cfg.get("sec6_subsections")
+                sec_id = f"6_{subsec}" if subsec else "6"
+                p = _anon_section_path(iso, year, source, sec_id)
+            else:
+                p = _anon_section_path(iso, year, source, key)
+
+            if p.exists():
+                inner_chunks.append(p.read_text(encoding="utf-8"))
+
+        if inner_chunks:
+            outer_chunks.append(f"*{label}*\n\n" + "\n\n---\n\n".join(inner_chunks))
+
+    return "\n\n---\n\n".join(outer_chunks) if outer_chunks else None
+
+
 def load_anonymized(iso: str, year: int, indicator: str) -> str | None:
-    """Load cached anonymized text, or None if not yet generated."""
-    p = _anon_path(iso, year, indicator)
-    return p.read_text(encoding="utf-8") if p.exists() else None
+    """Load cached anonymized text for an indicator. Assembles from section cache."""
+    return load_anonymized_for_indicator(iso, year, indicator)
 
 
 if __name__ == "__main__":
@@ -161,7 +227,6 @@ if __name__ == "__main__":
     )
     parser.add_argument("--iso", required=True, help="ISO-3 code, e.g. NGA")
     parser.add_argument("--slug", required=True, help="File slug, e.g. nigeria")
-    parser.add_argument("--name", required=True, help="Display name, e.g. Nigeria")
     parser.add_argument("--year", type=int, default=2020)
     parser.add_argument(
         "--indicators", nargs="+",
@@ -175,13 +240,36 @@ if __name__ == "__main__":
     )
     args = parser.parse_args()
 
-    indicators = args.indicators or list(_load_config().keys())
+    config = _load_config()
+    indicators = args.indicators or list(config.keys())
+
+    # Collect all unique sections needed across the selected indicators
+    sections_needed: set[tuple[str, str]] = set()
     for ind in indicators:
-        result = anonymize_country_year_indicator(
-            args.iso, args.slug, args.name, args.year, ind,
+        ind_cfg = config.get(ind, {})
+        for source in ["state-dept", "freedom-house"]:
+            keys = ind_cfg.get(source, [])
+            if not keys:
+                continue
+            sections_needed.add((source, "exec_summary"))
+            for key in keys:
+                if source == "state-dept" and key == "2c":
+                    sections_needed.add(("state-dept", "irfr"))
+                elif source == "state-dept" and key == "6":
+                    subsec = ind_cfg.get("sec6_subsections")
+                    sections_needed.add(("state-dept", f"6_{subsec}" if subsec else "6"))
+                else:
+                    sections_needed.add((source, key))
+
+    for source, section_id in sorted(sections_needed):
+        result = anonymize_one_section(
+            args.iso, args.slug, args.year, source, section_id,
             force=args.force, model_key=args.model,
         )
         if result:
-            print(f"  {args.iso} {args.year} {ind}: {len(result):,} chars")
+            print(f"  {args.iso} {args.year} {source}/{section_id}: {len(result):,} chars")
         else:
-            print(f"  {args.iso} {args.year} {ind}: no source text", file=sys.stderr)
+            print(
+                f"  {args.iso} {args.year} {source}/{section_id}: no source text",
+                file=sys.stderr,
+            )
