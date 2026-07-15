@@ -45,6 +45,7 @@ export VLLM_API_KEY="local"
 
 # ── Start vLLM ─────────────────────────────────────────────────────────────────
 VLLM_PYTHON=~/miniforge3/envs/vllm/bin/python
+export PATH="$HOME/miniforge3/envs/vllm/bin:$PATH"
 "$VLLM_PYTHON" -m vllm.entrypoints.openai.api_server \
     --model "$MODEL_PATH" \
     --dtype bfloat16 \
