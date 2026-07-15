@@ -5,7 +5,7 @@ pipeline/populate_fewshot_examples.py
 Populates data/fewshot_examples.json for all 206 indicators in
 config/indicator_sections.yaml, one example per ordinal level per indicator.
 
-Source: data/processed/human_ratings.csv (2016–2018 training window only).
+Source: shared/vdem-data/human_ratings.csv (2016–2018 training window only).
 Evidence doc availability is verified against data/processed-text/ before
 an example is accepted. Examples are globally distributed across 7 regions.
 
@@ -30,8 +30,9 @@ import yaml
 from pipeline.country_map import build_country_map
 
 ROOT = Path(__file__).parent.parent
+SHARED = ROOT.parent / "shared"
 CONFIG_PATH = ROOT / "config" / "indicator_sections.yaml"
-RATINGS_PATH = ROOT / "data" / "processed" / "human_ratings.csv"
+RATINGS_PATH = SHARED / "vdem-data" / "human_ratings.csv"
 FEWSHOT_PATH = ROOT / "data" / "fewshot_examples.json"
 POOL_PATH = ROOT / "data" / "fewshot_example_pool.json"
 TEXT_DIR = ROOT / "data" / "processed-text"

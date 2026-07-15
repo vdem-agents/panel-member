@@ -1,9 +1,12 @@
 # Panel Member Coding Prompt
 
-*Template for Conditions 2 (evidence), 3 (anonymized), and 4 (finetuned). Placeholders
-in `{UPPER_CASE}` are filled by `pipeline/assemble_prompt.py`. Codebook text loaded from
-`config/indicator_sections.yaml`. `{CALIBRATION_SECTION}` is the full calibration block
-(header + few-shot examples) for Conditions 2–3; empty string for Condition 4.*
+*Template used by all conditions except `codebook` (which bypasses this file entirely via
+`_codebook_user()` in `assemble_prompt.py`). Placeholders in `{UPPER_CASE}` are filled by
+`assemble_prompt.py`. Codebook text is loaded from `config/indicator_sections.yaml`.
+`{CALIBRATION_SECTION}` is the full calibration block (header + few-shot examples) for
+`evidence` and `anonymized`; empty string for `evidence-zeroshot`, `anonymized-zeroshot`,
+`finetuned`, and `finetuned-raw`. The last two are used only by `prepare_finetune_data.py`
+for training data assembly, not at inference time.*
 
 ---
 
