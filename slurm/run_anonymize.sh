@@ -23,6 +23,7 @@
 #SBATCH --time=48:00:00
 #SBATCH --output=logs/anonymize_%x_%j.out
 #SBATCH --error=logs/anonymize_%x_%j.err
+#SBATCH --exclude=gh200-07
 
 set -eo pipefail
 mkdir -p logs
