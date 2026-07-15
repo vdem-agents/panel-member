@@ -35,6 +35,7 @@ VLLM_PORT=8000
 
 # ── Environment ────────────────────────────────────────────────────────────────
 source ~/miniforge3/etc/profile.d/conda.sh
+module load cuda/13
 source .env
 conda activate panel-member
 
