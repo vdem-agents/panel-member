@@ -50,6 +50,7 @@ export PATH="$HOME/miniforge3/envs/vllm/bin:$PATH"
     --model "$MODEL_PATH" \
     --served-model-name meta-llama/Llama-3.3-70B-Instruct \
     --dtype bfloat16 \
+    --quantization fp8 \
     --port "$VLLM_PORT" \
     --max-model-len 16384 \
     --gpu-memory-utilization 0.90 &
