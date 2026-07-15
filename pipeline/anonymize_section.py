@@ -34,7 +34,7 @@ from pipeline.vdem_config import LLM_CONFIGS
 CONFIG_PATH = Path(__file__).parent.parent / "config" / "indicator_sections.yaml"
 ANON_DIR = Path(__file__).parent.parent / "data" / "processed-text" / "anonymized"
 
-ANONYMIZER_MODEL = "llama-70b"
+ANONYMIZER_MODEL = "llama-70b-local"
 
 ANONYMIZER_SYSTEM = """\
 You rewrite human rights report excerpts to remove information that identifies the
