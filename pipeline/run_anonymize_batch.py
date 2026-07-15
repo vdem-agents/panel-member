@@ -15,9 +15,12 @@ Usage:
     # All countries, all indicators, one year:
     python3 -m pipeline.run_anonymize_batch --year 2019
 
+    # With concurrent workers (recommended for vLLM):
+    python3 -m pipeline.run_anonymize_batch --year 2019 --workers 8
+
     # Training window — run one year at a time or loop:
-    for year in 2013 2014 2015 2016 2017 2018; do
-        python3 -m pipeline.run_anonymize_batch --year $year
+    for year in 2016 2017 2018; do
+        python3 -m pipeline.run_anonymize_batch --year $year --workers 8
     done
 
     # Specific indicators only:
@@ -30,6 +33,7 @@ Usage:
 import argparse
 import sys
 import time
+from concurrent.futures import ThreadPoolExecutor, as_completed
 from datetime import datetime
 from pathlib import Path
 
@@ -97,6 +101,9 @@ def main() -> None:
                         help="Model key for anonymization (default: llama-70b-local)")
     parser.add_argument("--force", action="store_true",
                         help="Re-anonymize even if cached output exists")
+    parser.add_argument("--workers", type=int, default=1,
+                        help="Concurrent requests to vLLM (default: 1). "
+                             "Use 8 for 70B on one GH200.")
     args = parser.parse_args()
 
     print(f"Building country map for {args.year}...", file=sys.stderr)
@@ -122,47 +129,59 @@ def main() -> None:
     ts = datetime.now().strftime("%H:%M:%S")
     print(
         f"[{ts}] Starting | year={args.year} total={len(jobs)} cached={done_count} "
-        f"remaining={len(remaining)} model={args.model}",
+        f"remaining={len(remaining)} model={args.model} workers={args.workers}",
         file=sys.stderr,
     )
     if not remaining:
         print("Nothing to do.", file=sys.stderr)
         return
 
-    # Year-level cache directory for periodic disk-count verification
     cache_year_dir = _anon_path(remaining[0][0], remaining[0][3], remaining[0][4]).parent.parent
 
     errors = 0
     no_text = 0
+    t_start = time.time()
 
-    with tqdm(total=len(remaining), unit="CYI", file=sys.stderr) as bar:
-        for n_done, (iso, slug, name, year, indicator) in enumerate(remaining, 1):
-            label = f"{iso} {year} {indicator}"
-            try:
-                result = _anonymize_with_backoff(
-                    iso, slug, name, year, indicator,
-                    force=args.force, model_key=args.model,
-                )
-                if result:
+    def _run_one(job: tuple) -> tuple[tuple, str | None, Exception | None]:
+        iso, slug, name, year, indicator = job
+        try:
+            result = _anonymize_with_backoff(
+                iso, slug, name, year, indicator,
+                force=args.force, model_key=args.model,
+            )
+            return job, result, None
+        except Exception as e:
+            return job, None, e
+
+    with ThreadPoolExecutor(max_workers=args.workers) as pool:
+        futures = {pool.submit(_run_one, job): job for job in remaining}
+        with tqdm(total=len(remaining), unit="CYI", file=sys.stderr) as bar:
+            for n_done, future in enumerate(as_completed(futures), 1):
+                (iso, slug, name, year, indicator), result, exc = future.result()
+                label = f"{iso} {year} {indicator}"
+
+                if exc is not None:
+                    errors += 1
+                    tqdm.write(f"  {label} → ERROR: {exc}", file=sys.stderr)
+                elif result:
                     tqdm.write(f"  {label} → {len(result):,} chars", file=sys.stderr)
                 else:
                     no_text += 1
                     tqdm.write(f"  {label} → no source text (skipped)", file=sys.stderr)
-            except Exception as e:
-                errors += 1
-                tqdm.write(f"  {label} → ERROR: {e}", file=sys.stderr)
 
-            bar.set_postfix({"errors": errors, "no_text": no_text})
-            bar.update(1)
+                elapsed = time.time() - t_start
+                rate = n_done / elapsed * 60 if elapsed > 0 else 0.0
+                bar.set_postfix({"errors": errors, "no_text": no_text, "rate": f"{rate:.1f}/min"})
+                bar.update(1)
 
-            if n_done % 500 == 0 and cache_year_dir.exists():
-                on_disk = sum(1 for _ in cache_year_dir.rglob("*.txt"))
-                tqdm.write(
-                    f"  [{datetime.now().strftime('%H:%M:%S')}] "
-                    f"{n_done}/{len(remaining)} CYIs processed | "
-                    f"files on disk: {on_disk:,}",
-                    file=sys.stderr,
-                )
+                if n_done % 500 == 0 and cache_year_dir.exists():
+                    on_disk = sum(1 for _ in cache_year_dir.rglob("*.txt"))
+                    tqdm.write(
+                        f"  [{datetime.now().strftime('%H:%M:%S')}] "
+                        f"{n_done}/{len(remaining)} CYIs processed | "
+                        f"files on disk: {on_disk:,} | rate={rate:.1f}/min",
+                        file=sys.stderr,
+                    )
 
     ts_end = datetime.now().strftime("%H:%M:%S")
     print(f"\n[{ts_end}] Done. {len(remaining) - errors} succeeded, {errors} failed.", file=sys.stderr)
