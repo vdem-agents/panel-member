@@ -27,6 +27,6 @@ conda create -n panel-member python=3.11 -y
 conda activate panel-member
 
 echo "Installing pipeline dependencies..."
-pip install -r ~/v-dem-coding/panel-member/requirements.txt
+pip install --no-cache-dir -r ~/v-dem-coding/panel-member/requirements.txt
 
 echo "Done. Test with: conda activate panel-member && python -c 'import openai; print(openai.__version__)'"
