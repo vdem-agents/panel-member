@@ -30,10 +30,11 @@ mkdir -p logs
 # ── Configuration ──────────────────────────────────────────────────────────────
 YEAR=${YEAR:-2019}
 MODEL_KEY=llama-70b-local
-MODEL_PATH=/scratch/$USER/models/llama-3.3-70b-instruct   # pre-downloaded weights
+MODEL_PATH=/scratch/ejtgrp/models/llama-3.3-70b-instruct   # pre-downloaded weights
 VLLM_PORT=8000
 
 # ── Environment ────────────────────────────────────────────────────────────────
+source ~/miniforge3/etc/profile.d/conda.sh
 source .env
 conda activate panel-member
 
