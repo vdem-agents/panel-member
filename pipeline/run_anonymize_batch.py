@@ -30,9 +30,11 @@ Usage:
 import argparse
 import sys
 import time
+from datetime import datetime
 from pathlib import Path
 
 import yaml
+from tqdm import tqdm
 
 from pipeline.anonymize_section import anonymize_country_year_indicator, _anon_path
 from pipeline.country_map import build_country_map
@@ -97,9 +99,9 @@ def main() -> None:
                         help="Re-anonymize even if cached output exists")
     args = parser.parse_args()
 
-    print(f"Building country map for {args.year}...")
+    print(f"Building country map for {args.year}...", file=sys.stderr)
     country_map = build_country_map(args.year)
-    print(f"  {len(country_map)} countries with processed-text files")
+    print(f"  {len(country_map)} countries with processed-text files", file=sys.stderr)
 
     # Build job list and check cache
     jobs = [
@@ -117,33 +119,55 @@ def main() -> None:
         remaining = jobs
 
     done_count = len(jobs) - len(remaining)
+    ts = datetime.now().strftime("%H:%M:%S")
     print(
-        f"Jobs: {len(jobs)} total, {done_count} cached, "
-        f"{len(remaining)} to process [{args.year}]"
+        f"[{ts}] Starting | year={args.year} total={len(jobs)} cached={done_count} "
+        f"remaining={len(remaining)} model={args.model}",
+        file=sys.stderr,
     )
     if not remaining:
-        print("Nothing to do.")
+        print("Nothing to do.", file=sys.stderr)
         return
 
-    errors = 0
-    for i, (iso, slug, name, year, indicator) in enumerate(remaining, 1):
-        label = f"[{i}/{len(remaining)}] {iso} {year} {indicator}"
-        try:
-            result = _anonymize_with_backoff(
-                iso, slug, name, year, indicator,
-                force=args.force, model_key=args.model,
-            )
-            if result:
-                print(f"  {label} → {len(result):,} chars")
-            else:
-                print(f"  {label} → no source text (skipped)", file=sys.stderr)
-        except Exception as e:
-            errors += 1
-            print(f"  {label} → ERROR: {e}", file=sys.stderr)
+    # Year-level cache directory for periodic disk-count verification
+    cache_year_dir = _anon_path(remaining[0][0], remaining[0][3], remaining[0][4]).parent.parent
 
-    print(f"\nDone. {len(remaining) - errors} succeeded, {errors} failed.")
+    errors = 0
+    no_text = 0
+
+    with tqdm(total=len(remaining), unit="CYI", file=sys.stderr) as bar:
+        for n_done, (iso, slug, name, year, indicator) in enumerate(remaining, 1):
+            label = f"{iso} {year} {indicator}"
+            try:
+                result = _anonymize_with_backoff(
+                    iso, slug, name, year, indicator,
+                    force=args.force, model_key=args.model,
+                )
+                if result:
+                    tqdm.write(f"  {label} → {len(result):,} chars", file=sys.stderr)
+                else:
+                    no_text += 1
+                    tqdm.write(f"  {label} → no source text (skipped)", file=sys.stderr)
+            except Exception as e:
+                errors += 1
+                tqdm.write(f"  {label} → ERROR: {e}", file=sys.stderr)
+
+            bar.set_postfix({"errors": errors, "no_text": no_text})
+            bar.update(1)
+
+            if n_done % 500 == 0 and cache_year_dir.exists():
+                on_disk = sum(1 for _ in cache_year_dir.rglob("*.txt"))
+                tqdm.write(
+                    f"  [{datetime.now().strftime('%H:%M:%S')}] "
+                    f"{n_done}/{len(remaining)} CYIs processed | "
+                    f"files on disk: {on_disk:,}",
+                    file=sys.stderr,
+                )
+
+    ts_end = datetime.now().strftime("%H:%M:%S")
+    print(f"\n[{ts_end}] Done. {len(remaining) - errors} succeeded, {errors} failed.", file=sys.stderr)
     if errors:
-        print("Re-run the same command to retry failed rows.")
+        print("Re-run the same command to retry failed rows.", file=sys.stderr)
 
 
 if __name__ == "__main__":

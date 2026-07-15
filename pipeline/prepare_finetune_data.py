@@ -39,10 +39,12 @@ import argparse
 import csv
 import json
 import sys
+from datetime import datetime
 from pathlib import Path
 from statistics import quantiles
 
 import yaml
+from tqdm import tqdm
 
 from pipeline.assemble_prompt import assemble_prompt
 from pipeline.country_map import build_country_map
@@ -179,7 +181,7 @@ def main() -> None:
     # For the raw variant, resolve ISO → slug from processed-text filenames.
     iso_year_to_slug: dict[tuple[str, int], str] = {}
     if is_raw:
-        print("Building country maps for slug resolution...")
+        print("Building country maps for slug resolution...", file=sys.stderr)
         for yr in sorted(set(args.years)):
             try:
                 cmap = build_country_map(yr)
@@ -187,13 +189,17 @@ def main() -> None:
                     iso_year_to_slug[(iso, yr)] = slug
             except FileNotFoundError as e:
                 print(f"  [warn] {e}", file=sys.stderr)
-        print(f"  {len(iso_year_to_slug)} (iso, year) entries resolved")
+        print(f"  {len(iso_year_to_slug)} (iso, year) entries resolved", file=sys.stderr)
 
-    print(f"Variant: {args.variant} | Condition: {condition}")
-    print(f"Training indicators: {len(args.indicators)}")
-    print(f"Loading human ratings: years={args.years}")
+    ts = datetime.now().strftime("%H:%M:%S")
+    print(
+        f"[{ts}] Starting | variant={args.variant} condition={condition} "
+        f"years={args.years} indicators={len(args.indicators)}",
+        file=sys.stderr,
+    )
+    print(f"Loading human ratings...", file=sys.stderr)
     ratings = load_human_ratings(args.years, args.indicators)
-    print(f"  {len(ratings):,} coder-CYI rows loaded")
+    print(f"  {len(ratings):,} coder-CYI rows loaded", file=sys.stderr)
 
     output_path.parent.mkdir(parents=True, exist_ok=True)
 
@@ -204,60 +210,64 @@ def main() -> None:
     char_lengths: list[int] = []
 
     with open(output_path, "w") as out_f:
-        for i, row in enumerate(ratings, 1):
-            iso3 = row["iso3"]
-            year = row["year"]
+        with tqdm(total=len(ratings), unit="row", file=sys.stderr) as bar:
+            for row in ratings:
+                iso3 = row["iso3"]
+                year = row["year"]
 
-            if iso3 not in iso_to_name:
-                country = pycountry.countries.get(alpha_3=iso3)
-                iso_to_name[iso3] = country.name if country else iso3
+                if iso3 not in iso_to_name:
+                    country = pycountry.countries.get(alpha_3=iso3)
+                    iso_to_name[iso3] = country.name if country else iso3
 
-            if is_raw:
-                slug = iso_year_to_slug.get((iso3, year))
-                if slug is None:
+                if is_raw:
+                    slug = iso_year_to_slug.get((iso3, year))
+                    if slug is None:
+                        skipped += 1
+                        if skipped <= 5 or skipped % 500 == 0:
+                            tqdm.write(
+                                f"  [skip] no slug mapping: {iso3} {year}",
+                                file=sys.stderr,
+                            )
+                        bar.set_postfix({"written": written, "skipped": skipped})
+                        bar.update(1)
+                        continue
+                else:
+                    slug = iso3.lower()  # unused by finetuned condition; iso3 drives the lookup
+
+                record = build_training_record(
+                    iso3=iso3,
+                    slug=slug,
+                    country_name=iso_to_name[iso3],
+                    year=year,
+                    indicator=row["indicator"],
+                    rating=row["rating"],
+                    condition=condition,
+                )
+
+                if record is None:
                     skipped += 1
                     if skipped <= 5 or skipped % 500 == 0:
-                        print(
-                            f"  [skip] no slug mapping: {iso3} {year}",
+                        missing = "source text" if is_raw else "anonymized text"
+                        tqdm.write(
+                            f"  [skip] no {missing}: {iso3} {year} {row['indicator']}",
                             file=sys.stderr,
                         )
+                    bar.set_postfix({"written": written, "skipped": skipped})
+                    bar.update(1)
                     continue
-            else:
-                slug = iso3.lower()  # unused by finetuned condition; iso3 drives the lookup
 
-            record = build_training_record(
-                iso3=iso3,
-                slug=slug,
-                country_name=iso_to_name[iso3],
-                year=year,
-                indicator=row["indicator"],
-                rating=row["rating"],
-                condition=condition,
-            )
+                record_str = json.dumps(record)
+                out_f.write(record_str + "\n")
+                written += 1
+                training_cyis.add((
+                    row["country_text_id"], iso3, year, row["indicator"]
+                ))
+                char_lengths.append(sum(
+                    len(m["content"]) for m in record["messages"]
+                ))
 
-            if record is None:
-                skipped += 1
-                if skipped <= 5 or skipped % 500 == 0:
-                    missing = "source text" if is_raw else "anonymized text"
-                    print(
-                        f"  [skip] no {missing}: {iso3} {year} {row['indicator']}",
-                        file=sys.stderr,
-                    )
-                continue
-
-            record_str = json.dumps(record)
-            out_f.write(record_str + "\n")
-            written += 1
-            training_cyis.add((
-                row["country_text_id"], iso3, year, row["indicator"]
-            ))
-            char_lengths.append(sum(
-                len(m["content"]) for m in record["messages"]
-            ))
-
-            if i % 1000 == 0:
-                print(f"  {i:,}/{len(ratings):,} processed "
-                      f"({written:,} written, {skipped:,} skipped)")
+                bar.set_postfix({"written": written, "skipped": skipped})
+                bar.update(1)
 
     with open(training_set_path, "w", newline="") as f:
         writer = csv.DictWriter(
@@ -272,14 +282,16 @@ def main() -> None:
                 "indicator": indicator,
             })
 
-    print(f"\nDone.")
-    print(f"  {written:,} training records → {output_path}")
-    print(f"  {skipped:,} rows skipped")
-    print(f"  {len(training_cyis):,} unique CYIs → {training_set_path}")
+    ts_end = datetime.now().strftime("%H:%M:%S")
+    print(f"\n[{ts_end}] Done.", file=sys.stderr)
+    print(f"  {written:,} training records → {output_path}", file=sys.stderr)
+    print(f"  {skipped:,} rows skipped", file=sys.stderr)
+    print(f"  {len(training_cyis):,} unique CYIs → {training_set_path}", file=sys.stderr)
     if skipped and not is_raw:
         print(
             "\nTo fix skipped rows: run run_anonymize_batch.py for missing CYIs,\n"
-            "then re-run this script (existing output is overwritten)."
+            "then re-run this script (existing output is overwritten).",
+            file=sys.stderr,
         )
 
     if char_lengths:
@@ -287,13 +299,13 @@ def main() -> None:
         qs = quantiles(char_lengths, n=100)
         def pct(p: int) -> int:
             return qs[p - 1] if p < 100 else char_lengths[-1]
-        print("\nToken-length diagnostic (characters in assembled prompt + response):")
+        print("\nToken-length diagnostic (characters in assembled prompt + response):", file=sys.stderr)
         print(f"  min={char_lengths[0]:,}  p50={pct(50):,}  p90={pct(90):,}"
-              f"  p95={pct(95):,}  p99={pct(99):,}  max={char_lengths[-1]:,}")
+              f"  p95={pct(95):,}  p99={pct(99):,}  max={char_lengths[-1]:,}", file=sys.stderr)
         print(f"  Approximate tokens (chars÷4):"
               f"  p50≈{pct(50)//4:,}  p90≈{pct(90)//4:,}"
-              f"  p95≈{pct(95)//4:,}  p99≈{pct(99)//4:,}  max≈{char_lengths[-1]//4:,}")
-        print(f"  Current --max-seq-len covers p99 if max_seq_len ≥ {pct(99)//4:,}.")
+              f"  p95≈{pct(95)//4:,}  p99≈{pct(99)//4:,}  max≈{char_lengths[-1]//4:,}", file=sys.stderr)
+        print(f"  Current --max-seq-len covers p99 if max_seq_len ≥ {pct(99)//4:,}.", file=sys.stderr)
 
 
 if __name__ == "__main__":
