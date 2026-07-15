@@ -85,7 +85,7 @@ flowchart TD
 | Script | What it does |
 |---|---|
 | `assemble_prompt.py` | Builds `(system, user)` prompt pair for any of the six conditions; loads few-shot block from `fewshot_examples.json` with focal-country exclusion |
-| `code_country_year.py` | Single LLM call; returns rating + justification + signed/absolute deviation from raw panel mean; writes one JSONL row |
+| `code_country_year.py` | Single LLM call; returns rating + justification + token counts + raw response; writes one JSONL row |
 | `run_coding_batch.py` | Batch driver for codebook, evidence, anonymized, and zeroshot conditions across countries × years × indicators |
 
 ### Fine-tuning
@@ -184,21 +184,23 @@ The few-shot block contains one calibration example per ordinal level (up to fiv
 
 ```json
 {
-  "country":       "HTI",
-  "year":          2019,
-  "indicator":     "v2csreprss",
-  "model":         "llama-3.3-70b-instruct",
-  "model_key":     "llama-70b",
-  "condition":     "evidence",
-  "rating":        1,
-  "justification": "...",
-  "raw_mean":      1.6,
-  "signed_dev":   -0.6,
-  "abs_dev":        0.6,
-  "sources":       ["state-dept", "freedom-house"],
-  "section_keys":  {"state-dept": ["2b", "5"], "freedom-house": ["E"]}
+  "country":        "HTI",
+  "year":           2019,
+  "indicator":      "v2csreprss",
+  "model":          "llama-3.3-70b-instruct",
+  "model_key":      "llama-70b",
+  "condition":      "evidence",
+  "prompt_variant": "panel-member-v1",
+  "rating":         1,
+  "justification":  "...",
+  "sources":        ["state-dept", "freedom-house"],
+  "section_keys":   {"state-dept": ["2b", "5"], "freedom-house": ["E"]},
+  "tokens":         {"input": 1240, "output": 48},
+  "raw_response":   "..."
 }
 ```
+
+`raw_mean`, `signed_dev`, and `abs_dev` are not stored in the output record. Join against `panel_means.csv` at analysis time (e.g. in R via `left_join`) to compute deviations.
 
 Output path: `data/output/{model_key}_{condition}_{indicator}_{year}.jsonl`
 
