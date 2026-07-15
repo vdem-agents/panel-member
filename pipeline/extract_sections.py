@@ -27,12 +27,18 @@ Usage:
 """
 
 import logging
+import os
 import re
 import yaml
 import argparse
 from pathlib import Path
 
-PROCESSED_DIR = Path(__file__).parent.parent / "data" / "processed-text"
+PROCESSED_DIR = Path(
+    os.environ.get(
+        "PROCESSED_TEXT_DIR",
+        Path(__file__).parent.parent / "data" / "processed-text",
+    )
+)
 CONFIG_PATH = Path(__file__).parent.parent / "config" / "indicator_sections.yaml"
 
 logger = logging.getLogger(__name__)
