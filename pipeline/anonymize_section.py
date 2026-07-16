@@ -33,6 +33,7 @@ from pathlib import Path
 from openai import OpenAI
 
 from pipeline.extract_sections import (
+    FH_SLUG_MAP,
     PROCESSED_DIR,
     _parse_sec6_subsection,
     parse_freedom_house,
@@ -107,7 +108,8 @@ def _get_raw_section(slug: str, year: int, source: str, section_id: str) -> str 
         irfr_path = PROCESSED_DIR / "irfr" / str(year) / f"{slug}.txt"
         return irfr_path.read_text(encoding="utf-8") if irfr_path.exists() else None
 
-    text_path = PROCESSED_DIR / source / str(year) / f"{slug}.txt"
+    effective_slug = FH_SLUG_MAP.get(slug, slug) if source == "freedom-house" else slug
+    text_path = PROCESSED_DIR / source / str(year) / f"{effective_slug}.txt"
     if not text_path.exists():
         return None
 
