@@ -240,9 +240,13 @@ def main() -> None:
                 if args.reidentify and text:
                     reid_response = reidentify_text(text, args.model)
                     name_lower = name.lower()
+                    short_name = name.split(',')[0].strip().lower()
+                    name_variants = {name_lower, short_name}
                     lines = [l.strip() for l in reid_response.splitlines() if l.strip()]
-                    in_top1 = name_lower in (lines[0].lower() if lines else "")
-                    in_top3 = name_lower in reid_response.lower()
+                    top1_lower = lines[0].lower() if lines else ""
+                    response_lower = reid_response.lower()
+                    in_top1 = any(v in top1_lower for v in name_variants)
+                    in_top3 = any(v in response_lower for v in name_variants)
                     reid_total += 1
                     if in_top1:
                         reid_top1 += 1
