@@ -6,8 +6,9 @@
 #   cat logs/anonymize_test_*_<jobid>.out
 #
 # Usage:
-#   sbatch slurm/run_anonymize_test.sh              # 10 random CYIs, year 2019
-#   YEAR=2018 SAMPLE=20 sbatch slurm/run_anonymize_test.sh
+#   sbatch slurm/run_anonymize_test.sh                       # 10 random CYIs, year 2019
+#   YEAR=2018 SAMPLE=20 sbatch slurm/run_anonymize_test.sh  # 20 CYIs, year 2018
+#   REIDENTIFY=1 sbatch slurm/run_anonymize_test.sh         # spot-check + reidentification test
 #
 #SBATCH --job-name=pm-anon-test
 #SBATCH --partition=superChip
@@ -25,6 +26,7 @@ mkdir -p logs
 # ── Configuration ──────────────────────────────────────────────────────────────
 YEAR=${YEAR:-2019}
 SAMPLE=${SAMPLE:-10}
+REIDENTIFY=${REIDENTIFY:-0}
 MODEL_KEY=llama-70b-local
 MODEL_PATH=/scratch/ejtgrp/models/llama-3.3-70b-instruct
 VLLM_PORT=8000
@@ -59,11 +61,14 @@ done
 echo "vLLM ready (pid $VLLM_PID)"
 
 # ── Run spot-check ─────────────────────────────────────────────────────────────
-echo "Spot-checking $SAMPLE random CYIs for year $YEAR..."
+REID_FLAG=""
+[ "$REIDENTIFY" = "1" ] && REID_FLAG="--reidentify"
+echo "Spot-checking $SAMPLE random CYIs for year $YEAR${REID_FLAG:+ (with reidentification)}..."
 python3 -m pipeline.run_anonymize_batch \
     --year "$YEAR" \
     --sample "$SAMPLE" \
-    --model "$MODEL_KEY"
+    --model "$MODEL_KEY" \
+    $REID_FLAG
 
 # ── Cleanup ────────────────────────────────────────────────────────────────────
 kill "$VLLM_PID" && wait "$VLLM_PID" 2>/dev/null || true

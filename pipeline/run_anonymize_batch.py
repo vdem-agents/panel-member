@@ -32,9 +32,13 @@ Usage:
 
     # Spot-check: anonymize sections for N random indicators, print assembled text:
     python3 -m pipeline.run_anonymize_batch --year 2019 --sample 5
+
+    # Reidentification test: anonymize N CYIs, then ask the LLM to identify the country:
+    python3 -m pipeline.run_anonymize_batch --year 2019 --sample 20 --reidentify
 """
 
 import argparse
+import os
 import random
 import sys
 import time
@@ -43,6 +47,7 @@ from datetime import datetime
 from pathlib import Path
 
 import yaml
+from openai import OpenAI
 from tqdm import tqdm
 
 from pipeline.anonymize_section import (
@@ -52,8 +57,45 @@ from pipeline.anonymize_section import (
     load_anonymized_for_indicator,
 )
 from pipeline.country_map import build_country_map
+from pipeline.vdem_config import LLM_CONFIGS
 
 CONFIG_PATH = Path(__file__).parent.parent / "config" / "indicator_sections.yaml"
+
+REIDENTIFY_SYSTEM = """\
+You are given an anonymized excerpt from a human rights report. All identifying
+information — the country name, cities, political parties, leaders, government bodies,
+organizations, ethnic groups, and specific dates — has been replaced with generic
+placeholders such as [COUNTRY], [CITY], [RULING PARTY], and so on.
+
+Based solely on the substantive content of this text — the political patterns, human
+rights conditions, institutional structures, and other details — try to identify which
+country this describes. Do not reason from the placeholder labels themselves.
+
+Respond with exactly:
+1. [your top guess]
+2. [second guess]
+3. [third guess]
+Reason: [one sentence explaining the key evidence for your top guess]\
+"""
+
+
+def reidentify_text(text: str, model_key: str) -> str:
+    """Ask the LLM to identify the country from anonymized text. Returns raw response."""
+    cfg = LLM_CONFIGS[model_key]
+    api_key = os.environ.get(cfg["api_key_env"])
+    if not api_key:
+        raise EnvironmentError(f"API key not set. Export {cfg['api_key_env']}.")
+    client = OpenAI(base_url=cfg["base_url"], api_key=api_key)
+    response = client.chat.completions.create(
+        model=cfg["model"],
+        messages=[
+            {"role": "system", "content": REIDENTIFY_SYSTEM},
+            {"role": "user", "content": text},
+        ],
+        temperature=0,
+        max_tokens=200,
+    )
+    return (response.choices[0].message.content or "").strip()
 
 
 def _build_unique_sections(indicators: list[str], config: dict) -> set[tuple[str, str]]:
@@ -142,7 +184,14 @@ def main() -> None:
     parser.add_argument("--sample", type=int, default=None,
                         help="Spot-check mode: anonymize sections for N randomly "
                              "selected indicators, print assembled text to stdout.")
+    parser.add_argument("--reidentify", action="store_true",
+                        help="After anonymizing each sampled CYI, ask the LLM to "
+                             "identify the country. Reports top-1 and top-3 accuracy. "
+                             "Requires --sample.")
     args = parser.parse_args()
+
+    if args.reidentify and args.sample is None:
+        parser.error("--reidentify requires --sample N")
 
     print(f"Building country map for {args.year}...", file=sys.stderr)
     country_map = build_country_map(args.year)
@@ -162,7 +211,11 @@ def main() -> None:
             for ind in args.indicators
         ]
         sample = random.sample(all_cyi, min(args.sample, len(all_cyi)))
-        print(f"Spot-checking {len(sample)} random CYIs:\n", file=sys.stderr)
+        mode = "reidentification" if args.reidentify else "spot-check"
+        print(f"Running {mode} on {len(sample)} random CYIs:\n", file=sys.stderr)
+
+        reid_total = reid_top1 = reid_top3 = 0
+
         for iso, slug, name, year, ind in sample:
             label = f"{iso} {year} {ind}"
             print(f"{'='*60}\n{label}\n{'='*60}", flush=True)
@@ -177,9 +230,35 @@ def main() -> None:
                     print(text)
                 else:
                     print("(no source text)")
+
+                if args.reidentify and text:
+                    reid_response = reidentify_text(text, args.model)
+                    name_lower = name.lower()
+                    lines = [l.strip() for l in reid_response.splitlines() if l.strip()]
+                    in_top1 = name_lower in (lines[0].lower() if lines else "")
+                    in_top3 = name_lower in reid_response.lower()
+                    reid_total += 1
+                    if in_top1:
+                        reid_top1 += 1
+                        reid_top3 += 1
+                        result = "CORRECT (top-1)"
+                    elif in_top3:
+                        reid_top3 += 1
+                        result = "CORRECT (top-3)"
+                    else:
+                        result = "WRONG"
+                    print(f"\n[Reidentification] Actual: {name} ({iso}) → {result}")
+                    print(reid_response)
+
             except Exception as e:
                 print(f"ERROR: {e}")
             print()
+
+        if args.reidentify and reid_total > 0:
+            print(f"{'='*60}")
+            print(f"Reidentification summary ({reid_total} CYIs tested):")
+            print(f"  Top-1 accuracy: {reid_top1}/{reid_total} ({reid_top1/reid_total:.1%})")
+            print(f"  Top-3 accuracy: {reid_top3}/{reid_total} ({reid_top3/reid_total:.1%})")
         return
 
     # ── Build job list ──────────────────────────────────────────────────────────
