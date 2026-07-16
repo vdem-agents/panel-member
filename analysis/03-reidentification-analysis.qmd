@@ -1,0 +1,612 @@
+---
+title: "Re-identification Analysis: What Survives Anonymization?"
+format:
+  html:
+    toc: true
+    toc-depth: 3
+    embed-resources: true
+    code-fold: true
+execute:
+  warning: false
+  message: false
+params:
+  reid_file: "reidentify_2019_73420878.json"
+  year: 2019
+---
+
+After stripping named entities from source text, the coding model is asked which country
+the anonymized passage describes. This notebook characterizes the re-identification results:
+overall accuracy, variation by regime type and region, per-country consistency across
+indicators, and qualitative patterns in what cues survived anonymization.
+
+The primary question for the paper's identification strategy is not the overall accuracy
+rate per se, but whether re-identification is systematically concentrated among countries
+where anchoring on country priors is most likely to distort ratings — high-profile cases
+with salient political profiles that the model knows well from pretraining.
+
+---
+
+## 1. Setup
+
+```{r setup}
+library(tidyverse)
+library(jsonlite)
+library(vdemdata)
+library(gt)
+library(here)
+
+region_labels <- c(
+  "1" = "E. Europe & C. Asia",
+  "2" = "Latin America",
+  "3" = "MENA",
+  "4" = "Sub-Saharan Africa",
+  "5" = "W. Europe & N. America",
+  "6" = "Asia & Pacific"
+)
+
+regime_labels <- c(
+  "0" = "Closed autocracy",
+  "1" = "Electoral autocracy",
+  "2" = "Electoral democracy",
+  "3" = "Liberal democracy"
+)
+```
+
+---
+
+## 2. Data loading
+
+```{r load-data}
+reid_raw <- fromJSON(here("logs", params$reid_file))
+
+# Structural note: correct_top3 for ESH (Western Sahara) is marked true because
+# the string "Western Sahara" appears in the model's second position, but phrased
+# as a denial ("Western Sahara is not a country"). Treat as correct_top3 = FALSE.
+#
+# COG (Congo) is marked correct_top1 = TRUE but the model guessed "Democratic Republic
+# of the Congo" (a different country). Mark as FALSE.
+#
+# BRN (Brunei Darussalam) is marked correct_top1 = FALSE but the model correctly
+# guessed "Brunei" — a substring-match failure in the scoring logic. Mark as TRUE.
+# Same for LAO: model said "3. Laos" but country is "Lao People's Democratic Republic";
+# correct_top3 should be TRUE.
+
+reid <- reid_raw |>
+  as_tibble() |>
+  mutate(
+    correct_top1 = case_when(
+      iso == "COG" ~ FALSE,
+      iso == "BRN" ~ TRUE,
+      TRUE         ~ correct_top1
+    ),
+    correct_top3 = case_when(
+      iso == "ESH" ~ FALSE,
+      iso == "LAO" ~ TRUE,
+      iso == "BRN" ~ TRUE,
+      TRUE         ~ correct_top3
+    )
+  )
+
+cat("CYIs:", nrow(reid), "\n")
+cat("Unique countries:", n_distinct(reid$iso), "\n")
+cat("Top-1 accuracy (corrected):", scales::percent(mean(reid$correct_top1), 0.1), "\n")
+cat("Top-3 accuracy (corrected):", scales::percent(mean(reid$correct_top3), 0.1), "\n")
+```
+
+```{r join-vdem}
+vdem_cov <- vdem |>
+  filter(year == params$year) |>
+  select(country_text_id, v2x_polyarchy, v2x_regime, e_regionpol_6C) |>
+  rename(iso = country_text_id)
+
+reid <- reid |>
+  left_join(vdem_cov, by = "iso") |>
+  mutate(
+    regime  = factor(v2x_regime, levels = 0:3, labels = regime_labels),
+    region  = factor(e_regionpol_6C, levels = 1:6, labels = region_labels),
+    poly_q  = ntile(v2x_polyarchy, 5)
+  )
+
+cat("CYIs matched to V-Dem covariates:", sum(!is.na(reid$v2x_polyarchy)), "\n")
+```
+
+```{r parse-responses}
+reid <- reid |>
+  mutate(
+    top1_guess = str_extract(llm_response, "(?<=^1\\.\\s{0,3})[^\n]+") |>
+                 str_trim(),
+    reasoning  = str_extract(llm_response, "(?<=Reason:\\s{0,3}).+") |>
+                 str_trim()
+  )
+```
+
+---
+
+## 3. Overall accuracy
+
+```{r accuracy-summary}
+tibble(
+  Metric   = c("Top-1 accuracy", "Top-3 accuracy",
+               "Correctly placed in top 3 but not top 1",
+               "Not in top 3"),
+  N        = c(sum(reid$correct_top1),
+               sum(reid$correct_top3),
+               sum(reid$correct_top3 & !reid$correct_top1),
+               sum(!reid$correct_top3)),
+  Share    = N / nrow(reid)
+) |>
+  gt() |>
+  tab_header(
+    title    = "Re-identification accuracy (corrected)",
+    subtitle = glue::glue("{nrow(reid)} CYIs | year: {params$year}")
+  ) |>
+  fmt_percent(columns = Share, decimals = 1) |>
+  cols_label(N = "Count", Share = "Share of CYIs")
+```
+
+---
+
+## 4. Accuracy by regime type
+
+The core question for the paper: are correctly re-identified cases concentrated among
+countries where the model is most likely to have strong country priors? If so, the
+anonymization treatment is weakest precisely where anchoring bias is most plausible.
+
+```{r accuracy-regime}
+#| fig-width: 7
+#| fig-height: 4
+
+acc_regime <- reid |>
+  filter(!is.na(regime)) |>
+  group_by(regime) |>
+  summarise(
+    n        = n(),
+    top1     = mean(correct_top1),
+    top3     = mean(correct_top3),
+    .groups  = "drop"
+  )
+
+acc_regime |>
+  pivot_longer(c(top1, top3), names_to = "metric", values_to = "accuracy") |>
+  mutate(
+    metric = recode(metric, top1 = "Top-1", top3 = "Top-3"),
+    metric = factor(metric, levels = c("Top-3", "Top-1"))
+  ) |>
+  ggplot(aes(x = accuracy, y = fct_rev(regime), colour = metric, shape = metric)) +
+  geom_vline(xintercept = mean(reid$correct_top1), linetype = "dashed",
+             colour = "grey50", linewidth = 0.4) +
+  geom_point(size = 3) +
+  scale_x_continuous(labels = scales::percent, limits = c(0, 1)) +
+  scale_colour_manual(values = c("Top-1" = "steelblue", "Top-3" = "tomato"),
+                      name = NULL) +
+  scale_shape_manual(values = c("Top-1" = 16, "Top-3" = 17), name = NULL) +
+  labs(
+    x        = "Re-identification accuracy",
+    y        = NULL,
+    title    = "Re-identification accuracy by regime type",
+    subtitle = "Dashed line = overall top-1 accuracy. N per regime shown below.",
+    caption  = glue::glue(
+      paste(acc_regime$regime, "(n=", acc_regime$n, ")", collapse = "  |  ")
+    )
+  ) +
+  theme_minimal(base_size = 12) +
+  theme(legend.position = "bottom")
+```
+
+```{r accuracy-polyarchy}
+#| fig-width: 7
+#| fig-height: 4
+
+reid |>
+  filter(!is.na(poly_q)) |>
+  group_by(poly_q) |>
+  summarise(
+    n        = n(),
+    top1     = mean(correct_top1),
+    top3     = mean(correct_top3),
+    mean_poly = mean(v2x_polyarchy),
+    .groups  = "drop"
+  ) |>
+  pivot_longer(c(top1, top3), names_to = "metric", values_to = "accuracy") |>
+  mutate(metric = recode(metric, top1 = "Top-1", top3 = "Top-3")) |>
+  ggplot(aes(x = poly_q, y = accuracy, colour = metric)) +
+  geom_line(linewidth = 0.9) +
+  geom_point(size = 2.5) +
+  geom_hline(yintercept = mean(reid$correct_top1), linetype = "dashed",
+             colour = "grey50", linewidth = 0.4) +
+  scale_x_continuous(breaks = 1:5,
+                     labels = c("Q1\n(most\nautocratic)", "Q2", "Q3", "Q4",
+                                "Q5\n(most\ndemocratic)")) +
+  scale_y_continuous(labels = scales::percent) +
+  scale_colour_manual(values = c("Top-1" = "steelblue", "Top-3" = "tomato"),
+                      name = NULL) +
+  labs(
+    x        = "Polyarchy quintile (v2x_polyarchy, 2019)",
+    y        = "Re-identification accuracy",
+    title    = "Re-identification accuracy by democracy level",
+    subtitle = "Dashed line = overall top-1 accuracy"
+  ) +
+  theme_minimal(base_size = 12) +
+  theme(legend.position = "bottom")
+```
+
+---
+
+## 5. Accuracy by region
+
+```{r accuracy-region}
+#| fig-width: 8
+#| fig-height: 4.5
+
+acc_region <- reid |>
+  filter(!is.na(region)) |>
+  group_by(region) |>
+  summarise(
+    n    = n(),
+    top1 = mean(correct_top1),
+    top3 = mean(correct_top3),
+    .groups = "drop"
+  ) |>
+  arrange(top1)
+
+acc_region |>
+  pivot_longer(c(top1, top3), names_to = "metric", values_to = "accuracy") |>
+  mutate(
+    metric = recode(metric, top1 = "Top-1", top3 = "Top-3"),
+    metric = factor(metric, levels = c("Top-3", "Top-1")),
+    label  = paste0(region, "\n(n=", rep(acc_region$n, each = 2), ")")
+  ) |>
+  ggplot(aes(x = accuracy, y = fct_reorder(label, accuracy, .fun = first),
+             colour = metric, shape = metric)) +
+  geom_vline(xintercept = mean(reid$correct_top1), linetype = "dashed",
+             colour = "grey50", linewidth = 0.4) +
+  geom_point(size = 3) +
+  scale_x_continuous(labels = scales::percent, limits = c(0, 1)) +
+  scale_colour_manual(values = c("Top-1" = "steelblue", "Top-3" = "tomato"),
+                      name = NULL) +
+  scale_shape_manual(values = c("Top-1" = 16, "Top-3" = 17), name = NULL) +
+  labs(
+    x        = "Re-identification accuracy",
+    y        = NULL,
+    title    = "Re-identification accuracy by region",
+    subtitle = "Dashed line = overall top-1 accuracy. Ordered by top-1 accuracy."
+  ) +
+  theme_minimal(base_size = 12) +
+  theme(legend.position = "bottom")
+```
+
+---
+
+## 6. Country-level consistency
+
+Countries appearing in multiple CYIs reveal how stable the (in)ability to identify a
+country is across indicators. Consistent identification across all of a country's
+indicators suggests the model has stable prior knowledge of that country's political
+profile; inconsistency suggests the cue is indicator-specific (a particular event or
+institutional detail) rather than the country's overall profile.
+
+```{r country-consistency}
+country_acc <- reid |>
+  group_by(iso, country) |>
+  summarise(
+    n_cyi    = n(),
+    top1     = mean(correct_top1),
+    top3     = mean(correct_top3),
+    poly     = mean(v2x_polyarchy, na.rm = TRUE),
+    regime   = first(as.character(regime)),
+    region   = first(as.character(region)),
+    .groups  = "drop"
+  ) |>
+  filter(n_cyi >= 2) |>
+  arrange(desc(top1), desc(top3))
+
+country_acc |>
+  select(country, n_cyi, top1, top3, poly, regime, region) |>
+  mutate(across(c(top1, top3), scales::percent, accuracy = 0)) |>
+  mutate(poly = round(poly, 2)) |>
+  gt() |>
+  tab_header(
+    title    = "Per-country re-identification accuracy (countries with ≥ 2 CYIs)",
+    subtitle = "Top-1 and top-3 accuracy pooled across all indicators for that country"
+  ) |>
+  cols_label(
+    country = "Country", n_cyi = "CYIs",
+    top1    = "Top-1",   top3  = "Top-3",
+    poly    = "Polyarchy", regime = "Regime", region = "Region"
+  ) |>
+  tab_style(
+    style     = cell_fill(color = "#d4edda"),
+    locations = cells_body(rows = top1 == "100%")
+  ) |>
+  tab_style(
+    style     = cell_fill(color = "#f8d7da"),
+    locations = cells_body(rows = top1 == "0%")
+  )
+```
+
+---
+
+## 7. Failure patterns: what does the model guess instead?
+
+When the model is wrong at top-1, where does it go? Systematic wrong guesses reveal
+which countries function as "regional prototypes" that dominate the model's prior
+distribution for a given political profile.
+
+```{r wrong-guesses}
+wrong_guesses <- reid |>
+  filter(!correct_top1) |>
+  mutate(
+    wrong_guess = str_remove(top1_guess, "^(\\d+\\.\\s*)?") |> str_trim()
+  ) |>
+  count(wrong_guess, sort = TRUE) |>
+  slice_head(n = 15)
+
+wrong_guesses |>
+  gt() |>
+  tab_header(
+    title    = "Most common wrong top-1 guesses",
+    subtitle = glue::glue("{sum(!reid$correct_top1)} incorrect top-1 predictions")
+  ) |>
+  cols_label(wrong_guess = "Model's top-1 guess", n = "Count") |>
+  tab_style(
+    style     = cell_fill(color = "#fff3cd"),
+    locations = cells_body(rows = n >= 3)
+  )
+```
+
+```{r wrong-by-region}
+#| fig-width: 8
+#| fig-height: 4
+
+reid |>
+  filter(!correct_top1, !is.na(region)) |>
+  count(region, sort = TRUE) |>
+  left_join(
+    reid |>
+      filter(!is.na(region)) |>
+      count(region, name = "n_total"),
+    by = "region"
+  ) |>
+  mutate(
+    wrong_rate = n / n_total,
+    region     = fct_reorder(region, wrong_rate)
+  ) |>
+  ggplot(aes(x = wrong_rate, y = region)) +
+  geom_col(fill = "tomato", alpha = 0.75, width = 0.6) +
+  geom_text(aes(label = paste0(n, " / ", n_total)),
+            hjust = -0.1, size = 3.2) +
+  scale_x_continuous(labels = scales::percent, limits = c(0, 1)) +
+  labs(
+    x        = "Share of CYIs where top-1 guess is wrong",
+    y        = NULL,
+    title    = "Top-1 failure rate by region",
+    subtitle = "Labels show wrong count / total CYIs in region"
+  ) +
+  theme_minimal(base_size = 12)
+```
+
+---
+
+## 8. What cues survived anonymization?
+
+The model's reasoning reveals what residual information drove correct identification
+despite anonymization. Correct identifications fall into four categories based on
+the type of cue the model relied on:
+
+- **Signature events**: a recent event so distinctive that the anonymized description
+  effectively identifies the country (e.g., Chile's 2019 fare-hike protests, Brexit)
+- **Unique institutions**: a constitutional or structural feature that has no close
+  parallel (e.g., Dayton two-entity structure, Compact of Free Association, Swiss cantons)
+- **Salient political profile**: a regime type + policy combination that
+  dominates the global distribution (e.g., Venezuela's humanitarian crisis, China's
+  Uyghur camps, Saudi Arabia's absolute monarchy + oil)
+- **Niche feature**: a small-country detail that is niche enough to be unique even
+  after stripping names (e.g., Suriname's Maroon communities, Barbados's senate structure)
+
+```{r cue-keywords}
+cue_patterns <- tribble(
+  ~cue_type,            ~pattern,
+  "Signature event",    "protest|uprising|referendum|coup|crisis|2019|constitution|electoral manipulation",
+  "Unique institution", "compact|canton|entity|peace agreement|dayton|accord|treaty|free association",
+  "Salient profile",    "humanitarian|reeducation|uyghur|detention center|absolute monarch|oil revenue",
+  "Niche feature",      "maroon|escaped slave|island nation|no political parties|traditional elder"
+)
+
+reid_cues <- reid |>
+  filter(correct_top1) |>
+  mutate(
+    cue_type = case_when(
+      str_detect(str_to_lower(reasoning),
+        "protest|uprising|referendum|coup|fare|constitutional|electoral manipulation|ousting|transitional")
+        ~ "Signature event",
+      str_detect(str_to_lower(reasoning),
+        "compact|canton|entity|peace agreement|dayton|free association|name change|accession")
+        ~ "Unique institution",
+      str_detect(str_to_lower(reasoning),
+        "humanitarian|reeducation|uyghur|detention|absolute monarch|oil|1mdb|digital security")
+        ~ "Salient profile",
+      TRUE ~ "Niche or ambiguous"
+    )
+  )
+
+reid_cues |>
+  count(cue_type, sort = TRUE) |>
+  mutate(share = n / nrow(reid_cues)) |>
+  gt() |>
+  tab_header(
+    title    = "Cue types driving correct top-1 re-identification",
+    subtitle = glue::glue("{nrow(reid_cues)} correct top-1 identifications")
+  ) |>
+  fmt_percent(columns = share, decimals = 1) |>
+  cols_label(cue_type = "Cue type", n = "Count", share = "Share")
+```
+
+```{r cue-by-regime}
+#| fig-width: 8
+#| fig-height: 4.5
+
+reid_cues |>
+  filter(!is.na(regime)) |>
+  count(regime, cue_type) |>
+  group_by(regime) |>
+  mutate(share = n / sum(n)) |>
+  ungroup() |>
+  ggplot(aes(x = share, y = fct_rev(regime), fill = cue_type)) +
+  geom_col(width = 0.6) +
+  scale_x_continuous(labels = scales::percent) +
+  scale_fill_brewer(palette = "Set2", name = "Cue type") +
+  labs(
+    x        = "Share of correct identifications",
+    y        = NULL,
+    title    = "Identification cue types by regime category",
+    subtitle = "Among correctly re-identified CYIs (top-1) only"
+  ) +
+  theme_minimal(base_size = 12) +
+  theme(legend.position = "bottom")
+```
+
+---
+
+## 9. Identifiability and polyarchy: does the model know more about prominent cases?
+
+If re-identification is concentrated among countries with high pretraining salience,
+the anonymization treatment is least effective precisely where country-identity
+anchoring is most plausible. The clearest test: does identification success correlate
+with v2x_polyarchy (as a proxy for international attention, since consolidated
+democracies and collapsed autocracies both receive disproportionate coverage) or is it
+U-shaped?
+
+```{r identifiability-scatter}
+#| fig-width: 8
+#| fig-height: 4.5
+
+country_acc_all <- reid |>
+  group_by(iso, country) |>
+  summarise(
+    top1       = mean(correct_top1),
+    poly       = mean(v2x_polyarchy, na.rm = TRUE),
+    regime     = first(as.character(regime)),
+    region     = first(as.character(region)),
+    n_cyi      = n(),
+    .groups    = "drop"
+  )
+
+country_acc_all |>
+  filter(!is.na(poly)) |>
+  ggplot(aes(x = poly, y = top1, colour = regime, size = n_cyi)) +
+  geom_jitter(alpha = 0.75, width = 0.005, height = 0.02) +
+  geom_smooth(aes(group = 1), method = "loess", se = TRUE, colour = "grey30",
+              linewidth = 0.8, fill = "grey80") +
+  scale_y_continuous(labels = scales::percent, limits = c(-0.05, 1.05)) +
+  scale_colour_manual(
+    values = c(
+      "Closed autocracy"    = "firebrick",
+      "Electoral autocracy" = "darkorange",
+      "Electoral democracy" = "steelblue",
+      "Liberal democracy"   = "darkgreen"
+    ),
+    name = "Regime type"
+  ) +
+  scale_size_continuous(range = c(2, 6), name = "CYIs", breaks = c(1, 2, 3)) +
+  labs(
+    x        = "v2x_polyarchy (2019)",
+    y        = "Top-1 re-identification rate",
+    title    = "Re-identification rate by polyarchy score",
+    subtitle = "Each point = one country. Loess smoother with 95% CI."
+  ) +
+  theme_minimal(base_size = 12) +
+  theme(legend.position = "bottom")
+```
+
+---
+
+## 10. Matching quality flags
+
+Three cases in the raw JSON have scoring errors from the string-matching logic. These
+are documented here for the batch runner fix.
+
+```{r matching-bugs}
+tribble(
+  ~iso, ~country,           ~indicator,       ~raw_top1,                          ~correct_top1_raw, ~corrected, ~issue,
+  "BRN", "Brunei Darussalam", "v2pssunpar",  "Brunei",                             FALSE,             TRUE,  "False negative: 'Brunei' is a substring of 'Brunei Darussalam'; matcher requires exact string",
+  "LAO", "Lao PDR",           "v2exl_legitideolcr", "Laos (position 3)",          FALSE,             TRUE,  "False negative: 'Laos' is common name for 'Lao People's Democratic Republic'",
+  "COG", "Congo",             "v2pscomprg",   "Democratic Republic of the Congo",  TRUE,              FALSE, "False positive: 'Congo' is a substring of 'DRC'; these are different countries (COG vs COD)",
+  "ESH", "Western Sahara",    "v2peapssoc",   "'not a country' (denial clause)",   TRUE,              FALSE, "False positive: model named 'Western Sahara' only to deny it is a country; should not count as identification"
+) |>
+  gt() |>
+  tab_header(
+    title    = "String-matching errors in raw scoring",
+    subtitle = "These four cases are corrected in Section 2 of this notebook"
+  ) |>
+  cols_label(
+    iso = "ISO", country = "Country", indicator = "Indicator",
+    raw_top1 = "Model's guess", correct_top1_raw = "Raw score",
+    corrected = "Corrected", issue = "Issue"
+  ) |>
+  tab_style(
+    style = cell_fill(color = "#fff3cd"),
+    locations = cells_body()
+  )
+```
+
+**Recommended fix for the batch runner**: replace exact string matching with a
+lookup table mapping common names and abbreviated forms to the canonical V-Dem
+`country` field. At minimum: `"Brunei"` → `"Brunei Darussalam"`, `"Laos"` →
+`"Lao People's Democratic Republic"`, and a check that `"Democratic Republic
+of the Congo"` does not match `"Congo"` (COG).
+
+---
+
+## 11. Summary: implications for the anonymization treatment
+
+```{r summary-table}
+tibble(
+  Finding = c(
+    "Overall top-1 accuracy (corrected)",
+    "Overall top-3 accuracy (corrected)",
+    "Countries with 100% top-1 accuracy across all their CYIs",
+    "Countries with 0% top-1 accuracy across all their CYIs",
+    "Most common wrong guess",
+    "Region with lowest failure rate",
+    "Region with highest failure rate",
+    "Most common cue type among correct identifications"
+  ),
+  Value = c(
+    scales::percent(mean(reid$correct_top1), 0.1),
+    scales::percent(mean(reid$correct_top3), 0.1),
+    as.character(sum(country_acc$top1 == 1)),
+    as.character(sum(country_acc$top1 == 0)),
+    wrong_guesses$wrong_guess[1],
+    as.character(acc_region$region[which.min(acc_region$top1)]),
+    as.character(acc_region$region[which.max(acc_region$top1)]),
+    reid_cues |> count(cue_type, sort = TRUE) |> slice_head(n = 1) |> pull(cue_type)
+  )
+) |>
+  gt() |>
+  tab_header(title = "Re-identification summary") |>
+  cols_label(Finding = "Finding", Value = "Value")
+```
+
+The 60% top-1 re-identification rate is not uniformly distributed. It is driven by
+countries with a globally distinctive political signature that rule-based named-entity
+stripping cannot remove: iconic recent events (Brexit, Chile's 2019 protests), unique
+institutional structures (Dayton entities, the Compact of Free Association, Swiss
+cantons), and profiles so salient that the described conditions are immediately
+attributable (China's Uyghur detention system, Venezuela's humanitarian crisis, Saudi
+Arabia's absolute monarchy with oil revenues). For these countries, the anonymized
+text is effectively a fingerprint.
+
+The 40% that are not re-identified cluster in two patterns: countries whose political
+profiles are regionally fungible (Sahel states, generic sub-Saharan authoritarians,
+Nordic democracies, small Caribbean islands without standout events) and countries
+for which the relevant indicator does not invoke any country-specific cue even when
+the country is otherwise salient (e.g., Algeria on a slavery-related indicator reads
+as Egypt).
+
+For the paper's identification strategy, the critical implication is directional: the
+anonymization treatment is weakest for exactly the countries where country-identity
+anchoring is most plausible — those the model knows best. This attenuates
+Δ(Anonymized − Evidence) toward zero relative to the theoretically clean comparison,
+meaning any observed improvement from anonymization likely understates the true effect.
+The re-identification test (hypothesis 5) is therefore not merely a robustness check
+but the primary diagnostic of how much anchoring remains in the anonymized condition.

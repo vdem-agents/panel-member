@@ -1,0 +1,182 @@
+[
+  {
+    "iso": "IDN",
+    "country": "Indonesia",
+    "year": 2019,
+    "indicator": "v2elpeace",
+    "correct_top1": true,
+    "correct_top3": true,
+    "llm_response": "1. Indonesia\n2. Turkey\n3. India\nReason: The country's democratic gains, struggles with corruption and minority rights, and the specific details about the electoral process, such as the 4 percent parliamentary threshold and the 30 percent gender quota, are consistent with Indonesia's political system and human rights conditions."
+  },
+  {
+    "iso": "ISR",
+    "country": "Israel",
+    "year": 2019,
+    "indicator": "v2lgdomchm",
+    "correct_top1": true,
+    "correct_top3": true,
+    "llm_response": "1. Israel\n2. United States\n3. United Kingdom\nReason: The mention of a multiparty democracy with strong institutions, a judiciary active in protecting minority rights, and the specific issue of discrimination against an ethnic group, combined with the role of military service in political life, suggests a country with a complex societal dynamic and a history of ethnic tensions, which is consistent with the political landscape of Israel."
+  },
+  {
+    "iso": "SLV",
+    "country": "El Salvador",
+    "year": 2019,
+    "indicator": "v2peasjgeo",
+    "correct_top1": true,
+    "correct_top3": true,
+    "llm_response": "1. El Salvador\n2. Honduras\n3. Guatemala\nReason: The key evidence for my top guess, El Salvador, includes the mention of a high rate of femicide, the prevalence of gang activity and extortion, and the restrictive abortion laws, all of which are consistent with known human rights concerns and societal issues in El Salvador."
+  },
+  {
+    "iso": "CHL",
+    "country": "Chile",
+    "year": 2019,
+    "indicator": "v2cldiscw",
+    "correct_top1": true,
+    "correct_top3": true,
+    "llm_response": "1. Chile\n2. Argentina\n3. Uruguay\nReason: The key evidence for my top guess, Chile, is the description of massive and violent protests against the government and societal inequality, triggered by an increase in public transportation fares, which is reminiscent of the 2019-2020 Chilean protests that started with a metro fare hike and led to a constitutional reform process."
+  },
+  {
+    "iso": "DOM",
+    "country": "Dominican Republic",
+    "year": 2019,
+    "indicator": "v2elrgstry",
+    "correct_top1": false,
+    "correct_top3": false,
+    "llm_response": "1. Bolivia\n2. Ecuador\n3. Venezuela\nReason: The key evidence for my top guess, Bolivia, is the mention of a constitutional amendment allowing presidents to run for a second term, which is a specific detail that matches Bolivia's recent political history, as well as the country's struggles with electoral infrastructure, corruption, and social unrest."
+  },
+  {
+    "iso": "MNE",
+    "country": "Montenegro",
+    "year": 2019,
+    "indicator": "v2jureview",
+    "correct_top1": false,
+    "correct_top3": false,
+    "llm_response": "1. Bulgaria\n2. Serbia\n3. Romania\nReason: The combination of a dominant ruling party, a weak and fragmented opposition, widespread corruption, and a judiciary susceptible to government pressure, along with the specific details about property restitution and religious minority issues, suggests a country in Eastern Europe with a complex post-communist transition, which is most closely matched by Bulgaria."
+  },
+  {
+    "iso": "UZB",
+    "country": "Uzbekistan",
+    "year": 2019,
+    "indicator": "v2cltort",
+    "correct_top1": false,
+    "correct_top3": true,
+    "llm_response": "1. Turkmenistan\n2. Uzbekistan\n3. Azerbaijan\nReason: The key evidence for my top guess, Turkmenistan, is the combination of authoritarian regime characteristics, such as a tightly controlled media and judiciary subservient to the president, along with specific details like the use of psychiatric institutions to detain critics and the prevalence of torture and ill-treatment in prisons, which are consistent with reports from human rights organizations about Turkmenistan's human rights record."
+  },
+  {
+    "iso": "GNQ",
+    "country": "Equatorial Guinea",
+    "year": 2019,
+    "indicator": "v2mecenefibin",
+    "correct_top1": true,
+    "correct_top3": true,
+    "llm_response": "1. Equatorial Guinea\n2. Turkmenistan\n3. Belarus\nReason: The combination of a highly repressive authoritarian regime led by a president who took power in a military coup, concentration of wealth and power in the hands of the president's family, and severe restrictions on freedom of expression, including censorship, self-censorship, and harassment of journalists, points towards Equatorial Guinea, which has been known for its authoritarian government and human rights abuses under the rule of President Teodoro Obiang Nguema Mbasogo."
+  },
+  {
+    "iso": "MEX",
+    "country": "Mexico",
+    "year": 2019,
+    "indicator": "v2jupack",
+    "correct_top1": true,
+    "correct_top3": true,
+    "llm_response": "1. Mexico\n2. Brazil\n3. Colombia\nReason: The key evidence for my top guess, Mexico, includes the mention of a significant number of disappearances, massacres, and violence attributed to organized crime, which are prominent issues in Mexico, as well as the reference to a presidential commission investigating the disappearance of students, likely alluding to the infamous Ayotzinapa case."
+  },
+  {
+    "iso": "SVN",
+    "country": "Slovenia",
+    "year": 2019,
+    "indicator": "v2lgcomslo",
+    "correct_top1": true,
+    "correct_top3": true,
+    "llm_response": "1. Slovenia\n2. Czech Republic\n3. Estonia\nReason: The country's strong parliamentary system, independent judiciary, and proactive media in exposing corruption, as well as its efforts to protect minority rights and ensure government transparency, suggest a stable and democratic European nation, with Slovenia being a top contender due to its similar political and institutional profile."
+  },
+  {
+    "iso": "TGO",
+    "country": "Togo",
+    "year": 2019,
+    "indicator": "v2cacritic",
+    "correct_top1": false,
+    "correct_top3": false,
+    "llm_response": "1. Rwanda\n2. Uganda\n3. Burundi\nReason: The combination of a long-ruling president's family dominating politics, security services controlled by the president's ethnic group, and restrictions on freedom of expression and assembly, particularly against opposition protests and independent media, suggests a pattern of authoritarian governance consistent with Rwanda's political landscape under the ruling party."
+  },
+  {
+    "iso": "TWN",
+    "country": "Taiwan, Province of China",
+    "year": 2019,
+    "indicator": "v2smpardom",
+    "correct_top1": false,
+    "correct_top3": false,
+    "llm_response": "1. Taiwan\n2. South Korea\n3. Israel\nReason: The key evidence for my top guess, Taiwan, is the unique combination of a vibrant democratic system, a free press, and concerns about external influence from a neighboring region, which is consistent with Taiwan's geopolitical situation and its relationships with China and other countries in the region."
+  },
+  {
+    "iso": "NPL",
+    "country": "Nepal",
+    "year": 2019,
+    "indicator": "v2juhcind",
+    "correct_top1": true,
+    "correct_top3": true,
+    "llm_response": "1. Nepal\n2. Sri Lanka\n3. Bangladesh\nReason: The mention of a decade-long civil war, the presence of an anticorruption agency, and the issues with transitional justice bodies and human rights violations are consistent with the political and human rights context of Nepal, particularly in the aftermath of its civil war and the country's efforts to transition to a more stable democratic system."
+  },
+  {
+    "iso": "URY",
+    "country": "Uruguay",
+    "year": 2019,
+    "indicator": "v2smarrest",
+    "correct_top1": false,
+    "correct_top3": false,
+    "llm_response": "1. Colombia\n2. Argentina\n3. Chile\nReason: The country's recent transition from an inquisitorial to an accusatory system of criminal justice, efforts to address pretrial detention issues, and a strong democratic governance structure with a positive record of upholding political rights and civil liberties are consistent with Colombia's recent judicial reforms and human rights improvements."
+  },
+  {
+    "iso": "SLB",
+    "country": "Solomon Islands",
+    "year": 2019,
+    "indicator": "v2cldmovew",
+    "correct_top1": false,
+    "correct_top3": true,
+    "llm_response": "1. Papua New Guinea\n2. Solomon Islands\n3. Vanuatu\nReason: The combination of a relatively respected rule of law, significant problems with violence against women, and a legal age of marriage of 15, along with the presence of customary bride-price payments, points towards a Pacific island nation with a mix of traditional and modern legal frameworks, which is consistent with Papua New Guinea's known human rights and social issues."
+  },
+  {
+    "iso": "KNA",
+    "country": "Saint Kitts and Nevis",
+    "year": 2019,
+    "indicator": "v2canonpol",
+    "correct_top1": false,
+    "correct_top3": false,
+    "llm_response": "1. United States\n2. Canada\n3. United Kingdom\nReason: The mention of a constitution that provides for freedoms of peaceful assembly and association, combined with the specific restriction on civil servants participating in protests, suggests a country with a strong tradition of democratic governance and individual rights, which is consistent with the United States."
+  },
+  {
+    "iso": "BLR",
+    "country": "Belarus",
+    "year": 2019,
+    "indicator": "v2elpaidig",
+    "correct_top1": true,
+    "correct_top3": true,
+    "llm_response": "1. Belarus\n2. Azerbaijan\n3. Kazakhstan\nReason: The country's authoritarian government, restrictive media laws, and censorship of online content, as well as the president's consolidation of power and manipulation of elections, are all consistent with the political patterns and human rights conditions observed in Belarus under the rule of Alexander Lukashenko."
+  },
+  {
+    "iso": "ISR",
+    "country": "Israel",
+    "year": 2019,
+    "indicator": "v2smregapp",
+    "correct_top1": true,
+    "correct_top3": true,
+    "llm_response": "1. Israel\n2. Turkey\n3. Egypt\nReason: The key evidence for my top guess, Israel, lies in the unique combination of details such as the mention of a \"state of emergency\" that has been in effect for decades, the reference to \"Basic Laws\" that enumerate fundamental rights in the absence of a constitution, the specific restrictions on family reunification for certain ethnic groups, and the complex political and security dynamics described, including the role of the military and the treatment of minority groups, all of which align closely with known aspects of Israel's political and social landscape."
+  },
+  {
+    "iso": "MNG",
+    "country": "Mongolia",
+    "year": 2019,
+    "indicator": "v2excrptps",
+    "correct_top1": false,
+    "correct_top3": false,
+    "llm_response": "1. Ukraine\n2. Romania\n3. Bulgaria\nReason: The combination of a peaceful revolution leading to multiparty elections, the establishment of an electoral democracy, and the presence of widespread corruption, particularly in the mining sector, along with the specific details about anticorruption laws and enforcement, suggests a country in Eastern Europe with a complex history of political transition and ongoing struggles with corruption, which is consistent with Ukraine's profile."
+  },
+  {
+    "iso": "UGA",
+    "country": "Uganda",
+    "year": 2019,
+    "indicator": "v2lgdomchm",
+    "correct_top1": true,
+    "correct_top3": true,
+    "llm_response": "1. Uganda\n2. Belarus\n3. Cambodia\nReason: The key evidence for my top guess, Uganda, is the mention of the removal of the presidential age limit, which is a distinctive feature of Uganda's recent political history, where President Yoweri Museveni has been in power for decades and has taken steps to extend his rule, including the removal of the presidential age limit in 2017."
+  }
+]

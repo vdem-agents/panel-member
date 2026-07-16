@@ -1,25 +1,24 @@
 #!/usr/bin/env python3
 """
-Stage 2b: Anonymize extracted section text by removing country-identifying information.
+Stage 2c: Summarize extracted section text into concise, generic descriptions of
+political conditions that remove country-identifying fingerprints.
 
-Caches at the section level — one file per (country, year, source, section_id) rather
-than per (country, year, indicator). Indicators that share source sections (e.g.
-exec_summary appears in every indicator's evidence) share a single anonymized file,
-reducing LLM calls from ~11,500 to ~4,000 per country-year.
+Mirrors anonymize_section.py in structure: caches at the section level so that
+sections shared across indicators (e.g. exec_summary) are summarized once and
+reused. The input sections are the same pre-filtered extracts produced by
+indicator_sections.yaml — the summarizer is not told which indicator the section
+is for, avoiding any risk of anchoring the summary toward a predetermined rating.
 
-Cache layout: data/processed-text/anonymized/{year}/{iso}/{source}_{section_id}.txt
-  e.g. anonymized/2019/NGA/state-dept_exec_summary.txt
-       anonymized/2019/NGA/state-dept_1a.txt
-       anonymized/2019/NGA/state-dept_irfr.txt        (for 2c indicators)
-       anonymized/2019/NGA/state-dept_6_women.txt     (for sec6_subsections)
-       anonymized/2019/NGA/freedom-house_exec_summary.txt
-       anonymized/2019/NGA/freedom-house_A.txt
+Cache layout: data/processed-text/summarized/{year}/{iso}/{source}_{section_id}.txt
+  e.g. summarized/2019/NGA/state-dept_exec_summary.txt
+       summarized/2019/NGA/state-dept_2b.txt
+       summarized/2019/NGA/freedom-house_E.txt
 
-Use load_anonymized_for_indicator() to assemble cached sections into the combined
-evidence text expected by the coding pipeline.
+Use load_summarized_for_indicator() (aliased as load_summarized()) to assemble
+cached sections into the combined evidence text expected by assemble_prompt.py.
 
 Usage:
-    python3 -m pipeline.anonymize_section \\
+    python3 -m pipeline.summarize_indicator \\
         --iso NGA --slug nigeria \\
         --year 2020 --indicator v2csreprss
 """
@@ -41,49 +40,40 @@ from pipeline.extract_sections import (
 from pipeline.vdem_config import LLM_CONFIGS
 
 CONFIG_PATH = Path(__file__).parent.parent / "config" / "indicator_sections.yaml"
-ANON_DIR = Path(__file__).parent.parent / "data" / "processed-text" / "anonymized"
+SUMM_DIR = Path(__file__).parent.parent / "data" / "processed-text" / "summarized"
 
-ANONYMIZER_MODEL = "llama-70b-local"
+SUMMARIZER_MODEL = "llama-70b-local"
 
 SOURCE_LABELS = {
     "state-dept": "U.S. State Department Human Rights Report",
     "freedom-house": "Freedom House Freedom in the World report",
 }
 
-ANONYMIZER_SYSTEM = """\
-Your task is to rewrite human rights report excerpts to remove information that
-identifies the specific country being described.
+SUMMARIZER_SYSTEM = """\
+Your task is to summarize the political conditions described in human rights and democracy
+report excerpts.
 
-Rewrite the provided text so that:
-1. Replace the country name with [COUNTRY]
-2. Replace named cities with [CITY] or a generic label ("the capital", "a major city")
-3. Replace named political parties with [RULING PARTY], [OPPOSITION PARTY], etc.
-4. Replace named political leaders with their title only: "the president", "the prime
-   minister", "the interior minister", "the security chief", etc.
-5. Replace named government bodies with generic equivalents: "the parliament",
-   "the security forces", "the intelligence service", "the supreme court", etc.
-6. Replace named NGOs and civil society organizations with [NGO] or [CIVIL SOCIETY GROUP]
-7. Replace named ethnic, racial, and religious minority groups with generic labels:
-   [ETHNIC GROUP], [RELIGIOUS MINORITY], or descriptors like "certain ethnic minority
-   communities", "a religious minority group", etc.
-8. Replace named armed groups, militias, insurgencies, and rebel movements with
-   [ARMED GROUP], [MILITANT GROUP], [REBEL GROUP], or a generic descriptor like
-   "the main insurgent group", "a jihadist militant group", etc.
-9. Replace specific named events (named protests, named laws, named operations) with
-   generic descriptions: "a major protest", "a security operation", "legislation passed
-   that year"
-10. Replace population figures (e.g. "Population 39,327" or "a population of 4.2 million")
-    with [POPULATION FIGURE]
-11. Replace all specific calendar years with approximate duration phrases or relative
-    references. Convert long-tenure references ("governed since 1959") to "for decades"
-    or "for many years"; ongoing detention or persecution references ("imprisoned since
-    2016") to "for several years"; and event-year references ("the 2015 elections",
-    "in 2019") to "that year", "in recent years", or omit the year entirely. Also omit
-    years from document titles and section headings.
-12. Keep all substantive content intact — numbers, patterns of behavior, frequency
-    descriptions, and evaluative language all stay the same. Only identifying labels change.
+Write a summary of the political conditions described in the provided text. Your summary
+must:
 
-Output the rewritten text only. No preamble, no explanation, no summary.\
+1. Describe what the text says about political conditions in more general terms — for
+   example, "the executive controls judicial appointments without legislative confirmation"
+   rather than naming the specific institution or procedure; "security forces detained
+   hundreds of protesters" rather than naming the specific operation or location
+2. Replace all proper names with generic descriptors — country names, city names, party
+   names, leader names, organization names, ethnic group names, armed group names — use
+   only generic labels such as "the government", "the ruling party", "opposition parties",
+   "the capital", "security forces", "an ethnic minority group", "a rebel movement"
+3. Generalize structural and historical details that carry no evaluative signal: specific
+   treaty names, constitutional arrangements, geographic facts — describe them
+   functionally only (e.g., "a power-sharing arrangement between two political factions")
+4. Preserve quantitative information and frequency descriptions: numbers of detainees,
+   frequency of incidents, duration of patterns
+5. Write in a neutral, descriptive register without specific calendar years; use relative
+   phrasing like "in recent years", "over the period covered", "at the time of reporting"
+6. Write up to 400 words; shorter is acceptable when the source text is brief
+
+Output only the summary. No preamble, no explanation, no heading.\
 """
 
 _config_cache: dict | None = None
@@ -97,8 +87,8 @@ def _load_config() -> dict:
     return _config_cache
 
 
-def _anon_section_path(iso: str, year: int, source: str, section_id: str) -> Path:
-    return ANON_DIR / str(year) / iso / f"{source}_{section_id}.txt"
+def _summ_section_path(iso: str, year: int, source: str, section_id: str) -> Path:
+    return SUMM_DIR / str(year) / iso / f"{source}_{section_id}.txt"
 
 
 def _get_raw_section(slug: str, year: int, source: str, section_id: str) -> str | None:
@@ -124,8 +114,8 @@ def _get_raw_section(slug: str, year: int, source: str, section_id: str) -> str 
     return parsed.get(section_id)
 
 
-def anonymize_text(text: str, source_label: str, model_key: str = ANONYMIZER_MODEL) -> str:
-    """Call the anonymization LLM on one section of text."""
+def summarize_text(text: str, source_label: str, model_key: str = SUMMARIZER_MODEL) -> str:
+    """Call the summarization LLM on one section of text."""
     cfg = LLM_CONFIGS[model_key]
     api_key = os.environ.get(cfg["api_key_env"])
     if not api_key:
@@ -133,7 +123,7 @@ def anonymize_text(text: str, source_label: str, model_key: str = ANONYMIZER_MOD
 
     user_msg = (
         f"The following is a section from a {source_label}. "
-        f"Rewrite it to remove all identifying information as instructed.\n\n"
+        f"Summarize the political conditions it describes.\n\n"
         f"{text}"
     )
 
@@ -141,29 +131,29 @@ def anonymize_text(text: str, source_label: str, model_key: str = ANONYMIZER_MOD
     response = client.chat.completions.create(
         model=cfg["model"],
         messages=[
-            {"role": "system", "content": ANONYMIZER_SYSTEM},
+            {"role": "system", "content": SUMMARIZER_SYSTEM},
             {"role": "user", "content": user_msg},
         ],
         temperature=0,
-        max_tokens=8192,
+        max_tokens=512,
     )
     return (response.choices[0].message.content or "").strip()
 
 
-def anonymize_one_section(
+def summarize_one_section(
     iso: str,
     slug: str,
     year: int,
     source: str,
     section_id: str,
     force: bool = False,
-    model_key: str = ANONYMIZER_MODEL,
+    model_key: str = SUMMARIZER_MODEL,
 ) -> str | None:
     """
-    Anonymize one (country, year, source, section) and cache the result.
-    Returns anonymized text, or None if the source section doesn't exist.
+    Summarize one (country, year, source, section) and cache the result.
+    Returns summarized text, or None if the source section doesn't exist.
     """
-    out_path = _anon_section_path(iso, year, source, section_id)
+    out_path = _summ_section_path(iso, year, source, section_id)
     if out_path.exists() and not force:
         return out_path.read_text(encoding="utf-8")
 
@@ -172,17 +162,17 @@ def anonymize_one_section(
         return None
 
     label = SOURCE_LABELS.get(source, source)
-    anonymized = anonymize_text(raw_text, label, model_key=model_key)
+    summary = summarize_text(raw_text, label, model_key=model_key)
 
     out_path.parent.mkdir(parents=True, exist_ok=True)
-    out_path.write_text(anonymized, encoding="utf-8")
-    return anonymized
+    out_path.write_text(summary, encoding="utf-8")
+    return summary
 
 
-def load_anonymized_for_indicator(iso: str, year: int, indicator: str) -> str | None:
+def load_summarized_for_indicator(iso: str, year: int, indicator: str) -> str | None:
     """
-    Assemble anonymized evidence for one (country, year, indicator) from cached
-    section files. Returns the combined text in the same format as the raw evidence
+    Assemble summarized evidence for one (country, year, indicator) from cached
+    section files. Returns combined text in the same format as the raw evidence
     (source-labelled blocks separated by horizontal rules), or None if no cached
     sections exist for this indicator.
     """
@@ -200,19 +190,19 @@ def load_anonymized_for_indicator(iso: str, year: int, indicator: str) -> str | 
 
         inner_chunks = []
 
-        exec_path = _anon_section_path(iso, year, source, "exec_summary")
+        exec_path = _summ_section_path(iso, year, source, "exec_summary")
         if exec_path.exists():
             inner_chunks.append(exec_path.read_text(encoding="utf-8"))
 
         for key in keys:
             if source == "state-dept" and key == "2c":
-                p = _anon_section_path(iso, year, "state-dept", "irfr")
+                p = _summ_section_path(iso, year, "state-dept", "irfr")
             elif source == "state-dept" and key == "6":
                 subsec = ind_cfg.get("sec6_subsections")
                 sec_id = f"6_{subsec}" if subsec else "6"
-                p = _anon_section_path(iso, year, source, sec_id)
+                p = _summ_section_path(iso, year, source, sec_id)
             else:
-                p = _anon_section_path(iso, year, source, key)
+                p = _summ_section_path(iso, year, source, key)
 
             if p.exists():
                 inner_chunks.append(p.read_text(encoding="utf-8"))
@@ -223,27 +213,27 @@ def load_anonymized_for_indicator(iso: str, year: int, indicator: str) -> str | 
     return "\n\n---\n\n".join(outer_chunks) if outer_chunks else None
 
 
-def load_anonymized(iso: str, year: int, indicator: str) -> str | None:
-    """Load cached anonymized text for an indicator. Assembles from section cache."""
-    return load_anonymized_for_indicator(iso, year, indicator)
+def load_summarized(iso: str, year: int, indicator: str) -> str | None:
+    """Load cached summarized text for an indicator. Assembles from section cache."""
+    return load_summarized_for_indicator(iso, year, indicator)
 
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(
-        description="Anonymize extracted sections for one country-year"
+        description="Summarize extracted sections for one country-year"
     )
     parser.add_argument("--iso", required=True, help="ISO-3 code, e.g. NGA")
     parser.add_argument("--slug", required=True, help="File slug, e.g. nigeria")
     parser.add_argument("--year", type=int, default=2020)
     parser.add_argument(
         "--indicators", nargs="+",
-        help="Indicators to anonymize (default: all in config)"
+        help="Indicators to summarize (default: all in config)"
     )
     parser.add_argument("--force", action="store_true",
-                        help="Re-anonymize even if cached output exists")
+                        help="Re-summarize even if cached output exists")
     parser.add_argument(
-        "--model", default=ANONYMIZER_MODEL, choices=list(LLM_CONFIGS),
-        help=f"Model to use for anonymization (default: {ANONYMIZER_MODEL})"
+        "--model", default=SUMMARIZER_MODEL, choices=list(LLM_CONFIGS),
+        help=f"Model to use for summarization (default: {SUMMARIZER_MODEL})"
     )
     args = parser.parse_args()
 
@@ -269,7 +259,7 @@ if __name__ == "__main__":
                     sections_needed.add((source, key))
 
     for source, section_id in sorted(sections_needed):
-        result = anonymize_one_section(
+        result = summarize_one_section(
             args.iso, args.slug, args.year, source, section_id,
             force=args.force, model_key=args.model,
         )

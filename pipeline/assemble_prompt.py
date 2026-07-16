@@ -47,6 +47,7 @@ import yaml
 
 from pipeline.extract_sections import get_evidence
 from pipeline.anonymize_section import load_anonymized
+from pipeline.summarize_indicator import load_summarized
 
 CONFIG_PATH = Path(__file__).parent.parent / "config" / "indicator_sections.yaml"
 FEWSHOT_PATH = Path(__file__).parent.parent / "data" / "fewshot_examples.json"
@@ -226,7 +227,8 @@ def assemble_prompt(
         (system_text, user_text) ready for the API messages list
     """
     _VALID = ("codebook", "evidence", "anonymized", "finetuned", "finetuned-raw",
-              "evidence-zeroshot", "anonymized-zeroshot")
+              "evidence-zeroshot", "anonymized-zeroshot",
+              "summarized", "summarized-zeroshot")
     if condition not in _VALID:
         raise ValueError(
             f"Invalid condition {condition!r}. "
@@ -293,6 +295,29 @@ def assemble_prompt(
             else ""
         )
 
+    elif condition in ("summarized", "summarized-zeroshot"):
+        if iso is None:
+            raise ValueError(f"iso is required for condition='{condition}'")
+        summ_text = load_summarized(iso, year, indicator)
+        if summ_text is None:
+            raise FileNotFoundError(
+                f"No summarized text for {iso} {year} {indicator}. "
+                f"Run: python3 -m pipeline.summarize_indicator "
+                f"--iso {iso} --slug {country_slug} "
+                f"--year {year} --indicators {indicator}"
+            )
+        state_ev = summ_text
+        fh_ev = "[Included in summary above]"
+        calibration_section = (
+            _calibration_header(max_rating).format(
+                fewshot_block=_build_fewshot_block(
+                    indicator, anonymized=True, exclude_iso=iso
+                )
+            )
+            if condition == "summarized"
+            else ""
+        )
+
     user_text = (
         user_raw
         .replace("{FOCAL_COUNTRY}", country_name)
@@ -321,7 +346,8 @@ if __name__ == "__main__":
     parser.add_argument(
         "--condition",
         choices=["codebook", "evidence", "anonymized", "finetuned", "finetuned-raw",
-                 "evidence-zeroshot", "anonymized-zeroshot"],
+                 "evidence-zeroshot", "anonymized-zeroshot",
+                 "summarized", "summarized-zeroshot"],
         default="evidence",
     )
     parser.add_argument("--chars", type=int, default=4000,
