@@ -73,7 +73,13 @@ Rewrite the provided text so that:
    that year"
 9. Replace population figures (e.g. "Population 39,327" or "a population of 4.2 million")
    with [POPULATION FIGURE]
-10. Keep all substantive content intact — numbers, patterns of behavior, frequency
+10. Replace all specific calendar years with approximate duration phrases or relative
+   references. Convert long-tenure references ("governed since 1959") to "for decades"
+   or "for many years"; ongoing detention or persecution references ("imprisoned since
+   2016") to "for several years"; and event-year references ("the 2015 elections",
+   "in 2019") to "that year", "in recent years", or omit the year entirely. Also omit
+   years from document titles and section headings.
+11. Keep all substantive content intact — numbers, patterns of behavior, frequency
    descriptions, and evaluative language all stay the same. Only identifying labels change.
 
 Output the rewritten text only. No preamble, no explanation, no summary.\
