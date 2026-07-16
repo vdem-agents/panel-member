@@ -43,7 +43,7 @@ from pipeline.summarize_indicator import (
     summarize_one_section,
     load_summarized_for_indicator,
 )
-from pipeline.country_map import build_country_map
+from pipeline.country_map import build_country_map, name_variants
 from pipeline.vdem_config import LLM_CONFIGS
 
 CONFIG_PATH = Path(__file__).parent.parent / "config" / "indicator_sections.yaml"
@@ -225,14 +225,12 @@ def main() -> None:
 
                 if args.reidentify and text:
                     reid_response = reidentify_text(text, args.model)
-                    name_lower = name.lower()
-                    short_name = name.split(',')[0].strip().lower()
-                    name_variants = {name_lower, short_name}
+                    variants = name_variants(name)
                     lines = [l.strip() for l in reid_response.splitlines() if l.strip()]
                     top1_lower = lines[0].lower() if lines else ""
                     response_lower = reid_response.lower()
-                    in_top1 = any(v in top1_lower for v in name_variants)
-                    in_top3 = any(v in response_lower for v in name_variants)
+                    in_top1 = any(v in top1_lower for v in variants)
+                    in_top3 = any(v in response_lower for v in variants)
                     reid_total += 1
                     if in_top1:
                         reid_top1 += 1
