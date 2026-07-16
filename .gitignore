@@ -19,3 +19,4 @@ venv/
 analysis/*.html
 docs/*.html
 .ipynb_checkpoints/
+logs/

@@ -45,6 +45,18 @@ logger = logging.getLogger(__name__)
 
 _section_config: dict | None = None
 
+# Freedom House uses different file slugs from State Dept for these countries.
+# Maps state-dept slug → FH slug so _get_raw_section can find FH files.
+FH_SLUG_MAP: dict[str, str] = {
+    "burma": "myanmar",
+    "czech-republic": "czechia",
+    "democratic-republic-of-the-congo": "democratic-republic-congo",
+    "republic-of-the-congo": "republic-congo",
+    "saint-kitts-and-nevis": "st-kitts-and-nevis",
+    "saint-lucia": "st-lucia",
+    "saint-vincent-and-the-grenadines": "st-vincent-and-grenadines",
+}
+
 # All known Section 6 prose sub-headers across report years 2016–2023.
 # Used to split the section block before extracting a targeted sub-section.
 _SEC6_ALL_HEADERS: list[str] = [
@@ -258,7 +270,8 @@ def get_evidence(country: str, year: int, indicator: str, source: str) -> str | 
     Missing sections are logged at WARNING level with full context. Attach a file
     handler via configure_extraction_log() before running a batch to capture these.
     """
-    text_path = PROCESSED_DIR / source / str(year) / f"{country}.txt"
+    effective_country = FH_SLUG_MAP.get(country, country) if source == "freedom-house" else country
+    text_path = PROCESSED_DIR / source / str(year) / f"{effective_country}.txt"
     if not text_path.exists():
         return None
 
