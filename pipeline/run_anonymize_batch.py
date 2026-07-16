@@ -38,6 +38,7 @@ Usage:
 """
 
 import argparse
+import json
 import os
 import random
 import sys
@@ -188,10 +189,14 @@ def main() -> None:
                         help="After anonymizing each sampled CYI, ask the LLM to "
                              "identify the country. Reports top-1 and top-3 accuracy. "
                              "Requires --sample.")
+    parser.add_argument("--reidentify-output", metavar="PATH",
+                        help="Write per-CYI reidentification results to this JSON file.")
     args = parser.parse_args()
 
     if args.reidentify and args.sample is None:
         parser.error("--reidentify requires --sample N")
+    if args.reidentify_output and not args.reidentify:
+        parser.error("--reidentify-output requires --reidentify")
 
     print(f"Building country map for {args.year}...", file=sys.stderr)
     country_map = build_country_map(args.year)
@@ -215,6 +220,7 @@ def main() -> None:
         print(f"Running {mode} on {len(sample)} random CYIs:\n", file=sys.stderr)
 
         reid_total = reid_top1 = reid_top3 = 0
+        reid_records: list[dict] = []
 
         for iso, slug, name, year, ind in sample:
             label = f"{iso} {year} {ind}"
@@ -249,6 +255,15 @@ def main() -> None:
                         result = "WRONG"
                     print(f"\n[Reidentification] Actual: {name} ({iso}) → {result}")
                     print(reid_response)
+                    reid_records.append({
+                        "iso": iso,
+                        "country": name,
+                        "year": year,
+                        "indicator": ind,
+                        "correct_top1": in_top1,
+                        "correct_top3": in_top3,
+                        "llm_response": reid_response,
+                    })
 
             except Exception as e:
                 print(f"ERROR: {e}")
@@ -259,6 +274,11 @@ def main() -> None:
             print(f"Reidentification summary ({reid_total} CYIs tested):")
             print(f"  Top-1 accuracy: {reid_top1}/{reid_total} ({reid_top1/reid_total:.1%})")
             print(f"  Top-3 accuracy: {reid_top3}/{reid_total} ({reid_top3/reid_total:.1%})")
+            if args.reidentify_output:
+                out = Path(args.reidentify_output)
+                out.parent.mkdir(parents=True, exist_ok=True)
+                out.write_text(json.dumps(reid_records, indent=2, ensure_ascii=False))
+                print(f"  Results written to {out}")
         return
 
     # ── Build job list ──────────────────────────────────────────────────────────
