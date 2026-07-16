@@ -65,22 +65,25 @@ Rewrite the provided text so that:
 5. Replace named government bodies with generic equivalents: "the parliament",
    "the security forces", "the intelligence service", "the supreme court", etc.
 6. Replace named NGOs and civil society organizations with [NGO] or [CIVIL SOCIETY GROUP]
-7. Replace named armed groups, militias, insurgencies, and rebel movements with
+7. Replace named ethnic, racial, and religious minority groups with generic labels:
+   [ETHNIC GROUP], [RELIGIOUS MINORITY], or descriptors like "certain ethnic minority
+   communities", "a religious minority group", etc.
+8. Replace named armed groups, militias, insurgencies, and rebel movements with
    [ARMED GROUP], [MILITANT GROUP], [REBEL GROUP], or a generic descriptor like
    "the main insurgent group", "a jihadist militant group", etc.
-8. Replace specific named events (named protests, named laws, named operations) with
+9. Replace specific named events (named protests, named laws, named operations) with
    generic descriptions: "a major protest", "a security operation", "legislation passed
    that year"
-9. Replace population figures (e.g. "Population 39,327" or "a population of 4.2 million")
-   with [POPULATION FIGURE]
-10. Replace all specific calendar years with approximate duration phrases or relative
-   references. Convert long-tenure references ("governed since 1959") to "for decades"
-   or "for many years"; ongoing detention or persecution references ("imprisoned since
-   2016") to "for several years"; and event-year references ("the 2015 elections",
-   "in 2019") to "that year", "in recent years", or omit the year entirely. Also omit
-   years from document titles and section headings.
-11. Keep all substantive content intact — numbers, patterns of behavior, frequency
-   descriptions, and evaluative language all stay the same. Only identifying labels change.
+10. Replace population figures (e.g. "Population 39,327" or "a population of 4.2 million")
+    with [POPULATION FIGURE]
+11. Replace all specific calendar years with approximate duration phrases or relative
+    references. Convert long-tenure references ("governed since 1959") to "for decades"
+    or "for many years"; ongoing detention or persecution references ("imprisoned since
+    2016") to "for several years"; and event-year references ("the 2015 elections",
+    "in 2019") to "that year", "in recent years", or omit the year entirely. Also omit
+    years from document titles and section headings.
+12. Keep all substantive content intact — numbers, patterns of behavior, frequency
+    descriptions, and evaluative language all stay the same. Only identifying labels change.
 
 Output the rewritten text only. No preamble, no explanation, no summary.\
 """
