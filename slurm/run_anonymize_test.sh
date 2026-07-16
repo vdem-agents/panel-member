@@ -62,13 +62,18 @@ echo "vLLM ready (pid $VLLM_PID)"
 
 # ── Run spot-check ─────────────────────────────────────────────────────────────
 REID_FLAG=""
-[ "$REIDENTIFY" = "1" ] && REID_FLAG="--reidentify"
+REID_OUT_FLAG=""
+if [ "$REIDENTIFY" = "1" ]; then
+    REID_FLAG="--reidentify"
+    REID_OUT_FLAG="--reidentify-output logs/reidentify_${YEAR}_${SLURM_JOB_ID}.json"
+fi
 echo "Spot-checking $SAMPLE random CYIs for year $YEAR${REID_FLAG:+ (with reidentification)}..."
 python3 -m pipeline.run_anonymize_batch \
     --year "$YEAR" \
     --sample "$SAMPLE" \
     --model "$MODEL_KEY" \
-    $REID_FLAG
+    $REID_FLAG \
+    $REID_OUT_FLAG
 
 # ── Cleanup ────────────────────────────────────────────────────────────────────
 kill "$VLLM_PID" && wait "$VLLM_PID" 2>/dev/null || true
