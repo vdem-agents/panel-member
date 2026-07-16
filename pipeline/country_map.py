@@ -63,6 +63,27 @@ SLUG_OVERRIDES: dict[str, tuple[str, str] | None] = {
 }
 # fmt: on
 
+# Extra aliases for countries whose pycountry official name differs from common usage.
+# Used by reidentification scoring so LLM responses like "Czech Republic" match "Czechia".
+# Keys are lowercased pycountry display names; values are sets of additional lowercase aliases.
+COUNTRY_ALIASES: dict[str, set[str]] = {
+    "czechia": {"czech republic"},
+    "eswatini": {"swaziland"},
+    "myanmar": {"burma"},
+    "timor-leste": {"east timor"},
+    "cabo verde": {"cape verde"},
+    "north macedonia": {"macedonia"},
+    "türkiye": {"turkey"},
+    "côte d'ivoire": {"ivory coast"},
+}
+
+
+def name_variants(name: str) -> set[str]:
+    """Return all lowercase name variants for reidentification matching."""
+    name_lower = name.lower()
+    short = name.split(",")[0].strip().lower()
+    return {name_lower, short} | COUNTRY_ALIASES.get(name_lower, set())
+
 
 def build_country_map(year: int) -> dict[str, tuple[str, str]]:
     """
