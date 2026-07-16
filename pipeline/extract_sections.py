@@ -165,8 +165,8 @@ def parse_state_dept(text: str) -> dict[str, str]:
     return result
 
 
-def _strip_fh_footer(text: str) -> str:
-    """Remove FH Country Facts sidebar and newsletter boilerplate from section text."""
+def _clean_fh_text(text: str) -> str:
+    """Clean FH report text before parsing into sections."""
     # Country Facts block or newsletter CTA marks the start of non-narrative sidebar content
     m = re.search(
         r'\n+(?=(?:##\s+Country\s+Facts|Be the first to know))',
@@ -175,8 +175,12 @@ def _strip_fh_footer(text: str) -> str:
     )
     if m:
         text = text[:m.start()]
-    # Strip header1/header2/header3 artifacts from HTML-to-text conversion
-    text = re.sub(r'^header[123]\s*$', '', text, flags=re.MULTILINE | re.IGNORECASE)
+    # Strip Score Change annotation paragraphs (FH internal scoring notes, not narrative evidence)
+    text = re.sub(r'Score Change:.*?(?=\n\n|\Z)', '', text, flags=re.DOTALL | re.IGNORECASE)
+    # Strip orphaned PR/CL category divider headings (left stranded after A-G sections are parsed out)
+    text = re.sub(r'^##\s+(?:PR|CL)\s+.*$', '', text, flags=re.MULTILINE)
+    # Fix header1/header2/header3 artifacts embedded in heading lines
+    text = re.sub(r'^(##\s+)header[123]\s+', r'\1', text, flags=re.MULTILINE | re.IGNORECASE)
     return text.strip()
 
 
@@ -186,7 +190,7 @@ def parse_freedom_house(text: str) -> dict[str, str]:
     Keys: "exec_summary" (Overview/Key Developments preamble before ## A),
     "A" through "G" (the lettered section blocks).
     """
-    text = _strip_fh_footer(text)
+    text = _clean_fh_text(text)
     result = {}
     blocks = re.split(r'(?=^## [A-G] )', text, flags=re.MULTILINE)
 
