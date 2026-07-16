@@ -51,10 +51,8 @@ SOURCE_LABELS = {
 }
 
 ANONYMIZER_SYSTEM = """\
-You rewrite human rights report excerpts to remove information that identifies the
-specific country being described. Your output is used in a research project testing
-whether AI models can assess political conditions from evidence alone, without relying
-on prior knowledge of the country.
+Your task is to rewrite human rights report excerpts to remove information that
+identifies the specific country being described.
 
 Rewrite the provided text so that:
 1. Replace the country name with [COUNTRY]
