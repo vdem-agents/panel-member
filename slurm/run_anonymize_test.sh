@@ -15,7 +15,7 @@
 #SBATCH --gres=gpu:gh200:1
 #SBATCH --cpus-per-task=32
 #SBATCH --mem=200G
-#SBATCH --time=06:00:00
+#SBATCH --time=04:00:00
 #SBATCH --output=logs/anonymize_test_%x_%j.out
 #SBATCH --error=logs/anonymize_test_%x_%j.err
 #SBATCH --nodelist=gh200-06

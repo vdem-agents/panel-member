@@ -268,6 +268,10 @@ def main() -> None:
                         "correct_top3": in_top3,
                         "llm_response": reid_response,
                     })
+                    if args.reidentify_output:
+                        out = Path(args.reidentify_output)
+                        out.parent.mkdir(parents=True, exist_ok=True)
+                        out.write_text(json.dumps(reid_records, indent=2, ensure_ascii=False))
 
             except Exception as e:
                 print(f"ERROR: {e}")
@@ -279,10 +283,7 @@ def main() -> None:
             print(f"  Top-1 accuracy: {reid_top1}/{reid_total} ({reid_top1/reid_total:.1%})")
             print(f"  Top-3 accuracy: {reid_top3}/{reid_total} ({reid_top3/reid_total:.1%})")
             if args.reidentify_output:
-                out = Path(args.reidentify_output)
-                out.parent.mkdir(parents=True, exist_ok=True)
-                out.write_text(json.dumps(reid_records, indent=2, ensure_ascii=False))
-                print(f"  Results written to {out}")
+                print(f"  Results written to {args.reidentify_output}")
         return
 
     # ── Build job list ──────────────────────────────────────────────────────────
