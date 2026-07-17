@@ -38,6 +38,7 @@ from pipeline.extract_sections import (
     _parse_sec6_subsection,
     parse_freedom_house,
     parse_state_dept,
+    truncate_to_llm_budget,
 )
 from pipeline.vdem_config import LLM_CONFIGS
 
@@ -173,6 +174,7 @@ def anonymize_one_section(
     if not raw_text:
         return None
 
+    raw_text = truncate_to_llm_budget(raw_text)
     label = SOURCE_LABELS.get(source, source)
     anonymized = anonymize_text(raw_text, label, model_key=model_key)
 
