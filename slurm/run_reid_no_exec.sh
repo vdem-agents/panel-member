@@ -21,7 +21,6 @@
 #SBATCH --time=02:00:00
 #SBATCH --output=logs/reid_no_exec_%x_%j.out
 #SBATCH --error=logs/reid_no_exec_%x_%j.err
-#SBATCH --nodelist=gh200-05,gh200-06,gh200-07,gh200-08
 
 set -eo pipefail
 mkdir -p logs
