@@ -61,7 +61,19 @@ SLUG_OVERRIDES: dict[str, tuple[str, str] | None] = {
     # ── Non-country files ─────────────────────────────────────────────────────
     "download-appendix-d-629-kb-2020-human-rights-report": None,
 }
-# fmt: on
+
+# Entities with V-Dem coder ratings but no State Dept processed text file.
+# build_country_map() excludes them (it scans only state-dept/{year}/*.txt).
+# All five have Freedom House files; SD sections are attempted and silently
+# skipped when the source file is absent — no LLM call is made.
+# Zanzibar (ZZB) has neither SD nor FH coverage and is excluded entirely.
+FH_ONLY_ENTITIES: dict[str, tuple[str, str]] = {
+    "USA": ("united-states", "United States"),
+    "HKG": ("hong-kong",     "Hong Kong"),
+    "SML": ("somaliland",    "Somaliland"),
+    "PSG": ("gaza-strip",    "Gaza Strip"),
+    "PSE": ("west-bank",     "West Bank"),
+}
 
 # Extra aliases for countries whose pycountry official name differs from common usage.
 # Used by reidentification scoring so LLM responses like "Czech Republic" match "Czechia".

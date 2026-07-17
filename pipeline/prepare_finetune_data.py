@@ -47,7 +47,7 @@ import yaml
 from tqdm import tqdm
 
 from pipeline.assemble_prompt import assemble_prompt
-from pipeline.country_map import build_country_map
+from pipeline.country_map import build_country_map, FH_ONLY_ENTITIES
 
 CONFIG_PATH = Path(__file__).parent.parent / "config" / "indicator_sections.yaml"
 HUMAN_RATINGS_PATH = Path(__file__).parent.parent.parent / "shared" / "vdem-data" / "human_ratings.csv"
@@ -184,6 +184,7 @@ def main() -> None:
         raise ImportError("pycountry required: pip install pycountry")
 
     # For the raw variant, resolve ISO → slug from processed-text filenames.
+    # FH_ONLY_ENTITIES are added explicitly: they have no SD file but do have FH files.
     iso_year_to_slug: dict[tuple[str, int], str] = {}
     if is_raw:
         print("Building country maps for slug resolution...", file=sys.stderr)
@@ -194,6 +195,9 @@ def main() -> None:
                     iso_year_to_slug[(iso, yr)] = slug
             except FileNotFoundError as e:
                 print(f"  [warn] {e}", file=sys.stderr)
+            for iso, (slug, _) in FH_ONLY_ENTITIES.items():
+                if (iso, yr) not in iso_year_to_slug:
+                    iso_year_to_slug[(iso, yr)] = slug
         print(f"  {len(iso_year_to_slug)} (iso, year) entries resolved", file=sys.stderr)
 
     ts = datetime.now().strftime("%H:%M:%S")

@@ -57,7 +57,7 @@ from pipeline.anonymize_section import (
     anonymize_one_section,
     load_anonymized_for_indicator,
 )
-from pipeline.country_map import build_country_map, name_variants
+from pipeline.country_map import build_country_map, name_variants, FH_ONLY_ENTITIES
 from pipeline.vdem_config import LLM_CONFIGS
 
 CONFIG_PATH = Path(__file__).parent.parent / "config" / "indicator_sections.yaml"
@@ -200,7 +200,14 @@ def main() -> None:
 
     print(f"Building country map for {args.year}...", file=sys.stderr)
     country_map = build_country_map(args.year)
-    print(f"  {len(country_map)} countries with processed-text files", file=sys.stderr)
+    for iso, entry in FH_ONLY_ENTITIES.items():
+        if iso not in country_map:
+            country_map[iso] = entry
+    print(
+        f"  {len(country_map)} countries "
+        f"(+{len(FH_ONLY_ENTITIES)} FH-only supplemental: {', '.join(FH_ONLY_ENTITIES)})",
+        file=sys.stderr,
+    )
 
     unique_sections = _build_unique_sections(args.indicators, config)
     print(
