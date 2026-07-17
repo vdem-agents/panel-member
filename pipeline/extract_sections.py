@@ -65,13 +65,26 @@ def _get_parsed_doc(text_path: Path, source: str) -> dict:
 # Freedom House uses different file slugs from State Dept for these countries.
 # Maps state-dept slug → FH slug so _get_raw_section can find FH files.
 FH_SLUG_MAP: dict[str, str] = {
-    "burma": "myanmar",
-    "czech-republic": "czechia",
-    "democratic-republic-of-the-congo": "democratic-republic-congo",
-    "republic-of-the-congo": "republic-congo",
-    "saint-kitts-and-nevis": "st-kitts-and-nevis",
-    "saint-lucia": "st-lucia",
-    "saint-vincent-and-the-grenadines": "st-vincent-and-grenadines",
+    # Name differences between State Dept and Freedom House file slugs
+    "burma":                                          "myanmar",
+    "czech-republic":                                 "czechia",
+    "democratic-republic-of-the-congo":               "democratic-republic-congo",
+    "republic-of-the-congo":                          "republic-congo",
+    "saint-kitts-and-nevis":                          "st-kitts-and-nevis",
+    "saint-lucia":                                    "st-lucia",
+    "saint-vincent-and-the-grenadines":               "st-vincent-and-grenadines",
+    # "The …" SD slugs — FH omits the article
+    "the-bahamas":                                    "bahamas",
+    "the-gambia":                                     "gambia",
+    # SD year-variant or long-form slugs for the same country
+    "china-includes-tibet-hong-kong-and-macau":       "china",
+    "china-includes-tibet-hong-kong-and-macau-china": "china",
+    "democratic-peoples-republic-of-korea":            "north-korea",
+    "federated-states-of-micronesia":                 "micronesia",
+    "kyrgyz-republic":                                "kyrgyzstan",
+    "macedonia":                                      "north-macedonia",
+    "republic-of-korea":                              "south-korea",
+    "swaziland":                                      "eswatini",
 }
 
 # All known Section 6 prose sub-headers across report years 2016–2023.
