@@ -36,6 +36,7 @@ VLLM_PORT=8000
 # ── Environment ────────────────────────────────────────────────────────────────
 source ~/miniforge3/etc/profile.d/conda.sh
 module load cuda/13
+export CUDA_HOME="$(dirname "$(dirname "$(which nvcc)")")"
 set -a; source .env; set +a
 conda activate panel-member
 
