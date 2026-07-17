@@ -188,6 +188,14 @@ def load_summarized_for_indicator(iso: str, year: int, indicator: str) -> str | 
     ]:
         keys = ind_cfg.get(source, [])
         if not keys:
+            # No body sections mapped — fall back to exec_summary (mirrors get_evidence
+            # in extract_sections.py, which reaches the same fallback via an empty
+            # body_chunks list when section_keys is []).
+            exec_path = _summ_section_path(iso, year, source, "exec_summary")
+            if exec_path.exists():
+                outer_chunks.append(
+                    f"*{label}*\n\n" + exec_path.read_text(encoding="utf-8")
+                )
             continue
 
         body_chunks = []
