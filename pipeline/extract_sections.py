@@ -317,25 +317,34 @@ def get_evidence(country: str, year: int, indicator: str, source: str) -> str | 
         else None
     )
 
-    chunks = []
-    if "exec_summary" in parsed:
-        chunks.append(parsed["exec_summary"])
+    body_chunks = []
     for key in effective_keys:
         if key == "6" and sec6_subsection_key and "6" in parsed:
             sub = _parse_sec6_subsection(parsed["6"], sec6_subsection_key, year)
             if sub:
-                chunks.append(sub)
+                body_chunks.append(sub)
             else:
                 logger.warning(
                     "sec6_subsection_missing country=%s year=%s indicator=%s "
                     "subsection=%s — falling back to full section",
                     country, year, indicator, sec6_subsection_key,
                 )
-                chunks.append(parsed["6"])
+                body_chunks.append(parsed["6"])
         elif key in parsed:
-            chunks.append(parsed[key])
+            body_chunks.append(parsed[key])
     if irfr_text:
-        chunks.append(irfr_text)
+        body_chunks.append(irfr_text)
+
+    if body_chunks:
+        chunks = body_chunks
+    else:
+        # Fallback to exec_summary only when no body sections exist.
+        # Skip SDHRR exec_summary for 2c-only indicators (IRFR is a different report).
+        only_2c = source == "state-dept" and all(k == "2c" for k in section_keys)
+        if not only_2c and "exec_summary" in parsed:
+            chunks = [parsed["exec_summary"]]
+        else:
+            chunks = []
 
     return "\n\n---\n\n".join(chunks) if chunks else None
 
