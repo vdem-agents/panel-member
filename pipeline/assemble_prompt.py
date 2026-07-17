@@ -228,7 +228,7 @@ def assemble_prompt(
     """
     _VALID = ("codebook", "evidence", "anonymized", "finetuned", "finetuned-raw",
               "evidence-zeroshot", "anonymized-zeroshot",
-              "summarized", "summarized-zeroshot")
+              "summarized", "summarized-zeroshot", "finetuned-summ")
     if condition not in _VALID:
         raise ValueError(
             f"Invalid condition {condition!r}. "
@@ -295,7 +295,7 @@ def assemble_prompt(
             else ""
         )
 
-    elif condition in ("summarized", "summarized-zeroshot"):
+    elif condition in ("summarized", "summarized-zeroshot", "finetuned-summ"):
         if iso is None:
             raise ValueError(f"iso is required for condition='{condition}'")
         summ_text = load_summarized(iso, year, indicator)

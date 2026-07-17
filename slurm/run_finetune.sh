@@ -40,8 +40,11 @@ MODEL_PATH=/scratch/$USER/models/llama-3.3-70b-instruct
 if [ "$VARIANT" = "raw" ]; then
     TRAIN_DATA=data/processed/finetune_train_raw.jsonl
     OUTPUT_DIR=data/output/adapters/llama-70b-vdem-ft-raw
+elif [ "$VARIANT" = "summ" ]; then
+    TRAIN_DATA=data/processed/finetune_train_summ.jsonl
+    OUTPUT_DIR=data/output/adapters/llama-70b-vdem-ft-summ
 else
-    TRAIN_DATA=data/processed/finetune_train.jsonl
+    TRAIN_DATA=data/processed/finetune_train_anon.jsonl
     OUTPUT_DIR=data/output/adapters/llama-70b-vdem-ft-anon
 fi
 

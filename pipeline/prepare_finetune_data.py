@@ -140,10 +140,11 @@ def main() -> None:
         description="Build fine-tuning training JSONL from V-Dem v15 coder-level ratings"
     )
     parser.add_argument(
-        "--variant", choices=["raw", "anon"], default="anon",
+        "--variant", choices=["raw", "anon", "summ"], default="anon",
         help=(
-            "raw: FT-raw training data (raw section text, condition=finetuned-raw); "
-            "anon: FT-anon training data (anonymized text, condition=finetuned) [default]"
+            "raw:  FT-raw training data (raw section text, condition=finetuned-raw); "
+            "anon: FT-anon training data (anonymized text, condition=finetuned) [default]; "
+            "summ: FT-summ training data (summarized text, condition=finetuned-summ)"
         ),
     )
     parser.add_argument(
@@ -165,7 +166,11 @@ def main() -> None:
     args = parser.parse_args()
 
     is_raw = args.variant == "raw"
-    condition = "finetuned-raw" if is_raw else "finetuned"
+    condition = {
+        "raw":  "finetuned-raw",
+        "anon": "finetuned",
+        "summ": "finetuned-summ",
+    }[args.variant]
     output_path = Path(args.output) if args.output else (
         OUTPUT_DIR / f"finetune_train_{args.variant}.jsonl"
     )
@@ -247,7 +252,7 @@ def main() -> None:
                 if record is None:
                     skipped += 1
                     if skipped <= 5 or skipped % 500 == 0:
-                        missing = "source text" if is_raw else "anonymized text"
+                        missing = {"raw": "source text", "anon": "anonymized text", "summ": "summarized text"}[args.variant]
                         tqdm.write(
                             f"  [skip] no {missing}: {iso3} {year} {row['indicator']}",
                             file=sys.stderr,
@@ -287,9 +292,15 @@ def main() -> None:
     print(f"  {written:,} training records → {output_path}", file=sys.stderr)
     print(f"  {skipped:,} rows skipped", file=sys.stderr)
     print(f"  {len(training_cyis):,} unique CYIs → {training_set_path}", file=sys.stderr)
-    if skipped and not is_raw:
+    if skipped and args.variant == "anon":
         print(
             "\nTo fix skipped rows: run run_anonymize_batch.py for missing CYIs,\n"
+            "then re-run this script (existing output is overwritten).",
+            file=sys.stderr,
+        )
+    elif skipped and args.variant == "summ":
+        print(
+            "\nTo fix skipped rows: run run_summarize_batch.py for missing CYIs,\n"
             "then re-run this script (existing output is overwritten).",
             file=sys.stderr,
         )
