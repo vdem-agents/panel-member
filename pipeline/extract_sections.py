@@ -340,7 +340,7 @@ def get_evidence(country: str, year: int, indicator: str, source: str) -> str | 
     else:
         # Fallback to exec_summary only when no body sections exist.
         # Skip SDHRR exec_summary for 2c-only indicators (IRFR is a different report).
-        only_2c = source == "state-dept" and all(k == "2c" for k in section_keys)
+        only_2c = source == "state-dept" and bool(section_keys) and all(k == "2c" for k in section_keys)
         if not only_2c and "exec_summary" in parsed:
             chunks = [parsed["exec_summary"]]
         else:
