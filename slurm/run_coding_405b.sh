@@ -16,6 +16,7 @@
 #SBATCH --cpus-per-task=32
 #SBATCH --mem=500G
 #SBATCH --time=24:00:00
+#SBATCH --exclude=gh200-03
 #SBATCH --output=logs/llama405b_%j.out
 #SBATCH --error=logs/llama405b_%j.err
 
@@ -33,7 +34,7 @@ OUTPUT=data/output/runs/${CONDITION}_${YEAR}_llama405b.jsonl
 # ── Environment ────────────────────────────────────────────────────────────────
 source ~/miniforge3/etc/profile.d/conda.sh
 module load cuda/13
-export CUDA_HOME="$(dirname "$(dirname "$(which nvcc)")")"
+NVCC_BIN=$(which nvcc 2>/dev/null || true); [ -n "$NVCC_BIN" ] && export CUDA_HOME="$(dirname "$(dirname "$NVCC_BIN")")"
 set -a; source .env; set +a
 conda activate panel-member
 
