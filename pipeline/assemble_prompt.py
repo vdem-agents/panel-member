@@ -254,14 +254,30 @@ def assemble_prompt(
     )
 
     if condition in ("evidence", "evidence-zeroshot", "finetuned-raw"):
-        state_ev = (
-            get_evidence(country_slug, year, indicator, "state-dept")
-            or "[No source document available for this country-year.]"
-        )
-        fh_ev = (
-            get_evidence(country_slug, year, indicator, "freedom-house")
-            or "[No source document available for this country-year.]"
-        )
+        sd_raw = get_evidence(country_slug, year, indicator, "state-dept")
+        fh_raw = get_evidence(country_slug, year, indicator, "freedom-house")
+
+        if condition == "finetuned-raw" and sd_raw is None and fh_raw is None:
+            raise FileNotFoundError(
+                f"No source documents for {country_slug} {year} {indicator}."
+            )
+        elif condition == "finetuned-raw" and (sd_raw is None or fh_raw is None):
+            # One source missing — combine available sources into a single block,
+            # mirroring how load_summarized/load_anonymized handle partial coverage.
+            chunks = []
+            if sd_raw:
+                chunks.append(
+                    f"*State Department Human Rights Report*\n\n{sd_raw}"
+                )
+            if fh_raw:
+                chunks.append(
+                    f"*Freedom House Freedom in the World*\n\n{fh_raw}"
+                )
+            state_ev = "\n\n---\n\n".join(chunks)
+            fh_ev = "[Included above]"
+        else:
+            state_ev = sd_raw or "[No source document available for this country-year.]"
+            fh_ev = fh_raw or "[No source document available for this country-year.]"
         calibration_section = (
             _calibration_header(max_rating).format(
                 fewshot_block=_build_fewshot_block(

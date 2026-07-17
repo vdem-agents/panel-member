@@ -198,6 +198,13 @@ def load_anonymized_for_indicator(iso: str, year: int, indicator: str) -> str | 
     ]:
         keys = ind_cfg.get(source, [])
         if not keys:
+            # No body sections mapped — fall back to exec_summary (mirrors get_evidence
+            # in extract_sections.py and load_summarized_for_indicator).
+            exec_path = _anon_section_path(iso, year, source, "exec_summary")
+            if exec_path.exists():
+                outer_chunks.append(
+                    f"*{label}*\n\n" + exec_path.read_text(encoding="utf-8")
+                )
             continue
 
         body_chunks = []

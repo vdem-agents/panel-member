@@ -44,6 +44,23 @@ CONFIG_PATH = Path(__file__).parent.parent / "config" / "indicator_sections.yaml
 logger = logging.getLogger(__name__)
 
 _section_config: dict | None = None
+_parsed_doc_cache: dict[str, dict] = {}
+
+
+def _get_parsed_doc(text_path: Path, source: str) -> dict:
+    """Parse a source document, caching the result by file path.
+
+    For raw training data assembly, get_evidence() is called once per coder per
+    indicator for the same (country, year, source) file — caching avoids
+    re-reading and re-parsing the same document hundreds of times per CYI.
+    """
+    key = str(text_path)
+    if key not in _parsed_doc_cache:
+        text = text_path.read_text(encoding="utf-8")
+        _parsed_doc_cache[key] = (
+            parse_state_dept(text) if source == "state-dept" else parse_freedom_house(text)
+        )
+    return _parsed_doc_cache[key]
 
 # Freedom House uses different file slugs from State Dept for these countries.
 # Maps state-dept slug → FH slug so _get_raw_section can find FH files.
@@ -280,14 +297,7 @@ def get_evidence(country: str, year: int, indicator: str, source: str) -> str | 
         raise ValueError(f"Indicator {indicator!r} not in {CONFIG_PATH}")
 
     section_keys = config[indicator].get(source, [])
-    text = text_path.read_text(encoding="utf-8")
-
-    if source == "state-dept":
-        parsed = parse_state_dept(text)
-    elif source == "freedom-house":
-        parsed = parse_freedom_house(text)
-    else:
-        raise ValueError(f"Unknown source: {source!r}")
+    parsed = _get_parsed_doc(text_path, source)
 
     # "2c" redirects to IRFR in all years — load IRFR exec summary instead.
     irfr_text: str | None = None
