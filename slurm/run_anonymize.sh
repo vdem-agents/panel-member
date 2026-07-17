@@ -20,7 +20,7 @@
 #SBATCH --gres=gpu:gh200:1
 #SBATCH --cpus-per-task=32
 #SBATCH --mem=200G
-#SBATCH --time=20:00:00
+#SBATCH --time=12:00:00
 #SBATCH --output=logs/anonymize_%x_%j.out
 #SBATCH --error=logs/anonymize_%x_%j.err
 
