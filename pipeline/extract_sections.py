@@ -115,6 +115,43 @@ _SEC6_SPLIT_RE = re.compile(
 )
 
 
+# Max chars to send to an LLM for anonymization or summarization.
+# Derived from vLLM --max-model-len 16384 minus anonymizer max_tokens=8192,
+# system prompt (~370 tok), and user framing (~70 tok) → ~7,750 token input budget.
+# 28,000 chars ≈ 7,000 tokens — conservative to stay clear of the limit.
+# Applied identically to both anonymize and summarize variants so that both
+# see the same evidence window and produce comparable training records.
+SECTION_LLM_CHAR_BUDGET = 28_000
+
+
+def truncate_to_llm_budget(text: str, char_budget: int = SECTION_LLM_CHAR_BUDGET) -> str:
+    """
+    Truncate text to fit within char_budget, cutting at the last complete
+    sub-section boundary. Used before sending large sections (notably full
+    Section 6) to the anonymization or summarization LLM.
+
+    Returns the original text unchanged if it fits within the budget.
+    """
+    if len(text) <= char_budget:
+        return text
+    chunks = _SEC6_SPLIT_RE.split(text)
+    # chunks: [preamble, header, content, header, content, ...]
+    result = chunks[0]
+    i = 1
+    while i + 1 < len(chunks):
+        candidate = result + chunks[i] + chunks[i + 1]
+        if len(candidate) > char_budget:
+            break
+        result = candidate
+        i += 2
+    # If no sub-headers found or preamble alone already exceeds budget, hard-truncate.
+    if len(result) <= len(chunks[0]):
+        truncated = text[:char_budget]
+        last_break = truncated.rfind("\n\n")
+        return (truncated[:last_break] if last_break > 0 else truncated).strip()
+    return result.strip()
+
+
 def _resolve_sec6_header(subsection_key: str, year: int) -> str:
     """Return the prose header string for a sec6_subsections key and report year."""
     if subsection_key == "minorities":
