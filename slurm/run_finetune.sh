@@ -27,6 +27,7 @@
 #SBATCH --time=20:00:00
 #SBATCH --requeue
 #SBATCH --open-mode=append
+#SBATCH --exclude=gh200-03
 #SBATCH --output=logs/finetune_%j.out
 #SBATCH --error=logs/finetune_%j.err
 
@@ -47,7 +48,7 @@ fi
 # ── Environment ────────────────────────────────────────────────────────────────
 source ~/miniforge3/etc/profile.d/conda.sh
 module load cuda/13
-export CUDA_HOME="$(dirname "$(dirname "$(which nvcc)")")"
+NVCC_BIN=$(which nvcc 2>/dev/null || true); [ -n "$NVCC_BIN" ] && export CUDA_HOME="$(dirname "$(dirname "$NVCC_BIN")")"
 set -a; source .env; set +a
 conda activate finetune
 
