@@ -190,12 +190,7 @@ def load_summarized_for_indicator(iso: str, year: int, indicator: str) -> str | 
         if not keys:
             continue
 
-        inner_chunks = []
-
-        exec_path = _summ_section_path(iso, year, source, "exec_summary")
-        if exec_path.exists():
-            inner_chunks.append(exec_path.read_text(encoding="utf-8"))
-
+        body_chunks = []
         for key in keys:
             if source == "state-dept" and key == "2c":
                 p = _summ_section_path(iso, year, "state-dept", "irfr")
@@ -205,9 +200,22 @@ def load_summarized_for_indicator(iso: str, year: int, indicator: str) -> str | 
                 p = _summ_section_path(iso, year, source, sec_id)
             else:
                 p = _summ_section_path(iso, year, source, key)
-
             if p.exists():
-                inner_chunks.append(p.read_text(encoding="utf-8"))
+                body_chunks.append(p.read_text(encoding="utf-8"))
+
+        if body_chunks:
+            inner_chunks = body_chunks
+        else:
+            # Fallback to exec_summary only when no body sections exist.
+            # Skip SDHRR exec for 2c-only indicators (IRFR is a different report).
+            only_2c = source == "state-dept" and all(k == "2c" for k in keys)
+            if not only_2c:
+                exec_path = _summ_section_path(iso, year, source, "exec_summary")
+                inner_chunks = (
+                    [exec_path.read_text(encoding="utf-8")] if exec_path.exists() else []
+                )
+            else:
+                inner_chunks = []
 
         if inner_chunks:
             outer_chunks.append(f"*{label}*\n\n" + "\n\n---\n\n".join(inner_chunks))
