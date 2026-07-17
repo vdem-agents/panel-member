@@ -106,9 +106,12 @@ class TestEvidence:
         assert unreplaced(user) == []
 
     def test_weak_indicator_fallback_text(self):
-        # Weak indicator has no source docs — should fall back gracefully, not crash
+        # Unmapped indicator (state-dept: [], freedom-house: []) falls back to
+        # exec_summary for both sources — get_evidence reaches the fallback via an
+        # empty body_chunks list. No "[No source document available]" placeholder
+        # should appear; some evidence text must be present.
         _, user = assemble_prompt(NGA_SLUG, NGA_NAME, YEAR, WEAK_IND, "evidence", iso=NGA_ISO)
-        assert "[No source document available" in user
+        assert "[No source document available" not in user
         assert unreplaced(user) == []
 
 
