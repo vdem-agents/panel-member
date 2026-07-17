@@ -1,46 +1,56 @@
 #!/bin/bash
 # SLURM job: QLoRA fine-tune Llama 3.3 70B on V-Dem coder ratings.
 #
-# Requires a single A100 80GB. QLoRA at 4-bit needs ~40GB for weights +
-# ~15–20GB for optimizer states = ~55–60GB total.
+# Uses a GH200 (96GB HBM3e + 480GB LPDDR5X unified memory). QLoRA at 4-bit
+# needs ~40GB for weights + ~15–20GB for optimizer states = well within 96GB.
+#
+# VARIANT controls which training data is used:
+#   raw  — raw evidence text (condition=finetuned-raw); default
+#   anon — anonymized text   (condition=finetuned)
+#
+# Prepare training data first (no GPU needed, run on login node):
+#   python3 -m pipeline.prepare_finetune_data --variant raw --years 2016 2017 2018
+#   python3 -m pipeline.prepare_finetune_data --variant anon --years 2016 2017 2018
 #
 # If the job is preempted or hits the wall-clock limit, resubmit and it resumes
-# from the latest checkpoint automatically. Checkpoints are saved every 500 steps
-# and logs append across runs.
+# from the latest checkpoint automatically. Checkpoints are saved every 500 steps.
 #
-# Prerequisites on Pegasus (run once before submitting):
-#   conda create -n finetune python=3.11
-#   conda activate finetune
-#   pip install transformers peft bitsandbytes trl accelerate datasets
-#   pip install flash-attn --no-build-isolation   # requires CUDA toolkit
-#
-# Submit:        sbatch slurm/run_finetune.sh
-# After a kill:  sbatch slurm/run_finetune.sh   (same command — auto-resumes)
+# Submit:
+#   VARIANT=raw  sbatch slurm/run_finetune.sh
+#   VARIANT=anon sbatch slurm/run_finetune.sh
 #
 #SBATCH --job-name=pm-finetune
-#SBATCH --partition=gpu
-#SBATCH --gres=gpu:a100:1
-#SBATCH --cpus-per-gpu=16
-#SBATCH --mem-per-gpu=64G
-#SBATCH --time=12:00:00
+#SBATCH --partition=superChip
+#SBATCH --gres=gpu:gh200:1
+#SBATCH --cpus-per-task=32
+#SBATCH --mem=200G
+#SBATCH --time=20:00:00
 #SBATCH --requeue
 #SBATCH --open-mode=append
-#SBATCH --output=logs/finetune.out
-#SBATCH --error=logs/finetune.err
+#SBATCH --output=logs/finetune_%j.out
+#SBATCH --error=logs/finetune_%j.err
 
 set -eo pipefail
 mkdir -p logs
 
 # ── Configuration ──────────────────────────────────────────────────────────────
+VARIANT=${VARIANT:-raw}
 MODEL_PATH=/scratch/$USER/models/llama-3.3-70b-instruct
-OUTPUT_DIR=data/output/adapters/llama-70b-vdem-ft
+if [ "$VARIANT" = "raw" ]; then
+    TRAIN_DATA=data/processed/finetune_train_raw.jsonl
+    OUTPUT_DIR=data/output/adapters/llama-70b-vdem-ft-raw
+else
+    TRAIN_DATA=data/processed/finetune_train.jsonl
+    OUTPUT_DIR=data/output/adapters/llama-70b-vdem-ft-anon
+fi
 
 # ── Environment ────────────────────────────────────────────────────────────────
-source .env
+source ~/miniforge3/etc/profile.d/conda.sh
+module load cuda/13
+set -a; source .env; set +a
 conda activate finetune
 
 # ── Checkpoint detection ───────────────────────────────────────────────────────
-# If a checkpoint directory exists from a previous (partial) run, resume from it.
 RESUME_ARG=""
 LATEST_CKPT=$(ls -td "${OUTPUT_DIR}"/checkpoint-* 2>/dev/null | head -1 || true)
 if [ -n "$LATEST_CKPT" ]; then
@@ -53,6 +63,7 @@ fi
 # ── Run fine-tuning ────────────────────────────────────────────────────────────
 python3 -m pipeline.finetune_llama \
     --model-path  "$MODEL_PATH" \
+    --train-data  "$TRAIN_DATA" \
     --output-dir  "$OUTPUT_DIR" \
     --epochs      3 \
     --lora-rank   16 \
@@ -67,8 +78,8 @@ python3 -m pipeline.finetune_llama \
 # ── Archive adapter and TensorBoard logs to home (scratch purged after 30 days) ─
 ARCHIVE_DIR="$HOME/panel-member-archive/adapters"
 mkdir -p "$ARCHIVE_DIR"
-rsync -av "$OUTPUT_DIR/" "$ARCHIVE_DIR/llama-70b-vdem-ft/"
-echo "Adapter archived to $ARCHIVE_DIR/llama-70b-vdem-ft/"
-echo "Pull locally:     rsync -avz <user>@pegasus.arc.gwu.edu:~/panel-member-archive/adapters/ data/output/adapters/"
-echo "View TensorBoard: tensorboard --logdir data/output/adapters/llama-70b-vdem-ft/runs/"
+rsync -av "$OUTPUT_DIR/" "$ARCHIVE_DIR/$(basename "$OUTPUT_DIR")/"
+echo "Adapter archived to $ARCHIVE_DIR/$(basename "$OUTPUT_DIR")/"
+echo "Pull locally: rsync -avz <user>@pegasus.arc.gwu.edu:~/panel-member-archive/adapters/ data/output/adapters/"
+echo "View TensorBoard: tensorboard --logdir data/output/adapters/$(basename "$OUTPUT_DIR")/runs/"
 echo "$(date): Done."
