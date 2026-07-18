@@ -16,7 +16,6 @@
 #SBATCH --cpus-per-task=32
 #SBATCH --mem=500G
 #SBATCH --time=24:00:00
-#SBATCH --exclude=gh200-03
 #SBATCH --output=logs/llama405b_%j.out
 #SBATCH --error=logs/llama405b_%j.err
 

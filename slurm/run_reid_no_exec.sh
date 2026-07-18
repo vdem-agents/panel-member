@@ -19,7 +19,6 @@
 #SBATCH --cpus-per-task=32
 #SBATCH --mem=200G
 #SBATCH --time=02:00:00
-#SBATCH --exclude=gh200-03
 #SBATCH --output=logs/reid_no_exec_%x_%j.out
 #SBATCH --error=logs/reid_no_exec_%x_%j.err
 

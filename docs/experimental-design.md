@@ -65,11 +65,11 @@ the primary 2019 analysis. See the Few-shot calibration ablation section below.
 |---|---|---|---|
 | Llama 405B Instruct* | 405B open | GW 8×A100 80GB | Codebook, Evidence, Anonymized |
 | Llama 3.3 70B Instruct | 70B open | GW GH200 (preferred) or A100 80GB | Codebook, Evidence, Anonymized |
-| Llama 3.2 9B Instruct | 9B open | GW GH200 or V100 16GB | Codebook, Evidence, Anonymized |
-| Llama 3.3 70B (FT-raw) | 70B ft | GW GH200 (preferred) or A100 80GB | All 3 conditions; no calibration block; trained on raw evidence |
-| Llama 3.3 70B (FT-anon) | 70B ft | GW GH200 (preferred) or A100 80GB | All 3 conditions; no calibration block; trained on anonymized evidence |
+| Llama 3.1 8B Instruct | 9B open | GW GH200 or V100 16GB | Codebook, Evidence, Anonymized |
+| Llama 3.3 70B Instruct (FT-raw) | 70B ft | GW GH200 (preferred) or A100 80GB | All 3 conditions; no calibration block; trained on raw evidence |
+| Llama 3.3 70B Instruct (FT-anon) | 70B ft | GW GH200 (preferred) or A100 80GB | All 3 conditions; no calibration block; trained on anonymized evidence |
 
-**\*405B availability**: Llama 405B requires 8×A100 80GB GPUs and approximately 810 GB of
+**405B availability**: Llama 405B requires 8×A100 80GB GPUs and approximately 810 GB of
 scratch storage. Its inclusion in the design is contingent on securing sufficient allocation
 on GW Pegasus. If the 405B runs cannot be completed within 3 job submissions, the primary
 comparison falls back to a four-model design (70B, 9B, FT-raw, FT-anon). The fallback
@@ -144,7 +144,7 @@ The evidence and anonymized conditions both include a few-shot calibration block
 examples spanning the 0–4 scale — alongside the source evidence. This ablation isolates
 what those examples contribute over the source evidence alone.
 
-The best-performing base model from the primary 3×5 analysis is re-run on **2023 data**
+The best-performing model from the primary 3×5 analysis is re-run on **2023 data**
 under two additional conditions: evidence without calibration examples and anonymized text
 without calibration examples. Source documents for 2023 are already ingested and confirmed
 clean, so no additional ingestion is required.
@@ -169,7 +169,7 @@ condition (Panel A) and the anonymized condition (Panel B) — each showing boot
 CIs around the AI MAE difference. Reference line at 0; negative values indicate few-shot
 improves on zero-shot.
 
-### Information shift test (2023)
+### Information shift test (2024)
 
 The identification design rests on the claim that the model reads and uses the provided
 evidence rather than drawing on stored knowledge of the country. The stiffest test of this
@@ -178,7 +178,7 @@ reading the text, it should update more in response to evidence precisely where 
 carries new information — that is, where the country's political situation differs from what
 pretraining would lead the model to expect.
 
-Country-years in the 2023 evaluation pool are tagged as transition-adjacent using the V-Dem
+Country-years in the 2024 evaluation pool are tagged as transition-adjacent using the V-Dem
 Episodes of Regime Transformation (ERT) dataset (onset or peak year flag). The continuous
 moderator is |Δv2x_polyarchy| from year t−1 to t. AI MAE is computed separately for
 transition-adjacent and stable country-years under each condition. The pre-registered

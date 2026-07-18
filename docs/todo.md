@@ -21,11 +21,11 @@
   - Llama 3.3 70B: ~140 GB
   - Llama 3.1 405B: ~810 GB (check scratch quota before downloading)
 
-- [ ] **Confirm scratch quota** is sufficient for model weights + output data.
+- [x] **Confirm scratch quota** is sufficient for model weights + output data.
   810 GB for 405B alone; 70B + 9B add another ~160 GB. Contact research computing
-  if quota needs to be increased.
+  if quota needs to be increased. (Can potentially run 405B on A100 node but it would be a long wait)
 
-- [ ] **Set up conda environments** on Pegasus:
+- [x] **Set up conda environments** on Pegasus:
   ```bash
   # Coding pipeline environment
   conda create -n panel-member python=3.11
@@ -38,10 +38,10 @@
   pip install vllm
   ```
 
-- [ ] **Copy `ingest.py` and `extract_sections.py` to Pegasus** (already copied locally on 2026-07-09;
+- [x] **Copy `ingest.py` and `extract_sections.py` to Pegasus** (already copied locally on 2026-07-09;
   repeat after pushing to the remote or cloning fresh on Pegasus).
 
-- [ ] **Test vLLM startup** with a small model (9B) before running full batches.
+- [x] **Test vLLM startup** with a small model (9B) before running full batches.
   Submit `slurm/run_coding_9b.sh` with `--indicators v2csreprss` and `--year 2020`
   on a handful of countries to confirm the vLLM health-check loop and batch runner
   work end-to-end before committing GPU time to 405B.
@@ -176,7 +176,7 @@ multiple genuinely distinct AI coders.
   Flag removed entirely from all YAML entries and from `generate_indicator_yaml.R`.
   Done as part of #1 resolution (2026-07-11).
 
-- [ ] **Generate `data/processed/human_ratings.csv`** from V-Dem v15 coder-level data in R.
+- [x] **Generate `data/processed/human_ratings.csv`** from V-Dem v15 coder-level data in R.
   Required columns: `country_text_id`, `iso3`, `year`, `indicator`, `coder_id`, `rating`.
   Include both training indicators (2016–2018) and all evaluation indicators (including
   weak-coverage). Used by `prepare_finetune_data.py` (training) and `substitution_eval.py`
@@ -192,12 +192,12 @@ multiple genuinely distinct AI coders.
 
 ## Source documents: download locally (do before any coding runs) (#9)
 
-- [ ] **Download 2019 Freedom House and State Dept reports** (primary test year — do first).
+- [x] **Download 2019 Freedom House and State Dept reports** (primary test year — do first).
   Run `bridge-coder/pipeline/download_reports.py --year 2019` on laptop. Lands in
   `shared/source-docs/{state-dept,freedom-house}/2019/`. ~170 countries, ~30 min.
   Then run `python3 -m pipeline.ingest --year 2019` to extract plain text.
 
-- [ ] **Download 2016–2018 source documents** (fine-tuning training window).
+- [x] **Download 2016–2018 source documents** (fine-tuning training window).
   Same script, one run per year. ~6 × 30 min. Can chip away across sessions — the
   download script checkpoints so interrupted runs resume cleanly. Ingest each year
   after downloading.
@@ -205,6 +205,8 @@ multiple genuinely distinct AI coders.
 - [x] **Download 2023 source documents** (robustness check year; best model only).
   Already ingested and confirmed clean — all 16 SD sections in 193 files; all 7 FH
   sections in 210 files (confirmed via issue #14, closed 2026-07-12).
+
+- [] **Download 2024 source documents** (robustness check on data not in model training). Decide on scope of documents to use for robustness check (FH only or SD and FH), download and do any additional mapping (if using SD documents). Also have to process.  
 
 ---
 
@@ -233,16 +235,14 @@ multiple genuinely distinct AI coders.
   All corrected. `SLUG_OVERRIDES` and `build_country_map()` consolidated into
   `pipeline/country_map.py`; duplicated code removed from both batch runners.
 
-
-
-- [ ] **Set up vLLM on GW Pegasus** for Llama 405B, 70B, 9B.
+- [x] **Set up vLLM on GW Pegasus** for Llama 405B, 70B, 9B.
   - 405B: 8×A100 80GB node (needs ~200GB at 4-bit). May require allocation request.
   - 70B: single A100 80GB node (~35GB at 4-bit).
   - 9B: V100 16GB node (~5GB at 4-bit).
   Set `VLLM_BASE_URL` to the node's address; `VLLM_API_KEY` to any non-empty string
   if auth is disabled (typical for cluster jobs).
 
-- [ ] **Note on `v2juncind` vs `v2juhcind`**: bridge-coder's `config/indicator_sections.yaml`
+- [x] **Note on `v2juncind` vs `v2juhcind`**: bridge-coder's `config/indicator_sections.yaml`
   uses `v2juncind` with "High court independence" as description, which appears to be a
   typo for `v2juhcind`. Panel-member uses `v2juhcind`. Verify which code is correct in
   V-Dem v15 before running bridge-coder Stage 2.
@@ -268,13 +268,48 @@ multiple genuinely distinct AI coders.
 
 ## Documentation
 
-- [ ] **Add pipeline flow diagram to `docs/`** (#17). Mermaid diagram in
+- [x] **Add pipeline flow diagram to `docs/`** (#17). Mermaid diagram in
   `docs/pipeline-flow.md` showing inputs, outputs, and data flow across all pipeline
   stages and modules. Should cover ingest → section extraction (incl. 2c and Section 6
   sub-parsing) → prompt assembly (four conditions) → anonymization → coding →
   fine-tuning → evaluation. Include config and data file dependencies
   (`indicator_sections.yaml`, `fewshot_examples.json`, `panel_means.csv`,
   `human_ratings.csv`).
+
+- [x] **Redo documentation to reflect third FT mode** Since the documentation was written, it was decided to add a "summary" condition to fine tuning and inference. Update documentation to reflect this.
+
+---
+
+## Model runs
+
+### Finetuning 
+
+Finetune on State Department Human Rights Reports and Freedom House Freedom in the World reports for 2018-2019 using human coder ratings as the target variable.  
+
+- [] **FT on raw packets** - Finetune Llama 3.3 Instruct 70B model on raw non-anomyzed evidence packets.  
+- [] **FT on anonymized packets** - Finetune Llama 3.3 Instruct 70B model on anonymzed versions of evidence packets. 
+- [] **FT on summarized sections** - Finetune Llama 3.3. Instruct 70B model on summarized evidence packets. 
+
+### Inference on 2019 validation set
+
+Run inference on four variants for all models: 1) codebook only; 2) raw evidence packets; 3) anonymized evidence packets; 4) summarized evidence packets. Plan should be to run first two and see how long base 70B model takes then make adjustments as needed. The 9B runs should go quickly. The 16 70B runs may be unwieldy while the desired run on 405B model is unlikely given current resources. 
+
+- [] **Inference on base 9B model** - Run inference on Llama 3.2 Instruct 9B base model.
+- [] **Inference on base 70B model** - Run inference on Llama 3.3 Instruct 70B base model.
+- [] **Inference on FT-raw** - Run inference on Llama 3.3. Instruct 70B model finetuned on raw evidence packets. 
+- [] **Inference on FT-anonymized** - Run inference on Llama 3.3 Instruct 70B model finetuned on anonymized evidence packets.  
+- [] **Inference on FT-summarized** - Run inference on Llama 3.3 Instruct 70B model finetuned on summarized evidence packets. 
+- [] **Inference on 405B** - Run inference on Llama 3.3 (unlikely to be able to run on GW servers).
+
+### Robustness checks on 2023 data (with best model)
+
+This stage will involve eleven full inference runs on the best model from the validation run on 2019 data plus re-identification tests for the anonymous and summarized conditions.
+
+- [] **Test year replication** - Rerun experiment on 2023 test set across four conditions (codebook only, raw evidence, anonymized and summarized).
+- [] **Few shot ablation** - Rerun inference for the raw evidence, anonymized and summarized versions of the best model without few shot examples.
+- [] **Re-identification test** - Run re-identification tests for anonymized and summarized versions. Compare performance of models across CYIs that were correctly identified and those that were not (should only run re-identification here - should be able to reuse inference results from test year replication).
+- [] **Out of sample test** - Rerun best model across four conditions on 2024 data (last year of Llama 3 training data was 2023). Perform information shift test on subset of CYIs experiencing major shifts in political conditions. 
+- [] **Applied performance** - Compare MAE and directional bias of model codings versus human codings (can use test year replication results - no new inference required).
 
 ---
 

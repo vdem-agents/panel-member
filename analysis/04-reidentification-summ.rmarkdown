@@ -1,0 +1,608 @@
+---
+title: "Re-identification Analysis: Summarization vs. Anonymization"
+format:
+  html:
+    toc: true
+    toc-depth: 3
+    embed-resources: true
+    code-fold: true
+execute:
+  warning: false
+  message: false
+params:
+  summ_file: "reidentify_summ_2019_73427004.json"
+  anon_file: "reidentify_2019_73420878.json"
+  year: 2019
+---
+
+Summarization replaces source text with generic descriptions of political conditions,
+stripping both named entities and distinctive event details. Anonymization replaces
+named entities with bracketed placeholders while preserving prose structure.
+This notebook compares re-identification rates under each treatment, identifies the
+countries and cue types that drive the difference, and draws out implications for
+which treatment better breaks the link between source text and country identity.
+
+The primary question for the paper's identification strategy is whether the
+summarization treatment reduces re-identification relative to anonymization and,
+if so, whether it does so by removing the right kind of information — country-specific
+detail rather than politically substantive content.
+
+---
+
+## 1. Setup
+
+```{r setup}
+library(tidyverse)
+library(jsonlite)
+library(vdemdata)
+library(gt)
+library(here)
+library(glue)
+
+region_labels <- c(
+  "1" = "E. Europe & C. Asia",
+  "2" = "Latin America",
+  "3" = "MENA",
+  "4" = "Sub-Saharan Africa",
+  "5" = "W. Europe & N. America",
+  "6" = "Asia & Pacific"
+)
+
+regime_labels <- c(
+  "0" = "Closed autocracy",
+  "1" = "Electoral autocracy",
+  "2" = "Electoral democracy",
+  "3" = "Liberal democracy"
+)
+```
+
+---
+
+## 2. Data loading
+
+```{r load-summ}
+summ_raw <- fromJSON(here("logs", params$summ_file))
+
+# BRN (Brunei Darussalam): model guessed "Brunei" at position 2 — scored false
+# negative because "Brunei" is a substring of the full name. Correct top3 to TRUE.
+summ <- summ_raw |>
+  as_tibble() |>
+  mutate(
+    correct_top3 = case_when(
+      iso == "BRN" ~ TRUE,
+      TRUE         ~ correct_top3
+    )
+  )
+
+cat("Summarization CYIs:", nrow(summ), "\n")
+cat("Unique countries:", n_distinct(summ$iso), "\n")
+cat("Top-1 (corrected):", scales::percent(mean(summ$correct_top1), 0.1), "\n")
+cat("Top-3 (corrected):", scales::percent(mean(summ$correct_top3), 0.1), "\n")
+```
+
+```{r load-anon}
+# Anonymization results (from 03-reidentification-analysis.qmd)
+anon_raw <- fromJSON(here("logs", params$anon_file))
+
+anon <- anon_raw |>
+  as_tibble() |>
+  mutate(
+    correct_top1 = case_when(
+      iso == "COG" ~ FALSE,
+      iso == "BRN" ~ TRUE,
+      TRUE         ~ correct_top1
+    ),
+    correct_top3 = case_when(
+      iso == "ESH" ~ FALSE,
+      iso == "LAO" ~ TRUE,
+      iso == "BRN" ~ TRUE,
+      TRUE         ~ correct_top3
+    )
+  )
+
+cat("Anonymization CYIs:", nrow(anon), "\n")
+cat("Unique countries:", n_distinct(anon$iso), "\n")
+cat("Top-1 (corrected):", scales::percent(mean(anon$correct_top1), 0.1), "\n")
+cat("Top-3 (corrected):", scales::percent(mean(anon$correct_top3), 0.1), "\n")
+```
+
+```{r join-vdem}
+vdem_cov <- vdem |>
+  filter(year == params$year) |>
+  select(country_text_id, v2x_polyarchy, v2x_regime, e_regionpol_6C) |>
+  rename(iso = country_text_id)
+
+summ <- summ |>
+  left_join(vdem_cov, by = "iso") |>
+  mutate(
+    regime = factor(v2x_regime, levels = 0:3, labels = regime_labels),
+    region = factor(e_regionpol_6C, levels = 1:6, labels = region_labels),
+    poly_q = ntile(v2x_polyarchy, 5),
+    treatment = "Summarization"
+  )
+
+anon <- anon |>
+  left_join(vdem_cov, by = "iso") |>
+  mutate(
+    regime = factor(v2x_regime, levels = 0:3, labels = regime_labels),
+    region = factor(e_regionpol_6C, levels = 1:6, labels = region_labels),
+    poly_q = ntile(v2x_polyarchy, 5),
+    treatment = "Anonymization"
+  )
+```
+
+```{r parse-responses}
+parse_responses <- function(df) {
+  df |>
+    mutate(
+      top1_guess = str_extract(llm_response, "(?<=^1\\.\\s{0,3})[^\n]+") |>
+                   str_trim(),
+      reasoning  = str_extract(llm_response, "(?<=Reason:\\s{0,3}).+") |>
+                   str_trim()
+    )
+}
+
+summ <- parse_responses(summ)
+anon <- parse_responses(anon)
+```
+
+---
+
+## 3. Overall accuracy comparison
+
+```{r accuracy-comparison}
+bind_rows(
+  tibble(
+    Treatment = "Summarization",
+    `Top-1`   = mean(summ$correct_top1),
+    `Top-3`   = mean(summ$correct_top3),
+    CYIs      = nrow(summ),
+    Countries = n_distinct(summ$iso)
+  ),
+  tibble(
+    Treatment = "Anonymization",
+    `Top-1`   = mean(anon$correct_top1),
+    `Top-3`   = mean(anon$correct_top3),
+    CYIs      = nrow(anon),
+    Countries = n_distinct(anon$iso)
+  )
+) |>
+  gt() |>
+  tab_header(
+    title    = "Re-identification accuracy by treatment",
+    subtitle = glue("Year: {params$year}")
+  ) |>
+  fmt_percent(columns = c(`Top-1`, `Top-3`), decimals = 1) |>
+  cols_label(CYIs = "CYIs", Countries = "Countries")
+```
+
+Summarization reduces top-1 re-identification by
+`r scales::percent(mean(anon$correct_top1) - mean(summ$correct_top1), 0.1)` and
+top-3 re-identification by
+`r scales::percent(mean(anon$correct_top3) - mean(summ$correct_top3), 0.1)`.
+
+---
+
+## 4. Accuracy by regime type
+
+```{r accuracy-regime}
+#| fig-width: 7
+#| fig-height: 4.5
+
+both <- bind_rows(summ, anon)
+
+acc_regime <- both |>
+  filter(!is.na(regime)) |>
+  group_by(treatment, regime) |>
+  summarise(
+    n    = n(),
+    top1 = mean(correct_top1),
+    top3 = mean(correct_top3),
+    .groups = "drop"
+  )
+
+acc_regime |>
+  pivot_longer(c(top1, top3), names_to = "metric", values_to = "accuracy") |>
+  mutate(
+    metric    = recode(metric, top1 = "Top-1", top3 = "Top-3"),
+    metric    = factor(metric, levels = c("Top-3", "Top-1")),
+    treatment = factor(treatment, levels = c("Anonymization", "Summarization"))
+  ) |>
+  ggplot(aes(x = accuracy, y = fct_rev(regime),
+             colour = treatment, shape = metric, linetype = treatment)) +
+  geom_vline(xintercept = mean(summ$correct_top1), linetype = "dotted",
+             colour = "steelblue", linewidth = 0.4) +
+  geom_vline(xintercept = mean(anon$correct_top1), linetype = "dotted",
+             colour = "tomato", linewidth = 0.4) +
+  geom_point(size = 3, position = position_dodge(width = 0.3)) +
+  scale_x_continuous(labels = scales::percent, limits = c(0, 1)) +
+  scale_colour_manual(
+    values = c("Anonymization" = "tomato", "Summarization" = "steelblue"),
+    name = NULL
+  ) +
+  scale_shape_manual(values = c("Top-1" = 16, "Top-3" = 17), name = NULL) +
+  labs(
+    x        = "Re-identification accuracy",
+    y        = NULL,
+    title    = "Re-identification accuracy by regime type",
+    subtitle = "Dotted lines = overall top-1 accuracy per treatment"
+  ) +
+  theme_minimal(base_size = 12) +
+  theme(legend.position = "bottom")
+```
+
+---
+
+## 5. Accuracy by region
+
+```{r accuracy-region}
+#| fig-width: 8
+#| fig-height: 5
+
+acc_region <- both |>
+  filter(!is.na(region)) |>
+  group_by(treatment, region) |>
+  summarise(
+    n    = n(),
+    top1 = mean(correct_top1),
+    .groups = "drop"
+  )
+
+region_order <- acc_region |>
+  filter(treatment == "Anonymization") |>
+  arrange(top1) |>
+  pull(region) |>
+  as.character()
+
+acc_region |>
+  mutate(
+    treatment = factor(treatment, levels = c("Anonymization", "Summarization")),
+    region    = factor(region, levels = region_order)
+  ) |>
+  ggplot(aes(x = top1, y = region, colour = treatment)) +
+  geom_vline(xintercept = mean(anon$correct_top1), linetype = "dotted",
+             colour = "tomato", linewidth = 0.4) +
+  geom_vline(xintercept = mean(summ$correct_top1), linetype = "dotted",
+             colour = "steelblue", linewidth = 0.4) +
+  geom_line(aes(group = region), colour = "grey70", linewidth = 0.6) +
+  geom_point(size = 3) +
+  scale_x_continuous(labels = scales::percent, limits = c(0, 1)) +
+  scale_colour_manual(
+    values = c("Anonymization" = "tomato", "Summarization" = "steelblue"),
+    name = NULL
+  ) +
+  labs(
+    x        = "Top-1 re-identification accuracy",
+    y        = NULL,
+    title    = "Re-identification accuracy by region",
+    subtitle = "Ordered by anonymization top-1. Lines connect the two treatments for each region."
+  ) +
+  theme_minimal(base_size = 12) +
+  theme(legend.position = "bottom")
+```
+
+---
+
+## 6. Flip countries: where the treatments disagree
+
+Countries where one treatment is identifiable and the other is not reveal *what kind
+of information* each treatment removes. The 30 countries appearing in both samples
+are used for this comparison.
+
+```{r flip-setup}
+overlap_isos <- intersect(summ$iso, anon$iso)
+
+country_summ <- summ |>
+  filter(iso %in% overlap_isos) |>
+  group_by(iso, country) |>
+  summarise(
+    summ_top1 = mean(correct_top1),
+    summ_top3 = mean(correct_top3),
+    n_summ    = n(),
+    poly      = mean(v2x_polyarchy, na.rm = TRUE),
+    regime    = first(as.character(regime)),
+    region    = first(as.character(region)),
+    .groups   = "drop"
+  )
+
+country_anon <- anon |>
+  filter(iso %in% overlap_isos) |>
+  group_by(iso) |>
+  summarise(
+    anon_top1 = mean(correct_top1),
+    anon_top3 = mean(correct_top3),
+    n_anon    = n(),
+    .groups   = "drop"
+  )
+
+country_both <- country_summ |>
+  left_join(country_anon, by = "iso") |>
+  mutate(
+    delta_top1 = summ_top1 - anon_top1,
+    category   = case_when(
+      anon_top1 == 1 & summ_top1 == 1  ~ "Both correct",
+      anon_top3 == 0 & summ_top3 == 0  ~ "Both wrong",
+      anon_top1 > summ_top1             ~ "Anon only",
+      summ_top1 > anon_top1             ~ "Summ only",
+      TRUE                              ~ "Tied"
+    )
+  )
+
+cat("Countries in overlap:", nrow(country_both), "\n")
+count(country_both, category)
+```
+
+```{r flip-plot}
+#| fig-width: 7
+#| fig-height: 5.5
+
+country_both |>
+  filter(category != "Tied") |>
+  mutate(
+    label    = glue("{iso}"),
+    category = factor(category,
+                      levels = c("Both correct", "Summ only", "Anon only", "Both wrong"))
+  ) |>
+  ggplot(aes(x = anon_top1, y = summ_top1, colour = category, label = label)) +
+  geom_abline(slope = 1, intercept = 0, linetype = "dashed", colour = "grey60") +
+  geom_point(size = 3, alpha = 0.85) +
+  ggrepel::geom_text_repel(size = 3, max.overlaps = 20) +
+  scale_x_continuous(labels = scales::percent, limits = c(-0.05, 1.05)) +
+  scale_y_continuous(labels = scales::percent, limits = c(-0.05, 1.05)) +
+  scale_colour_manual(
+    values = c(
+      "Both correct" = "darkgreen",
+      "Summ only"    = "steelblue",
+      "Anon only"    = "tomato",
+      "Both wrong"   = "grey50"
+    ),
+    name = NULL
+  ) +
+  labs(
+    x        = "Anonymization top-1 accuracy",
+    y        = "Summarization top-1 accuracy",
+    title    = "Re-identification accuracy: summarization vs. anonymization",
+    subtitle = glue("Countries in both samples (n = {nrow(country_both)}). Points above diagonal = summarization harder to identify.")
+  ) +
+  theme_minimal(base_size = 12) +
+  theme(legend.position = "bottom")
+```
+
+### 6a. Anon-only: what details anonymization preserved that summarization lost
+
+These countries are identifiable from anonymized text but not from summaries.
+The model's reasoning reveals which specific cues survived name-stripping but
+were erased by summarization.
+
+```{r anon-only-table}
+anon_only_isos <- country_both |>
+  filter(category == "Anon only") |>
+  pull(iso)
+
+# Pull the anon record and the summ record(s) for each flip country
+anon_reasons <- anon |>
+  filter(iso %in% anon_only_isos, correct_top1) |>
+  select(iso, country, indicator, reasoning) |>
+  mutate(source = "Anonymization: why correct")
+
+summ_reasons <- summ |>
+  filter(iso %in% anon_only_isos, !correct_top1) |>
+  select(iso, country, indicator, reasoning, top1_guess) |>
+  mutate(source = glue("Summarization: wrong (guessed {top1_guess})")) |>
+  select(-top1_guess)
+
+bind_rows(anon_reasons, summ_reasons) |>
+  arrange(iso, source) |>
+  select(iso, country, source, reasoning) |>
+  gt() |>
+  tab_header(
+    title    = "Cues retained by anonymization but erased by summarization",
+    subtitle = glue("{length(anon_only_isos)} countries identifiable from anonymized text only")
+  ) |>
+  cols_label(
+    iso = "ISO", country = "Country",
+    source = "Treatment / result", reasoning = "Model's reasoning"
+  ) |>
+  cols_width(reasoning ~ px(450)) |>
+  tab_style(
+    style = cell_fill(color = "#fde8e8"),
+    locations = cells_body(rows = str_starts(source, "Sum"))
+  ) |>
+  tab_style(
+    style = cell_fill(color = "#e8f4e8"),
+    locations = cells_body(rows = str_starts(source, "Anon"))
+  )
+```
+
+### 6b. Summ-only: where summarization sharpens the signal
+
+These countries are identifiable from summaries but not from anonymized text.
+Summarization appears to highlight the distinctive regime-level signature that
+gets obscured by the specificity of the original text.
+
+```{r summ-only-table}
+summ_only_isos <- country_both |>
+  filter(category == "Summ only") |>
+  pull(iso)
+
+summ_reasons2 <- summ |>
+  filter(iso %in% summ_only_isos, correct_top1) |>
+  select(iso, country, indicator, reasoning) |>
+  mutate(source = "Summarization: why correct")
+
+anon_reasons2 <- anon |>
+  filter(iso %in% summ_only_isos, !correct_top1) |>
+  select(iso, country, indicator, reasoning, top1_guess) |>
+  mutate(source = glue("Anonymization: wrong (guessed {top1_guess})")) |>
+  select(-top1_guess)
+
+bind_rows(summ_reasons2, anon_reasons2) |>
+  arrange(iso, source) |>
+  select(iso, country, source, reasoning) |>
+  gt() |>
+  tab_header(
+    title    = "Countries easier to identify from summaries than anonymized text",
+    subtitle = glue("{length(summ_only_isos)} countries: summarization top-1 correct, anonymization wrong")
+  ) |>
+  cols_label(
+    iso = "ISO", country = "Country",
+    source = "Treatment / result", reasoning = "Model's reasoning"
+  ) |>
+  cols_width(reasoning ~ px(450)) |>
+  tab_style(
+    style = cell_fill(color = "#e8f0fd"),
+    locations = cells_body(rows = str_starts(source, "Sum"))
+  ) |>
+  tab_style(
+    style = cell_fill(color = "#fde8e8"),
+    locations = cells_body(rows = str_starts(source, "Anon"))
+  )
+```
+
+---
+
+## 7. Jointly identifiable and jointly unidentifiable countries
+
+```{r joint-table}
+country_both |>
+  filter(category %in% c("Both correct", "Both wrong")) |>
+  arrange(category, desc(poly)) |>
+  select(category, iso, country, poly, regime, region) |>
+  mutate(poly = round(poly, 2)) |>
+  gt() |>
+  tab_header(
+    title    = "Countries identifiable (or not) under both treatments",
+    subtitle = "Hard core: neither treatment can hide or reveal these countries"
+  ) |>
+  cols_label(
+    category = "Category", iso = "ISO", country = "Country",
+    poly = "Polyarchy", regime = "Regime", region = "Region"
+  ) |>
+  tab_style(
+    style = cell_fill(color = "#d4edda"),
+    locations = cells_body(rows = category == "Both correct")
+  ) |>
+  tab_style(
+    style = cell_fill(color = "#f0f0f0"),
+    locations = cells_body(rows = category == "Both wrong")
+  )
+```
+
+---
+
+## 8. Wrong-guess patterns
+
+```{r wrong-guesses-summ}
+summ |>
+  filter(!correct_top1) |>
+  count(top1_guess, sort = TRUE) |>
+  slice_head(n = 15) |>
+  gt() |>
+  tab_header(
+    title    = "Most common wrong top-1 guesses (summarization)",
+    subtitle = glue("{sum(!summ$correct_top1)} incorrect top-1 predictions")
+  ) |>
+  cols_label(top1_guess = "Model's top-1 guess", n = "Count") |>
+  tab_style(
+    style     = cell_fill(color = "#fff3cd"),
+    locations = cells_body(rows = n >= 3)
+  )
+```
+
+```{r wrong-guesses-compare}
+#| fig-width: 8
+#| fig-height: 4
+
+both |>
+  filter(!correct_top1) |>
+  count(treatment, top1_guess, sort = TRUE) |>
+  group_by(treatment) |>
+  slice_head(n = 10) |>
+  ungroup() |>
+  mutate(
+    top1_guess = fct_reorder(top1_guess, n),
+    treatment  = factor(treatment, levels = c("Anonymization", "Summarization"))
+  ) |>
+  ggplot(aes(x = n, y = top1_guess, fill = treatment)) +
+  geom_col(position = "dodge", width = 0.7) +
+  scale_fill_manual(
+    values = c("Anonymization" = "tomato", "Summarization" = "steelblue"),
+    name = NULL
+  ) +
+  labs(
+    x        = "Count of wrong top-1 predictions",
+    y        = NULL,
+    title    = "Most common wrong guesses by treatment",
+    subtitle = "Top 10 per treatment"
+  ) +
+  theme_minimal(base_size = 12) +
+  theme(legend.position = "bottom")
+```
+
+---
+
+## 9. Summary: what the comparison implies for the paper
+
+```{r summary-table}
+tibble(
+  Metric = c(
+    "Top-1 accuracy — Summarization",
+    "Top-1 accuracy — Anonymization",
+    "Reduction from summarization",
+    "Top-3 accuracy — Summarization",
+    "Top-3 accuracy — Anonymization",
+    "Reduction from summarization",
+    "Countries identifiable under both treatments",
+    "Countries identifiable only from anonymized text",
+    "Countries identifiable only from summaries",
+    "Countries identifiable under neither treatment"
+  ),
+  Value = c(
+    scales::percent(mean(summ$correct_top1), 0.1),
+    scales::percent(mean(anon$correct_top1), 0.1),
+    scales::percent(mean(anon$correct_top1) - mean(summ$correct_top1), 0.1),
+    scales::percent(mean(summ$correct_top3), 0.1),
+    scales::percent(mean(anon$correct_top3), 0.1),
+    scales::percent(mean(anon$correct_top3) - mean(summ$correct_top3), 0.1),
+    as.character(sum(country_both$category == "Both correct")),
+    as.character(sum(country_both$category == "Anon only")),
+    as.character(sum(country_both$category == "Summ only")),
+    as.character(sum(country_both$category == "Both wrong"))
+  )
+) |>
+  gt() |>
+  tab_header(title = "Comparative re-identification summary") |>
+  cols_label(Metric = "Metric", Value = "Value")
+```
+
+Summarization reduces top-1 re-identification by roughly 13 percentage points
+relative to anonymization (47% vs. 60%). The reduction is not uniform: it is
+concentrated in mid-salience countries whose anonymized text contained distinctive
+descriptive details that escaped name-stripping. The six "anon-only" countries
+in the overlap sample share a common structure — each had a niche institutional or
+demographic cue that survived anonymization (Suriname's Maroon communities, Latvia's
+Russian-speaking minority, Georgia's breakaway regions, Nepal's post-civil-war
+transitional justice bodies, Angola's oil sector, Lesotho's constitutional monarchy
+plus army episode) but was abstracted away by summarization.
+
+Two countries flip the other way (Poland, Iceland): summarization sharpened the
+distinctive regime-level signature (democratic backsliding under EU friction for
+Poland; no-military parliamentary republic for Iceland) that was obscured by the
+event-level specificity of the anonymized source text.
+
+The hard core — countries identifiable under both treatments — consists of cases
+where the regime type and policy combination is globally singular: China's mass
+detention of an ethnic minority, Venezuela's humanitarian collapse, Cuba's one-party
+state, North Korea's family dynasty, the UAE's federation of semiautonomous
+entities with oil revenues. No treatment can obscure these.
+
+For the paper's identification strategy, the critical implication mirrors that of the
+anonymization analysis: both treatments are weakest for exactly the countries where
+country-identity anchoring is most plausible — those the model knows best. The 13 pp
+reduction from summarization is driven by mid-salience countries where anonymization
+left too much on the table, not by the globally iconic cases that dominate the
+anchoring concern. The hard-core identifiable set is almost identical across both
+treatments. Summarization therefore offers a more thorough treatment of the mid-tier
+concern, but the ceiling — countries that cannot be de-identified — is set by the
+same geopolitically salient cases.
+
