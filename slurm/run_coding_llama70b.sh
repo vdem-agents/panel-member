@@ -15,7 +15,6 @@
 #SBATCH --cpus-per-task=32
 #SBATCH --mem=200G
 #SBATCH --time=20:00:00
-#SBATCH --exclude=gh200-03
 #SBATCH --output=logs/llama70b_%j.out
 #SBATCH --error=logs/llama70b_%j.err
 
@@ -51,6 +50,7 @@ export PATH="$HOME/miniforge3/envs/vllm/bin:$PATH"
     --port "$VLLM_PORT" \
     --max-model-len 16384 \
     --gpu-memory-utilization 0.90 \
+    --enable-prefix-caching \
     --safetensors-load-strategy prefetch &
 VLLM_PID=$!
 
@@ -66,6 +66,7 @@ python3 -m pipeline.run_coding_batch \
     --year      "$YEAR" \
     --condition "$CONDITION" \
     --models    "$MODEL_KEY" \
+    --workers   16 \
     --output    "$OUTPUT"
 
 # ── Cleanup ────────────────────────────────────────────────────────────────────

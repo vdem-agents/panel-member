@@ -21,7 +21,6 @@
 #SBATCH --cpus-per-task=32
 #SBATCH --mem=200G
 #SBATCH --time=04:00:00
-#SBATCH --exclude=gh200-03
 #SBATCH --output=logs/anonymize_%x_%j.out
 #SBATCH --error=logs/anonymize_%x_%j.err
 

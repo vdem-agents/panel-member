@@ -18,7 +18,6 @@
 #SBATCH --cpus-per-task=32
 #SBATCH --mem=200G
 #SBATCH --time=20:00:00
-#SBATCH --exclude=gh200-03
 #SBATCH --output=logs/ft_infer_%j.out
 #SBATCH --error=logs/ft_infer_%j.err
 
@@ -57,6 +56,7 @@ export PATH="$HOME/miniforge3/envs/vllm/bin:$PATH"
     --port "$VLLM_PORT" \
     --max-model-len 16384 \
     --gpu-memory-utilization 0.90 \
+    --enable-prefix-caching \
     --safetensors-load-strategy prefetch &
 VLLM_PID=$!
 
@@ -70,6 +70,7 @@ echo "vLLM ready (pid $VLLM_PID)"
 python3 -m pipeline.run_finetuned_batch \
     --year    "$YEAR" \
     --variant "$VARIANT" \
+    --workers 16 \
     --output  "$OUTPUT"
 
 # ── Cleanup ────────────────────────────────────────────────────────────────────

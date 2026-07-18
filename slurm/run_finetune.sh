@@ -27,7 +27,6 @@
 #SBATCH --time=20:00:00
 #SBATCH --requeue
 #SBATCH --open-mode=append
-#SBATCH --exclude=gh200-03
 #SBATCH --output=logs/finetune_%j.out
 #SBATCH --error=logs/finetune_%j.err
 
