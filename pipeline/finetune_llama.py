@@ -41,11 +41,6 @@ from transformers import (
 )
 from trl import DataCollatorForCompletionOnlyLM, SFTTrainer
 
-DEFAULT_OUTPUT_DIR = (
-    Path(__file__).parent.parent
-    / "data" / "output" / "adapters" / "llama-70b-vdem-ft"
-)
-
 # All attention and MLP projection layers — standard for Llama 3 QLoRA
 LORA_TARGET_MODULES = [
     "q_proj", "k_proj", "v_proj", "o_proj",
@@ -97,8 +92,8 @@ def main() -> None:
     )
     parser.add_argument(
         "--output-dir",
-        default=str(DEFAULT_OUTPUT_DIR),
-        help="Directory to save LoRA adapter weights",
+        required=True,
+        help="Directory to save LoRA adapter weights (e.g. data/output/adapters/llama-70b-vdem-ft-raw)",
     )
     parser.add_argument("--epochs",       type=int,   default=3)
     parser.add_argument("--lora-rank",    type=int,   default=16)

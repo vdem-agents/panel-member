@@ -42,8 +42,8 @@ Then set:
 
 Prerequisites:
   - For evidence-zeroshot: processed-text files for all target country-years
-  - For anonymized-zeroshot: anonymized/{year}/{iso}/{indicator}.txt cached for
-    all target country-years (from anonymize_section.py)
+  - For anonymized-zeroshot: anonymized/{year}/{iso}/{source}_{section_id}.txt cached for
+    all target country-years (from anonymize_section.py / run_anonymize_batch.py)
   - shared/vdem-data/panel_means.csv for country filtering
   - vLLM running with the correct adapter as described above
 
