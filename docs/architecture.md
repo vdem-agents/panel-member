@@ -193,6 +193,9 @@ The few-shot block contains one calibration example per ordinal level (up to fiv
   "condition":      "evidence",
   "prompt_variant": "panel-member-v1",
   "rating":         1,
+  "raw_mean":       1.3571,
+  "signed_dev":     -0.3571,
+  "abs_dev":        0.3571,
   "justification":  "...",
   "sources":        ["state-dept", "freedom-house"],
   "section_keys":   {"state-dept": ["2b", "5"], "freedom-house": ["E"]},
@@ -201,7 +204,7 @@ The few-shot block contains one calibration example per ordinal level (up to fiv
 }
 ```
 
-`raw_mean`, `signed_dev`, and `abs_dev` are not stored in the output record. Join against `panel_means.csv` at analysis time (e.g. in R via `left_join`) to compute deviations.
+`raw_mean` is the panel mean from `panel_means.csv` for this country-year-indicator; `signed_dev = rating − raw_mean`; `abs_dev = |rating − raw_mean|`. All three fields are `null` for the `codebook` condition (no panel mean available without evidence text).
 
 Output path: `data/output/{model_key}_{condition}_{indicator}_{year}.jsonl`
 
