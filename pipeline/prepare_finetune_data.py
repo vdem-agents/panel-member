@@ -7,7 +7,7 @@ training example pairing section text with the coder's integer rating as the
 assistant target. Two variants:
 
   --variant anon (default)
-      Uses anonymized section text (condition="finetuned"). Requires
+      Uses anonymized section text (condition="finetuned-anon"). Requires
       anonymize_section.py to have been run for all training country-years.
       Output: data/processed/finetune_train_anon.jsonl
 
@@ -106,7 +106,7 @@ def build_training_record(
     Returns None if the required text is not yet cached for this CYI — the
     caller logs a skip and continues.
 
-    For condition="finetuned" (anon variant): slug is unused; the anonymized
+    For condition="finetuned-anon": slug is unused; the anonymized
     text is located via iso3.
     For condition="finetuned-raw" (raw variant): slug must be the real
     processed-text filename stem, e.g. "nigeria" not "NGA".
@@ -143,7 +143,7 @@ def main() -> None:
         "--variant", choices=["raw", "anon", "summ"], default="anon",
         help=(
             "raw:  FT-raw training data (raw section text, condition=finetuned-raw); "
-            "anon: FT-anon training data (anonymized text, condition=finetuned) [default]; "
+            "anon: FT-anon training data (anonymized text, condition=finetuned-anon) [default]; "
             "summ: FT-summ training data (summarized text, condition=finetuned-summ)"
         ),
     )
@@ -168,7 +168,7 @@ def main() -> None:
     is_raw = args.variant == "raw"
     condition = {
         "raw":  "finetuned-raw",
-        "anon": "finetuned",
+        "anon": "finetuned-anon",
         "summ": "finetuned-summ",
     }[args.variant]
     output_path = Path(args.output) if args.output else (
@@ -241,7 +241,7 @@ def main() -> None:
                         bar.update(1)
                         continue
                 else:
-                    slug = iso3.lower()  # unused by finetuned condition; iso3 drives the lookup
+                    slug = iso3.lower()  # unused by finetuned-anon/finetuned-summ; iso3 drives the lookup
 
                 record = build_training_record(
                     iso3=iso3,

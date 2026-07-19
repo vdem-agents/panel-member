@@ -1,14 +1,15 @@
 #!/usr/bin/env python3
 """
-Stage 3 batch runner for fine-tuned Llama 70B inference (FT-raw and FT-anon).
+Stage 3 batch runner for fine-tuned Llama 70B inference (FT-raw, FT-anon, FT-summ).
 
-Fine-tuned adapters run under three conditions — codebook, evidence-zeroshot,
-and anonymized-zeroshot — with no few-shot calibration block. Calibration is
-embedded in the adapter weights rather than the prompt.
+Fine-tuned adapters run under four conditions — codebook, evidence-zeroshot,
+anonymized-zeroshot, and summarized-zeroshot — with no few-shot calibration block.
+Calibration is embedded in the adapter weights rather than the prompt.
 
 Select the adapter with --variant:
   --variant raw   uses model key llama-70b-ft-raw (trained on raw section text)
   --variant anon  uses model key llama-70b-ft-anon (trained on anonymized text)
+  --variant summ  uses model key llama-70b-ft-summ (trained on summarized text)
 
 vLLM must be running with the correct adapter loaded before this script is called.
 The SLURM wrapper (slurm/run_inference_finetuned.sh) handles adapter startup.
@@ -25,6 +26,13 @@ To launch manually (one adapter at a time):
     vllm serve /path/to/llama-3.3-70b-instruct \\
         --enable-lora \\
         --lora-modules llama-70b-vdem-ft-anon=/path/to/ft-anon-adapter \\
+        --dtype bfloat16 --quantization bitsandbytes --load-format bitsandbytes \\
+        --port 8000 --max-model-len 16384
+
+    # FT-summ adapter:
+    vllm serve /path/to/llama-3.3-70b-instruct \\
+        --enable-lora \\
+        --lora-modules llama-70b-vdem-ft-summ=/path/to/ft-summ-adapter \\
         --dtype bfloat16 --quantization bitsandbytes --load-format bitsandbytes \\
         --port 8000 --max-model-len 16384
 
@@ -64,6 +72,7 @@ CONFIG_PATH = Path(__file__).parent.parent / "config" / "indicator_sections.yaml
 FT_MODEL_KEYS = {
     "raw":  "llama-70b-ft-raw",
     "anon": "llama-70b-ft-anon",
+    "summ": "llama-70b-ft-summ",
 }
 
 
@@ -72,11 +81,11 @@ def main() -> None:
         all_indicators = list(yaml.safe_load(f).keys())
 
     parser = argparse.ArgumentParser(
-        description="Fine-tuned Llama 70B batch runner (FT-raw or FT-anon)"
+        description="Fine-tuned Llama 70B batch runner (FT-raw, FT-anon, or FT-summ)"
     )
     parser.add_argument(
-        "--variant", choices=["raw", "anon"], required=True,
-        help="Which adapter to run: raw (FT-raw) or anon (FT-anon)",
+        "--variant", choices=["raw", "anon", "summ"], required=True,
+        help="Which adapter to run: raw (FT-raw), anon (FT-anon), or summ (FT-summ)",
     )
     parser.add_argument("--year", type=int, default=2019)
     parser.add_argument(

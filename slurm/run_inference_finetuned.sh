@@ -11,6 +11,7 @@
 # Submit:
 #   VARIANT=raw  sbatch slurm/run_inference_finetuned.sh
 #   VARIANT=anon sbatch slurm/run_inference_finetuned.sh
+#   VARIANT=summ sbatch slurm/run_inference_finetuned.sh
 #
 #SBATCH --job-name=pm-ft-infer
 #SBATCH --partition=superChip
@@ -26,12 +27,12 @@ mkdir -p logs
 
 # ── Configuration ──────────────────────────────────────────────────────────────
 YEAR=${YEAR:-2019}
-VARIANT=${VARIANT:-anon}    # raw | anon
+VARIANT=${VARIANT:-anon}    # raw | anon | summ
 MODEL_PATH=/scratch/ejtgrp/models/llama-3.3-70b-instruct
 ADAPTER_NAME=llama-70b-vdem-ft-${VARIANT}    # must match vdem_config.py
 ADAPTER_PATH=/scratch/ejtgrp/panel-member/data/output/adapters/${ADAPTER_NAME}
 VLLM_PORT=8000
-OUTPUT=data/output/runs/finetuned_${VARIANT}_${YEAR}.jsonl
+OUTPUT_DIR=data/output/runs
 
 # ── Environment ────────────────────────────────────────────────────────────────
 source ~/miniforge3/etc/profile.d/conda.sh
@@ -68,10 +69,10 @@ echo "vLLM ready (pid $VLLM_PID)"
 
 # ── Run inference batch ────────────────────────────────────────────────────────
 python3 -m pipeline.run_finetuned_batch \
-    --year    "$YEAR" \
-    --variant "$VARIANT" \
-    --workers 16 \
-    --output  "$OUTPUT"
+    --year       "$YEAR" \
+    --variant    "$VARIANT" \
+    --workers    16 \
+    --output-dir "$OUTPUT_DIR"
 
 # ── Cleanup ────────────────────────────────────────────────────────────────────
 kill "$VLLM_PID" && wait "$VLLM_PID" 2>/dev/null || true
@@ -79,7 +80,7 @@ kill "$VLLM_PID" && wait "$VLLM_PID" 2>/dev/null || true
 # ── Archive output to home (scratch purged after 30 days) ─────────────────────
 ARCHIVE_DIR="$HOME/panel-member-archive/runs"
 mkdir -p "$ARCHIVE_DIR"
-rsync -av "$OUTPUT" "$ARCHIVE_DIR/"
-echo "Archived to $ARCHIVE_DIR/$(basename "$OUTPUT")"
+rsync -av "${OUTPUT_DIR}"/ft_${VARIANT}_*_${YEAR}_*.jsonl "$ARCHIVE_DIR/"
+echo "Archived ft-${VARIANT} ${YEAR} runs to $ARCHIVE_DIR/"
 echo "Pull locally: rsync -avz <user>@pegasus.arc.gwu.edu:~/panel-member-archive/ data/output/"
 echo "Done."

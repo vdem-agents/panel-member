@@ -177,9 +177,9 @@ class TestAnonymizedZeroshot:
 @pytest.mark.skipif(not HAS_ANON, reason="No anonymized files — run anonymize_section.py first")
 class TestFinetuned:
     def test_no_calibration_block(self):
-        _, user = assemble_prompt(NGA_SLUG, NGA_NAME, YEAR, STRONG_IND, "finetuned", iso=NGA_ISO)
+        _, user = assemble_prompt(NGA_SLUG, NGA_NAME, YEAR, STRONG_IND, "finetuned-anon", iso=NGA_ISO)
         assert "## Calibration examples" not in user
 
     def test_no_placeholders(self):
-        _, user = assemble_prompt(NGA_SLUG, NGA_NAME, YEAR, STRONG_IND, "finetuned", iso=NGA_ISO)
+        _, user = assemble_prompt(NGA_SLUG, NGA_NAME, YEAR, STRONG_IND, "finetuned-anon", iso=NGA_ISO)
         assert unreplaced(user) == []

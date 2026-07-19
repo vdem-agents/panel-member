@@ -2,35 +2,46 @@
 """
 Prompt assembly for the panel-member coding pipeline.
 
-Handles seven prompt conditions:
+Handles ten prompt conditions:
 
-  "codebook"   — global framing + codebook text only; no evidence; no few-shot examples.
-                 Measures the baseline calibration signal from model pretraining alone.
+  "codebook"            — global framing + codebook text only; no evidence; no few-shot
+                          examples. Measures the baseline calibration signal from model
+                          pretraining alone.
 
-  "evidence"   — adds extracted section text (State Dept + FH) and few-shot calibration
-                 examples. Identical in structure to the bridge-coder Stage 1 prompt.
+  "evidence"            — adds extracted section text (State Dept + FH) and few-shot
+                          calibration examples. Identical in structure to the bridge-coder
+                          Stage 1 prompt.
 
-  "anonymized" — same structure as "evidence" but uses anonymized section text and
-                 anonymized few-shot examples (data/fewshot_examples_anonymized.json).
-                 Requires prior anonymize_section.py run for focal country-year AND for
-                 all few-shot example countries.
+  "evidence-zeroshot"   — same as "evidence" but with the calibration block omitted.
+                          Used for FT-raw inference and for the few-shot ablation.
 
-  "finetuned"          — anonymized section text, no few-shot block. Used by
-                         prepare_finetune_data.py to build FT-anon training records.
-                         Calibration is in the model weights rather than the prompt.
+  "finetuned-raw"       — raw section text, no few-shot block. Used by
+                          prepare_finetune_data.py to build FT-raw training records.
+                          Kept separate from "evidence-zeroshot" so inference ablations
+                          and training data assembly can evolve independently.
 
-  "finetuned-raw"      — raw section text, no few-shot block. Used by
-                         prepare_finetune_data.py to build FT-raw training records.
-                         Kept separate from "evidence-zeroshot" so inference ablations
-                         and training data assembly can evolve independently.
-
-  "evidence-zeroshot"  — same as "evidence" but with the calibration block omitted.
-                         Used for FT-raw/FT-anon inference and for the few-shot ablation
-                         in the 2023 robustness section.
+  "anonymized"          — same structure as "evidence" but uses anonymized section text
+                          and anonymized few-shot examples
+                          (data/fewshot_examples_anonymized.json). Country name and year
+                          are replaced with placeholders in the prompt.
 
   "anonymized-zeroshot" — same as "anonymized" but with the calibration block omitted.
-                          Used for FT-raw/FT-anon inference and for the few-shot ablation
-                          in the 2023 robustness section.
+                          Used for FT-anon inference and for the few-shot ablation.
+
+  "finetuned-anon"      — anonymized section text, no few-shot block. Used by
+                          prepare_finetune_data.py to build FT-anon training records.
+                          Calibration is in the model weights rather than the prompt.
+
+  "summarized"          — summarized section text (single LLM-generated passage) with
+                          anonymized few-shot calibration examples. Country name and year
+                          are replaced with placeholders in the prompt.
+
+  "summarized-zeroshot" — same as "summarized" but with the calibration block omitted.
+                          Used for FT-summ inference and for the few-shot ablation.
+
+  "finetuned-summ"      — summarized section text, no few-shot block. Used by
+                          prepare_finetune_data.py to build FT-summ training records.
+                          Calibration is in the model weights rather than the prompt.
 
 Usage:
     python3 -m pipeline.assemble_prompt \\
@@ -52,6 +63,7 @@ from pipeline.summarize_indicator import load_summarized
 CONFIG_PATH = Path(__file__).parent.parent / "config" / "indicator_sections.yaml"
 FEWSHOT_PATH = Path(__file__).parent.parent / "data" / "fewshot_examples.json"
 FEWSHOT_ANON_PATH = Path(__file__).parent.parent / "data" / "fewshot_examples_anonymized.json"
+FEWSHOT_SUMM_PATH = Path(__file__).parent.parent / "data" / "fewshot_examples_summarized.json"
 PROMPT_TEMPLATE_PATH = (
     Path(__file__).parent.parent / "prompts" / "panel-member-coding-prompt.md"
 )
@@ -59,14 +71,8 @@ PROMPT_TEMPLATE_PATH = (
 _config_cache: dict | None = None
 _fewshot_cache: dict | None = None
 _fewshot_anon_cache: dict | None = None
+_fewshot_summ_cache: dict | None = None
 _template_cache: tuple[str, str] | None = None
-
-CODEBOOK_ONLY_SYSTEM = (
-    "You are rating political conditions on V-Dem indicators using globally calibrated "
-    "standards. Compare every country to the full worldwide distribution from the most "
-    "repressive autocracies to the most open democracies. Never apply a regional "
-    "reference frame. Apply the global comparison frame."
-)
 
 
 def _load_config() -> dict:
@@ -77,20 +83,30 @@ def _load_config() -> dict:
     return _config_cache
 
 
-def _load_fewshot(anonymized: bool = False) -> dict:
-    global _fewshot_cache, _fewshot_anon_cache
-    if anonymized:
+def _load_fewshot(variant: str = "raw") -> dict:
+    global _fewshot_cache, _fewshot_anon_cache, _fewshot_summ_cache
+    if variant == "anon":
         if _fewshot_anon_cache is None:
             if not FEWSHOT_ANON_PATH.exists():
                 raise FileNotFoundError(
                     f"{FEWSHOT_ANON_PATH} not found.\n"
-                    "The anonymized few-shot examples have not been generated yet.\n"
-                    "See docs/todo.md — run anonymize_section.py on the few-shot example\n"
-                    "countries first, then build fewshot_examples_anonymized.json."
+                    "Run populate_fewshot_anonymized.py after anonymize_section.py completes "
+                    "for the 2016–2018 example pool."
                 )
             with open(FEWSHOT_ANON_PATH) as f:
                 _fewshot_anon_cache = json.load(f)
         return _fewshot_anon_cache
+    elif variant == "summ":
+        if _fewshot_summ_cache is None:
+            if not FEWSHOT_SUMM_PATH.exists():
+                raise FileNotFoundError(
+                    f"{FEWSHOT_SUMM_PATH} not found.\n"
+                    "Run populate_fewshot_summarized.py after summarize_indicator.py completes "
+                    "for the 2016–2018 example pool."
+                )
+            with open(FEWSHOT_SUMM_PATH) as f:
+                _fewshot_summ_cache = json.load(f)
+        return _fewshot_summ_cache
     else:
         if _fewshot_cache is None:
             with open(FEWSHOT_PATH) as f:
@@ -119,14 +135,14 @@ def _load_template() -> tuple[str, str]:
 
 
 def _build_fewshot_block(
-    indicator: str, anonymized: bool = False, exclude_iso: str | None = None
+    indicator: str, variant: str = "raw", exclude_iso: str | None = None
 ) -> str:
-    examples = _load_fewshot(anonymized=anonymized).get(indicator, [])
+    examples = _load_fewshot(variant=variant).get(indicator, [])
     if exclude_iso:
-        examples = [ex for ex in examples if ex["country"] != exclude_iso]
+        examples = [ex for ex in examples if ex.get("country") != exclude_iso]
     if not examples:
         raise ValueError(
-            f"No {'anonymized ' if anonymized else ''}few-shot examples for {indicator!r}.\n"
+            f"No {variant + ' ' if variant != 'raw' else ''}few-shot examples for {indicator!r}.\n"
             "See docs/todo.md: fewshot_examples.json must cover all indicators."
         )
 
@@ -134,9 +150,12 @@ def _build_fewshot_block(
     for i, ex in enumerate(examples, 1):
         raw_mean = ex["raw_mean"]
 
-        if anonymized:
-            # Anonymized examples store the text directly
+        if variant == "anon":
             ev_text = ex.get("anonymized_text", "[Anonymized evidence not available]")
+            header = f"**Example {i}** (Panel mean: {raw_mean:.2f})"
+            blocks.append(f"{header}\n\n{ev_text}")
+        elif variant == "summ":
+            ev_text = ex.get("summarized_text", "[Summarized evidence not available]")
             header = f"**Example {i}** (Panel mean: {raw_mean:.2f})"
             blocks.append(f"{header}\n\n{ev_text}")
         else:
@@ -220,14 +239,14 @@ def assemble_prompt(
         country_name:  Display name for the prompt, e.g. "Nigeria"
         year:          Target year, e.g. 2020
         indicator:     V-Dem indicator code, e.g. "v2csreprss"
-        condition:     "codebook" | "evidence" | "anonymized" | "finetuned"
-        iso:           ISO-3 code (required for "anonymized" and "finetuned"), e.g. "NGA"
+        condition:     "codebook" | "evidence" | "anonymized" | "finetuned-anon" | ...
+        iso:           ISO-3 code (required for anon/summ conditions), e.g. "NGA"
 
     Returns:
         (system_text, user_text) ready for the API messages list
     """
-    _VALID = ("codebook", "evidence", "anonymized", "finetuned", "finetuned-raw",
-              "evidence-zeroshot", "anonymized-zeroshot",
+    _VALID = ("codebook", "evidence", "evidence-zeroshot", "finetuned-raw",
+              "anonymized", "anonymized-zeroshot", "finetuned-anon",
               "summarized", "summarized-zeroshot", "finetuned-summ")
     if condition not in _VALID:
         raise ValueError(
@@ -241,9 +260,10 @@ def assemble_prompt(
     ind = config[indicator]
 
     if condition == "codebook":
-        return CODEBOOK_ONLY_SYSTEM, _codebook_user(country_name, year, indicator, ind)
+        system_raw, _ = _load_template()
+        return system_raw, _codebook_user(country_name, year, indicator, ind)
 
-    # evidence, anonymized, finetuned: use the prompt template
+    # all non-codebook conditions use the prompt template
     system_raw, user_raw = _load_template()
 
     categories = ind["categories"]
@@ -281,14 +301,14 @@ def assemble_prompt(
         calibration_section = (
             _calibration_header(max_rating).format(
                 fewshot_block=_build_fewshot_block(
-                    indicator, anonymized=False, exclude_iso=iso
+                    indicator, variant="raw", exclude_iso=iso
                 )
             )
             if condition == "evidence"
             else ""
         )
 
-    elif condition in ("anonymized", "anonymized-zeroshot", "finetuned"):
+    elif condition in ("anonymized", "anonymized-zeroshot", "finetuned-anon"):
         if iso is None:
             raise ValueError(f"iso is required for condition='{condition}'")
         anon_text = load_anonymized(iso, year, indicator)
@@ -304,7 +324,7 @@ def assemble_prompt(
         calibration_section = (
             _calibration_header(max_rating).format(
                 fewshot_block=_build_fewshot_block(
-                    indicator, anonymized=True, exclude_iso=iso
+                    indicator, variant="anon", exclude_iso=iso
                 )
             )
             if condition == "anonymized"
@@ -327,17 +347,27 @@ def assemble_prompt(
         calibration_section = (
             _calibration_header(max_rating).format(
                 fewshot_block=_build_fewshot_block(
-                    indicator, anonymized=True, exclude_iso=iso
+                    indicator, variant="summ", exclude_iso=iso
                 )
             )
             if condition == "summarized"
             else ""
         )
 
+    # Anonymized and summarized conditions must not reveal the focal country or year —
+    # the anonymizer strips both from the evidence text, so reinserting them here
+    # would defeat the identity-blind comparison.
+    _ANON_SUMM = frozenset({
+        "anonymized", "anonymized-zeroshot", "finetuned-anon",
+        "summarized", "summarized-zeroshot", "finetuned-summ",
+    })
+    focal_country = "the focal country" if condition in _ANON_SUMM else country_name
+    focal_year    = "the focal year"    if condition in _ANON_SUMM else str(year)
+
     user_text = (
         user_raw
-        .replace("{FOCAL_COUNTRY}", country_name)
-        .replace("{FOCAL_YEAR}", str(year))
+        .replace("{FOCAL_COUNTRY}", focal_country)
+        .replace("{FOCAL_YEAR}", focal_year)
         .replace("{INDICATOR_CODE}", indicator)
         .replace("{INDICATOR_NAME}", ind["description"])
         .replace("{CODEBOOK_QUESTION}", ind["codebook_question"])
@@ -361,9 +391,9 @@ if __name__ == "__main__":
     parser.add_argument("--indicator", required=True)
     parser.add_argument(
         "--condition",
-        choices=["codebook", "evidence", "anonymized", "finetuned", "finetuned-raw",
-                 "evidence-zeroshot", "anonymized-zeroshot",
-                 "summarized", "summarized-zeroshot"],
+        choices=["codebook", "evidence", "evidence-zeroshot", "finetuned-raw",
+                 "anonymized", "anonymized-zeroshot", "finetuned-anon",
+                 "summarized", "summarized-zeroshot", "finetuned-summ"],
         default="evidence",
     )
     parser.add_argument("--chars", type=int, default=4000,

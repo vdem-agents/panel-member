@@ -156,7 +156,7 @@ v2clgeocl:    # Urban-rural equality in civil liberties (cross-cutting)
 
 `pipeline/anonymize_section.py` + `pipeline/run_anonymize_batch.py`.
 
-Used for the `anonymized` and `finetuned` conditions. One LLM call rewrites extracted text to replace the country name with `[COUNTRY]`, replace named parties and officials with generic descriptions ("the ruling party", "senior officials"), and paraphrase datable events that would identify the country-year.
+Used for the `anonymized` and `finetuned-anon` conditions. One LLM call rewrites extracted text to replace the country name with `[COUNTRY]`, replace named parties and officials with generic descriptions ("the ruling party", "senior officials"), and paraphrase datable events that would identify the country-year.
 
 Output is cached at `data/processed-text/anonymized/{year}/{iso}/{indicator}.txt`. The batch runner skips cached files, so runs are safe to interrupt and resume.
 
@@ -175,9 +175,9 @@ Motivation: preliminary results suggest models use country identity as a regime-
 | `anonymized` | anonymized text | yes (anonymized) | Base models only |
 | `evidence-zeroshot` | raw section text | none | FT-raw + FT-anon; also 2023 ablation (best base model) |
 | `anonymized-zeroshot` | anonymized text | none | FT-raw + FT-anon; also 2023 ablation (best base model) |
-| `finetuned` | anonymized text | none | Internal training/eval shorthand; maps to `anonymized-zeroshot` at inference |
+| `finetuned-anon` | anonymized text | none | Training-data-assembly shorthand; maps to `anonymized-zeroshot` at inference |
 
-The two fine-tuned variants (FT-raw, FT-anon) participate in all three primary conditions — codebook, evidence, anonymized — but without a calibration block. At inference they use `codebook`, `evidence-zeroshot`, and `anonymized-zeroshot` respectively. The `finetuned` condition string in `assemble_prompt.py` is used only by `prepare_finetune_data.py` to build training records.
+The two fine-tuned variants (FT-raw, FT-anon) participate in all three primary conditions — codebook, evidence, anonymized — but without a calibration block. At inference they use `codebook`, `evidence-zeroshot`, and `anonymized-zeroshot` respectively. The `finetuned-anon` condition string in `assemble_prompt.py` is used only by `prepare_finetune_data.py` to build training records.
 
 The few-shot block contains one calibration example per ordinal level (up to five), drawn from the 2016–2018 training window and globally distributed across seven regions. At inference time, any example whose ISO code matches the focal country is removed; affected country-indicator combinations receive four examples instead of five. See `notes/fewshot-example-design.md`.
 

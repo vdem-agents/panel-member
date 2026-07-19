@@ -11,7 +11,7 @@
 #   3. huggingface_hub installed: pip install huggingface_hub
 #
 # Approximate sizes (bfloat16 weights):
-#   Llama 3.2 9B:           ~18 GB
+#   Llama 3.1 8B:           ~18 GB
 #   Llama 3.3 70B:         ~140 GB
 #   Llama 3.1 405B:        ~810 GB  (download to a large-quota scratch directory)
 
@@ -23,11 +23,11 @@ MODEL_DIR=/scratch/$USER/models
 
 mkdir -p "$MODEL_DIR"
 
-# ── Llama 3.2 9B ───────────────────────────────────────────────────────────────
-echo "Downloading Llama 3.2 9B..."
+# ── Llama 3.1 8B ───────────────────────────────────────────────────────────────
+echo "Downloading Llama 3.1 8B..."
 huggingface-cli download \
-    meta-llama/Llama-3.2-9B-Instruct \
-    --local-dir "$MODEL_DIR/llama-3.2-9b-instruct" \
+    meta-llama/Llama-3.1-8B-Instruct \
+    --local-dir "$MODEL_DIR/llama-3.1-8b-instruct" \
     --token "$HF_TOKEN"
 
 # ── Llama 3.3 70B ──────────────────────────────────────────────────────────────

@@ -6,7 +6,7 @@
 #
 # VARIANT controls which training data is used:
 #   raw  — raw evidence text (condition=finetuned-raw); default
-#   anon — anonymized text   (condition=finetuned)
+#   anon — anonymized text   (condition=finetuned-anon)
 #
 # Prepare training data first (no GPU needed, run on login node):
 #   python3 -m pipeline.prepare_finetune_data --variant raw --years 2016 2017 2018

@@ -99,7 +99,7 @@ def code_country_year(
         country_name: Display name in prompt, e.g. "Nigeria"
         year:         Target year, e.g. 2020
         indicator:    V-Dem indicator code, e.g. "v2csreprss"
-        condition:    "codebook" | "evidence" | "anonymized" | "evidence-zeroshot" | "anonymized-zeroshot"
+        condition:    "codebook" | "evidence" | "anonymized" | "summarized" | "evidence-zeroshot" | "anonymized-zeroshot" | "summarized-zeroshot"
         model_key:    Key in LLM_CONFIGS, e.g. "llama-70b"
 
     Returns:
@@ -107,8 +107,8 @@ def code_country_year(
     """
     if model_key not in LLM_CONFIGS:
         raise ValueError(f"Unknown model {model_key!r}. Choose from: {list(LLM_CONFIGS)}")
-    if condition not in ("codebook", "evidence", "anonymized",
-                         "evidence-zeroshot", "anonymized-zeroshot"):
+    if condition not in ("codebook", "evidence", "anonymized", "summarized",
+                         "evidence-zeroshot", "anonymized-zeroshot", "summarized-zeroshot"):
         raise ValueError(f"Unknown condition {condition!r}")
 
     cfg = LLM_CONFIGS[model_key]

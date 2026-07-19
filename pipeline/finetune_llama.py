@@ -11,7 +11,7 @@ served model name matching vdem_config.py ("llama-70b-vdem-ft").
 
 Prerequisites:
   - finetune conda env: transformers peft bitsandbytes trl accelerate datasets flash-attn
-  - data/processed/finetune_train.jsonl (from prepare_finetune_data.py)
+  - data/processed/finetune_train_{variant}.jsonl (from prepare_finetune_data.py)
   - Model weights at --model-path (from slurm/setup_models.sh)
 
 Usage (via SLURM — preferred):
@@ -41,9 +41,6 @@ from transformers import (
 )
 from trl import DataCollatorForCompletionOnlyLM, SFTTrainer
 
-TRAIN_DATA_PATH = (
-    Path(__file__).parent.parent / "data" / "processed" / "finetune_train.jsonl"
-)
 DEFAULT_OUTPUT_DIR = (
     Path(__file__).parent.parent
     / "data" / "output" / "adapters" / "llama-70b-vdem-ft"
@@ -95,8 +92,8 @@ def main() -> None:
     )
     parser.add_argument(
         "--train-data",
-        default=str(TRAIN_DATA_PATH),
-        help="Training JSONL from prepare_finetune_data.py",
+        required=True,
+        help="Training JSONL from prepare_finetune_data.py (finetune_train_{variant}.jsonl)",
     )
     parser.add_argument(
         "--output-dir",

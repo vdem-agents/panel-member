@@ -6,13 +6,14 @@ Builds data/fewshot_examples_anonymized.json from the cached anonymized text
 produced by run_anonymize_batch.py (2016–2018).
 
 For each example in fewshot_examples.json, reads the corresponding anonymized
-text from the cache and embeds it inline. Country identity fields (country,
-slug, country_name) are intentionally omitted — that is the point.
+text from the cache and embeds it inline. The ISO-3 code is retained as
+selection metadata (for focal-country exclusion); display fields (slug,
+country_name) are omitted. The ISO is never rendered into the prompt.
 
 Output format (parallel to fewshot_examples.json):
     {
       "v2csreprss": [
-        {"level": 0, "raw_mean": 0.2857, "anonymized_text": "..."},
+        {"level": 0, "raw_mean": 0.2857, "country": "NGA", "anonymized_text": "..."},
         ...
       ],
       ...
@@ -64,8 +65,9 @@ def main() -> None:
                 missing.append(f"{iso} {year} {indicator}")
                 continue
             output[indicator].append({
-                "level":          ex["level"],
-                "raw_mean":       ex["raw_mean"],
+                "level":           ex["level"],
+                "raw_mean":        ex["raw_mean"],
+                "country":         iso,
                 "anonymized_text": text,
             })
             written += 1

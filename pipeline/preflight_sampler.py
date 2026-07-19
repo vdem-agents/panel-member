@@ -26,19 +26,25 @@ from pipeline.assemble_prompt import assemble_prompt
 from pipeline.country_map import build_country_map
 
 CONFIG_PATH = Path(__file__).parent.parent / "config" / "indicator_sections.yaml"
-ANON_DIR = Path(__file__).parent.parent / "data" / "processed-text" / "anonymized"
+ANON_DIR  = Path(__file__).parent.parent / "data" / "processed-text" / "anonymized"
+SUMM_DIR  = Path(__file__).parent.parent / "data" / "processed-text" / "summarized"
 
 PLACEHOLDER_RE = re.compile(r"\{[A-Z][A-Z_]{1,}\}")
 
 NON_ANON_CONDITIONS = ["codebook", "evidence", "evidence-zeroshot", "finetuned-raw"]
-ANON_CONDITIONS = ["anonymized", "anonymized-zeroshot", "finetuned"]
+ANON_CONDITIONS     = ["anonymized", "anonymized-zeroshot", "finetuned-anon"]
+SUMM_CONDITIONS     = ["summarized", "summarized-zeroshot", "finetuned-summ"]
 
 
 def has_anonymized_file(iso: str, year: int, indicator: str) -> bool:
-    return (ANON_DIR / str(year) / iso / f"{indicator}.txt").exists()
+    return any((ANON_DIR / str(year) / iso).glob("*.txt"))
 
 
-def run_sampler(year: int, samples: int, seed: int, include_anon: bool) -> None:
+def has_summarized_file(iso: str, year: int, indicator: str) -> bool:
+    return any((SUMM_DIR / str(year) / iso).glob("*.txt"))
+
+
+def run_sampler(year: int, samples: int, seed: int, include_anon: bool, include_summ: bool) -> None:
     rng = random.Random(seed)
 
     print(f"Building country map for {year}...")
@@ -57,6 +63,11 @@ def run_sampler(year: int, samples: int, seed: int, include_anon: bool) -> None:
             print("  Warning: --anon requested but no anonymized files found; skipping anon conditions")
         else:
             conditions += ANON_CONDITIONS
+    if include_summ:
+        if not any(SUMM_DIR.rglob("*.txt")):
+            print("  Warning: --summ requested but no summarized files found; skipping summ conditions")
+        else:
+            conditions += SUMM_CONDITIONS
 
     # Sample country-indicator pairs
     pairs = [(rng.choice(isos), rng.choice(indicators)) for _ in range(samples)]
@@ -74,8 +85,11 @@ def run_sampler(year: int, samples: int, seed: int, include_anon: bool) -> None:
         for condition in conditions:
             label = f"[{i}/{samples}] {iso} {year} {indicator} {condition}"
 
-            # Skip anonymized if file not present for this specific combination
+            # Skip if required cache not present for this specific combination
             if condition in ANON_CONDITIONS and not has_anonymized_file(iso, year, indicator):
+                skipped += 1
+                continue
+            if condition in SUMM_CONDITIONS and not has_summarized_file(iso, year, indicator):
                 skipped += 1
                 continue
 
@@ -133,6 +147,8 @@ if __name__ == "__main__":
                         help="Random seed for reproducibility (default: 42)")
     parser.add_argument("--anon", action="store_true",
                         help="Include anonymized conditions (requires anonymized files)")
+    parser.add_argument("--summ", action="store_true",
+                        help="Include summarized conditions (requires summarized files)")
     args = parser.parse_args()
 
-    run_sampler(args.year, args.samples, args.seed, args.anon)
+    run_sampler(args.year, args.samples, args.seed, args.anon, args.summ)

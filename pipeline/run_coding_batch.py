@@ -75,7 +75,7 @@ import yaml
 from tqdm import tqdm
 
 from pipeline.code_country_year import code_country_year
-from pipeline.country_map import build_country_map
+from pipeline.country_map import build_country_map, FH_ONLY_ENTITIES
 from pipeline.extract_sections import configure_extraction_log
 from pipeline.vdem_config import LLM_CONFIGS, CONDITIONS, PRIMARY_MODELS
 
@@ -157,7 +157,10 @@ def run_batch(
 
     print(f"Building country map for {year}...", file=sys.stderr)
     country_map = build_country_map(year)
-    print(f"  {len(country_map)} countries with processed-text files", file=sys.stderr)
+    for iso, (slug, name) in FH_ONLY_ENTITIES.items():
+        if iso not in country_map:
+            country_map[iso] = (slug, name)
+    print(f"  {len(country_map)} countries (including FH-only entities)", file=sys.stderr)
 
     jobs: list[tuple] = []
     for indicator in indicators:
@@ -244,8 +247,8 @@ if __name__ == "__main__":
     )
     parser.add_argument(
         "--condition",
-        choices=["codebook", "evidence", "anonymized",
-                 "evidence-zeroshot", "anonymized-zeroshot"],
+        choices=["codebook", "evidence", "anonymized", "summarized",
+                 "evidence-zeroshot", "anonymized-zeroshot", "summarized-zeroshot"],
         default="evidence",
         help="Prompt condition (default: evidence)"
     )
