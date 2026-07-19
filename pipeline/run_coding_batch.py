@@ -83,19 +83,24 @@ CONFIG_PATH = Path(__file__).parent.parent / "config" / "indicator_sections.yaml
 PANEL_MEANS_PATH = Path(__file__).parent.parent.parent / "shared" / "vdem-data" / "panel_means.csv"
 
 
-def load_panel_mean_isos(year: int, indicator: str) -> set[str]:
-    """ISO codes that have a panel mean for a given year + indicator."""
+def load_panel_means(year: int) -> dict[tuple[str, str], float]:
+    """Load all panel means for a year. Returns {(iso, indicator): raw_mean}."""
     if not PANEL_MEANS_PATH.exists():
         raise FileNotFoundError(
             f"panel_means.csv not found at {PANEL_MEANS_PATH}.\n"
             "See docs/todo.md: generate from V-Dem v15 coder-level data."
         )
-    isos: set[str] = set()
+    pm: dict[tuple[str, str], float] = {}
     with open(PANEL_MEANS_PATH) as f:
         for row in csv.DictReader(f):
-            if int(row["year"]) == year and row["indicator"] == indicator:
-                isos.add(row["country_text_id"])
-    return isos
+            if int(row["year"]) == year:
+                pm[(row["country_text_id"], row["indicator"])] = float(row["raw_mean"])
+    return pm
+
+
+def load_panel_mean_isos(year: int, indicator: str) -> set[str]:
+    """ISO codes that have a panel mean for a given year + indicator."""
+    return {iso for (iso, ind) in load_panel_means(year) if ind == indicator}
 
 
 def load_done(output_path: Path) -> set[tuple]:
@@ -119,13 +124,15 @@ def load_done(output_path: Path) -> set[tuple]:
 
 def _backoff_call(
     iso: str, slug: str, name: str, year: int, indicator: str,
-    condition: str, model_key: str, max_attempts: int = 3,
+    condition: str, model_key: str, raw_mean: float | None = None,
+    max_attempts: int = 3,
 ) -> dict:
     delay = 1.0
     last_exc: Exception | None = None
     for attempt in range(1, max_attempts + 1):
         try:
-            return code_country_year(iso, slug, name, year, indicator, condition, model_key)
+            return code_country_year(iso, slug, name, year, indicator, condition, model_key,
+                                     raw_mean=raw_mean)
         except Exception as e:
             last_exc = e
             retryable = any(
@@ -162,14 +169,16 @@ def run_batch(
             country_map[iso] = (slug, name)
     print(f"  {len(country_map)} countries (including FH-only entities)", file=sys.stderr)
 
+    panel_means = load_panel_means(year)
+
     jobs: list[tuple] = []
     for indicator in indicators:
-        pm_isos = load_panel_mean_isos(year, indicator)
         for iso in sorted(country_map):
-            if iso in pm_isos:
+            pm = panel_means.get((iso, indicator))
+            if pm is not None:
                 slug, name = country_map[iso]
                 for model_key in models:
-                    jobs.append((iso, slug, name, year, indicator, condition, model_key))
+                    jobs.append((iso, slug, name, year, indicator, condition, model_key, pm))
 
     done = load_done(output_path)
     remaining = [
@@ -192,10 +201,11 @@ def run_batch(
     t_start = time.time()
 
     def _run_one(job: tuple) -> tuple[dict | None, Exception | None, str]:
-        iso, slug, name, yr, indicator, cond, model_key = job
+        iso, slug, name, yr, indicator, cond, model_key, raw_mean = job
         label = f"{iso} {yr} {indicator} {cond} {model_key}"
         try:
-            record = _backoff_call(iso, slug, name, yr, indicator, cond, model_key)
+            record = _backoff_call(iso, slug, name, yr, indicator, cond, model_key,
+                                   raw_mean=raw_mean)
             return record, None, label
         except Exception as e:
             return None, e, label

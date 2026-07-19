@@ -89,6 +89,7 @@ def code_country_year(
     indicator: str,
     condition: str,
     model_key: str,
+    raw_mean: float | None = None,
 ) -> dict:
     """
     Code one country-year on one indicator and return the output record.
@@ -101,6 +102,8 @@ def code_country_year(
         indicator:    V-Dem indicator code, e.g. "v2csreprss"
         condition:    "codebook" | "evidence" | "anonymized" | "summarized" | "evidence-zeroshot" | "anonymized-zeroshot" | "summarized-zeroshot"
         model_key:    Key in LLM_CONFIGS, e.g. "llama-70b"
+        raw_mean:     Panel mean rating for this country-year-indicator (from panel_means.csv).
+                      When provided, signed_dev and abs_dev are computed and added to the record.
 
     Returns:
         Dict matching the JSONL output schema.
@@ -146,6 +149,9 @@ def code_country_year(
     config = _load_config()
     ind_cfg = config[indicator]
 
+    signed_dev = round(rating - raw_mean, 4) if raw_mean is not None else None
+    abs_dev    = round(abs(rating - raw_mean), 4) if raw_mean is not None else None
+
     return {
         "country": iso,
         "year": year,
@@ -155,6 +161,9 @@ def code_country_year(
         "condition": condition,
         "prompt_variant": PROMPT_VARIANT,
         "rating": rating,
+        "raw_mean": raw_mean,
+        "signed_dev": signed_dev,
+        "abs_dev": abs_dev,
         "justification": justification,
         "sources": [s for s in ("state-dept", "freedom-house") if ind_cfg.get(s)],
         "section_keys": {
@@ -178,8 +187,8 @@ if __name__ == "__main__":
     parser.add_argument("--year", type=int, default=2020)
     parser.add_argument("--indicator", required=True)
     parser.add_argument("--condition",
-                        choices=["codebook", "evidence", "anonymized",
-                                 "evidence-zeroshot", "anonymized-zeroshot"],
+                        choices=["codebook", "evidence", "anonymized", "summarized",
+                                 "evidence-zeroshot", "anonymized-zeroshot", "summarized-zeroshot"],
                         default="evidence")
     parser.add_argument("--model", default="llama-70b", choices=list(LLM_CONFIGS))
     args = parser.parse_args()
