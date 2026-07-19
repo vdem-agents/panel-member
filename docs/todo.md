@@ -17,7 +17,7 @@
 - [ ] **Download model weights to Pegasus scratch storage** (run once on login node).
   Run `slurm/setup_models.sh` after setting `HF_TOKEN` in `.env`. Requires a
   HuggingFace account with Meta Llama access approved. Approximate sizes:
-  - Llama 3.2 9B: ~18 GB
+  - Llama 3.1 8B: ~18 GB
   - Llama 3.3 70B: ~140 GB
   - Llama 3.1 405B: ~810 GB (check scratch quota before downloading)
 
@@ -166,7 +166,7 @@ multiple genuinely distinct AI coders.
   Archives adapter to `$HOME/panel-member-archive/adapters/` on completion.
 
 - [x] **Write `pipeline/run_finetuned_batch.py`**. Done 2026-07-09.
-  Thin wrapper around `run_coding_batch.run_batch()` with fixed condition="finetuned"
+  Thin wrapper around `run_coding_batch.run_batch()` with fixed condition="finetuned-anon"
   and model="llama-70b-finetuned". Requires vLLM running with adapter via --lora-modules.
 
 - [x] **Write `slurm/run_inference_finetuned.sh`**. Done 2026-07-09.

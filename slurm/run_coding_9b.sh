@@ -1,5 +1,5 @@
 #!/bin/bash
-# SLURM job: code one year × one condition using Llama 3.2 9B on a single GH200.
+# SLURM job: code one year × one condition using Llama 3.1 8B on a single GH200.
 #
 # 9B at bfloat16 requires ~18GB VRAM — well within the GH200's 96GB HBM3e.
 # No quantization needed.
@@ -22,7 +22,7 @@ mkdir -p logs
 YEAR=${YEAR:-2019}
 CONDITION=${CONDITION:-evidence}
 MODEL_KEY=llama-9b-local
-MODEL_PATH=/scratch/ejtgrp/models/llama-3.2-9b-instruct
+MODEL_PATH=/scratch/ejtgrp/models/llama-3.1-8b-instruct
 VLLM_PORT=8000
 OUTPUT=data/output/runs/${CONDITION}_${YEAR}_llama9b.jsonl
 
@@ -41,7 +41,7 @@ VLLM_PYTHON=~/miniforge3/envs/vllm/bin/python
 export PATH="$HOME/miniforge3/envs/vllm/bin:$PATH"
 "$VLLM_PYTHON" -m vllm.entrypoints.openai.api_server \
     --model "$MODEL_PATH" \
-    --served-model-name meta-llama/Llama-3.2-9B-Instruct \
+    --served-model-name meta-llama/Llama-3.1-8B-Instruct \
     --dtype bfloat16 \
     --port "$VLLM_PORT" \
     --max-model-len 16384 \

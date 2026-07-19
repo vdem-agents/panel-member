@@ -28,6 +28,7 @@ from pathlib import Path
 import yaml
 
 from pipeline.country_map import build_country_map
+from pipeline.extract_sections import FH_SLUG_MAP
 
 ROOT = Path(__file__).parent.parent
 SHARED = ROOT.parent / "shared"
@@ -159,7 +160,8 @@ def _doc_check(slug: str, year: int, sd_sections: list[str]) -> bool:
       - If sd_sections contains "2c" (IRFR redirect):
           require the IRFR file (same slug convention as state-dept).
     """
-    fh = TEXT_DIR / "freedom-house" / str(year) / f"{slug}.txt"
+    fh_slug = FH_SLUG_MAP.get(slug, slug)
+    fh = TEXT_DIR / "freedom-house" / str(year) / f"{fh_slug}.txt"
     if not fh.exists():
         return False
 
