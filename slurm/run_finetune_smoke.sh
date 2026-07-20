@@ -40,12 +40,18 @@ MODEL_PATH=/scratch/ejtgrp/models/llama-3.3-70b-instruct
 if [ "$VARIANT" = "raw" ]; then
     FULL_DATA=data/processed/finetune_train_raw.jsonl
     MAX_SEQ_LEN=8192
+    BATCH_SIZE=2
+    GRAD_ACCUM=8
 elif [ "$VARIANT" = "summ" ]; then
     FULL_DATA=data/processed/finetune_train_summ.jsonl
     MAX_SEQ_LEN=4096
+    BATCH_SIZE=4
+    GRAD_ACCUM=4
 else
     FULL_DATA=data/processed/finetune_train_anon.jsonl
     MAX_SEQ_LEN=8192
+    BATCH_SIZE=2
+    GRAD_ACCUM=8
 fi
 SMOKE_DATA=data/processed/finetune_smoke_${VARIANT}.jsonl
 OUTPUT_DIR=data/output/adapters/smoke-${VARIANT}
@@ -54,6 +60,7 @@ OUTPUT_DIR=data/output/adapters/smoke-${VARIANT}
 source ~/miniforge3/etc/profile.d/conda.sh
 module load cuda/13
 conda activate finetune
+export PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True
 
 # ── 1. Build the smoke subset (fresh output dir each run) ─────────────────────
 rm -rf "$OUTPUT_DIR"
@@ -91,8 +98,8 @@ run_smoke () {
         --train-data  "$SMOKE_DATA" \
         --output-dir  "$OUTPUT_DIR" \
         --epochs      1 \
-        --batch-size  8 \
-        --grad-accum  2 \
+        --batch-size  "$BATCH_SIZE" \
+        --grad-accum  "$GRAD_ACCUM" \
         --max-seq-len "$MAX_SEQ_LEN" \
         --save-steps  25 \
         --max-eval-examples 100 \

@@ -39,18 +39,28 @@ mkdir -p logs
 # ── Configuration ──────────────────────────────────────────────────────────────
 VARIANT=${VARIANT:-raw}
 MODEL_PATH=/scratch/ejtgrp/models/llama-3.3-70b-instruct
+# Batch size / grad-accum keep the effective batch at 16. With gradient
+# checkpointing each of the 80 layers stores its input (batch × seq × 8192 × 2B),
+# so at seq 8192 a micro-batch of 8 needs ~80GB of activations alone — batch 2
+# is the safe ceiling on a 95GB GH200 (job 73469097 OOMed at batch 8).
 if [ "$VARIANT" = "raw" ]; then
     TRAIN_DATA=data/processed/finetune_train_raw.jsonl
     OUTPUT_DIR=data/output/adapters/llama-70b-vdem-ft-raw
     MAX_SEQ_LEN=8192   # p99=7,113 tokens; 0.52% truncated
+    BATCH_SIZE=2
+    GRAD_ACCUM=8
 elif [ "$VARIANT" = "summ" ]; then
     TRAIN_DATA=data/processed/finetune_train_summ.jsonl
     OUTPUT_DIR=data/output/adapters/llama-70b-vdem-ft-summ
     MAX_SEQ_LEN=4096   # p99=1,943 tokens; 0.00% truncated
+    BATCH_SIZE=4
+    GRAD_ACCUM=4
 else
     TRAIN_DATA=data/processed/finetune_train_anon.jsonl
     OUTPUT_DIR=data/output/adapters/llama-70b-vdem-ft-anon
     MAX_SEQ_LEN=8192   # p99=5,909 tokens; 0.17% truncated
+    BATCH_SIZE=2
+    GRAD_ACCUM=8
 fi
 
 # ── Environment ────────────────────────────────────────────────────────────────
@@ -59,6 +69,8 @@ module load cuda/13
 NVCC_BIN=$(which nvcc 2>/dev/null || true); [ -n "$NVCC_BIN" ] && export CUDA_HOME="$(dirname "$(dirname "$NVCC_BIN")")"
 set -a; source .env; set +a
 conda activate finetune
+# Reclaim reserved-but-unallocated GPU memory (job 73469097 showed 10.5GB fragmentation)
+export PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True
 
 # ── Checkpoint detection ───────────────────────────────────────────────────────
 RESUME_ARG=""
@@ -79,8 +91,8 @@ python3 -m pipeline.finetune_llama \
     --lora-rank   16 \
     --lora-alpha  32 \
     --lr          2e-4 \
-    --batch-size  8 \
-    --grad-accum  2 \
+    --batch-size  "$BATCH_SIZE" \
+    --grad-accum  "$GRAD_ACCUM" \
     --max-seq-len "$MAX_SEQ_LEN" \
     --save-steps  500 \
     $RESUME_ARG
