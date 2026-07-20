@@ -43,6 +43,8 @@ conda activate panel-member
 
 export VLLM_BASE_URL="http://localhost:${VLLM_PORT}/v1"
 export VLLM_API_KEY="local"
+export HF_HUB_OFFLINE=1
+export TRANSFORMERS_OFFLINE=1
 
 # ── Start vLLM with LoRA adapter ───────────────────────────────────────────────
 VLLM_PYTHON=~/miniforge3/envs/vllm/bin/python
