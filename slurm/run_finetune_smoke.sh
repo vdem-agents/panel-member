@@ -40,8 +40,8 @@ MODEL_PATH=/scratch/ejtgrp/models/llama-3.3-70b-instruct
 if [ "$VARIANT" = "raw" ]; then
     FULL_DATA=data/processed/finetune_train_raw.jsonl
     MAX_SEQ_LEN=8192
-    BATCH_SIZE=2
-    GRAD_ACCUM=8
+    BATCH_SIZE=1
+    GRAD_ACCUM=16
 elif [ "$VARIANT" = "summ" ]; then
     FULL_DATA=data/processed/finetune_train_summ.jsonl
     MAX_SEQ_LEN=4096
@@ -50,8 +50,8 @@ elif [ "$VARIANT" = "summ" ]; then
 else
     FULL_DATA=data/processed/finetune_train_anon.jsonl
     MAX_SEQ_LEN=8192
-    BATCH_SIZE=2
-    GRAD_ACCUM=8
+    BATCH_SIZE=1
+    GRAD_ACCUM=16
 fi
 SMOKE_DATA=data/processed/finetune_smoke_${VARIANT}.jsonl
 OUTPUT_DIR=data/output/adapters/smoke-${VARIANT}

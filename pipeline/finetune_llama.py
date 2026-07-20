@@ -98,8 +98,8 @@ def main() -> None:
     parser.add_argument("--lora-alpha",   type=int,   default=32)
     parser.add_argument("--lora-dropout", type=float, default=0.05)
     parser.add_argument("--lr",           type=float, default=2e-4)
-    parser.add_argument("--batch-size",   type=int,   default=2)
-    parser.add_argument("--grad-accum",   type=int,   default=8)
+    parser.add_argument("--batch-size",   type=int,   default=1)
+    parser.add_argument("--grad-accum",   type=int,   default=16)
     parser.add_argument("--max-seq-len",  type=int,   default=8192)
     parser.add_argument("--save-steps",   type=int,   default=500,
         help="Save and evaluate a checkpoint every N training steps")
@@ -186,6 +186,9 @@ def main() -> None:
         dtype=torch.bfloat16,
         attn_implementation="sdpa",
     )
+    # No KV cache during training (incompatible with gradient checkpointing);
+    # pin it rather than rely on transformers disabling it
+    model.config.use_cache = False
     model = prepare_model_for_kbit_training(model)
 
     # ── LoRA ───────────────────────────────────────────────────────────────────
