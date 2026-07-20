@@ -179,6 +179,18 @@ def main() -> None:
     model = get_peft_model(model, lora_config)
     model.print_trainable_parameters()
 
+    # ── Pre-flight: estimate truncation at the chosen --max-seq-len ───────────
+    sample_size = min(10_000, len(train_dataset))
+    sample_lengths = tokenizer(
+        train_dataset.select(range(sample_size))["text"],
+        truncation=False, return_length=True,
+    )["length"]
+    n_over_sample = sum(1 for l in sample_lengths if l > args.max_seq_len)
+    est_truncated = int(n_over_sample / sample_size * len(train_dataset))
+    print(f"Pre-flight: ~{est_truncated:,} of {len(train_dataset):,} training examples "
+          f"estimated to exceed {args.max_seq_len:,} tokens "
+          f"({n_over_sample / sample_size:.1%})")
+
     # ── Data collator: loss on assistant turn only ─────────────────────────────
     collator = DataCollatorForCompletionOnlyLM(
         response_template=ASSISTANT_HEADER,
