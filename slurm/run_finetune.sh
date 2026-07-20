@@ -38,7 +38,7 @@ mkdir -p logs
 
 # ── Configuration ──────────────────────────────────────────────────────────────
 VARIANT=${VARIANT:-raw}
-MODEL_PATH=/scratch/$USER/models/llama-3.3-70b-instruct
+MODEL_PATH=/scratch/ejtgrp/models/llama-3.3-70b-instruct
 if [ "$VARIANT" = "raw" ]; then
     TRAIN_DATA=data/processed/finetune_train_raw.jsonl
     OUTPUT_DIR=data/output/adapters/llama-70b-vdem-ft-raw

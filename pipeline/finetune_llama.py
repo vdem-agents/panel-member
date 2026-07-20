@@ -22,7 +22,7 @@ Usage (via SLURM — preferred):
 
 Usage (direct, for testing on a single GPU):
     python3 -m pipeline.finetune_llama \\
-        --model-path /scratch/$USER/models/llama-3.3-70b-instruct \\
+        --model-path /scratch/ejtgrp/models/llama-3.3-70b-instruct \\
         --train-data data/processed/finetune_train_anon.jsonl \\
         --output-dir data/output/adapters/llama-70b-vdem-ft-anon \\
         --epochs 1
@@ -30,7 +30,6 @@ Usage (direct, for testing on a single GPU):
 
 import argparse
 import json
-import os
 from pathlib import Path
 
 import torch
@@ -81,7 +80,7 @@ def main() -> None:
     )
     parser.add_argument(
         "--model-path",
-        default=os.path.expandvars("/scratch/$USER/models/llama-3.3-70b-instruct"),
+        default="/scratch/ejtgrp/models/llama-3.3-70b-instruct",
         help="Path to base model weights",
     )
     parser.add_argument(
@@ -118,7 +117,13 @@ def main() -> None:
     args = parser.parse_args()
 
     # transformers 5.x validates string args as Hub repo IDs; Path objects bypass this
-    model_path = Path(model_path)
+    model_path = Path(args.model_path)
+    if not (model_path / "config.json").is_file():
+        raise FileNotFoundError(
+            f"Model not found at {model_path} (no config.json). "
+            "Scratch is purged after 30 days — re-run slurm/setup_models.sh if the "
+            "weights were deleted."
+        )
     output_dir = Path(args.output_dir)
     output_dir.mkdir(parents=True, exist_ok=True)
 

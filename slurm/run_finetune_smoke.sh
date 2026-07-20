@@ -36,7 +36,7 @@ mkdir -p logs
 # ── Configuration (mirrors run_finetune.sh) ────────────────────────────────────
 VARIANT=${VARIANT:-anon}
 N_EXAMPLES=${N_EXAMPLES:-2000}
-MODEL_PATH=/scratch/$USER/models/llama-3.3-70b-instruct
+MODEL_PATH=/scratch/ejtgrp/models/llama-3.3-70b-instruct
 if [ "$VARIANT" = "raw" ]; then
     FULL_DATA=data/processed/finetune_train_raw.jsonl
     MAX_SEQ_LEN=8192
