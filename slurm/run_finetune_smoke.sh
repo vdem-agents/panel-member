@@ -66,7 +66,7 @@ import json, sys
 from transformers import AutoTokenizer
 
 smoke_data, model_path = sys.argv[1], sys.argv[2]
-tokenizer = AutoTokenizer.from_pretrained(model_path)
+tokenizer = AutoTokenizer.from_pretrained(model_path, local_files_only=True)
 with open(smoke_data) as f:
     messages = json.loads(f.readline())["messages"]
 
