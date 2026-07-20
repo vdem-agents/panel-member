@@ -134,7 +134,7 @@ def code_country_year(
             {"role": "user", "content": user_text},
         ],
         temperature=0,
-        max_tokens=cfg.get("max_tokens", 256),
+        max_tokens=cfg.get("max_tokens", 128),
     )
 
     raw = response.choices[0].message.content or ""
