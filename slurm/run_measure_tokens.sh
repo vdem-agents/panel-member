@@ -26,6 +26,6 @@ mkdir -p logs
 source ~/miniforge3/etc/profile.d/conda.sh
 conda activate vllm
 
-python3 -m pipeline.measure_token_lengths
+python3 -u -m pipeline.measure_token_lengths
 
 echo "Done."

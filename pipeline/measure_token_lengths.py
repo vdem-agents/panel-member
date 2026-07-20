@@ -71,7 +71,7 @@ def measure_file(path: Path, tokenizer, label: str) -> None:
             lengths.append(len(ids))
 
             if (i + 1) % 50_000 == 0:
-                print(f"  ... {i + 1:,} records processed", file=sys.stderr)
+                print(f"  ... {i + 1:,} records processed", flush=True)
 
     if not lengths:
         print("  No records found.")
