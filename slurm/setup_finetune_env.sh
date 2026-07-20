@@ -2,17 +2,26 @@
 # One-time setup: create the finetune conda environment on a GH200 node.
 #
 # Installs the HuggingFace training stack (transformers, peft, bitsandbytes,
-# trl, accelerate, datasets, flash-attn) needed by pipeline/finetune_llama.py.
-# Kept separate from the vllm and panel-member envs due to torch/CUDA conflicts.
+# trl, accelerate, datasets) needed by pipeline/finetune_llama.py. Kept
+# separate from the vllm and panel-member envs due to torch/CUDA conflicts.
 #
-# flash-attn compiles from source — expect ~10–15 min build time.
-# If flash-attn fails, finetune_llama.py accepts --no-flash-attn as a fallback.
+# flash-attn is intentionally NOT installed: there are no aarch64 wheels, and
+# the source build exceeds any reasonable wall-clock (job 73468861 timed out
+# at 2 h mid-build). finetune_llama.py uses PyTorch SDPA attention instead,
+# which dispatches to flash-attention kernels on Hopper-class GPUs.
+#
+# Safe to re-run: skips conda env creation if the env already exists and
+# lets pip no-op on already-installed packages.
+#
+# NOTE: miniforge on Pegasus is an aarch64 install — conda and this env only
+# work on superChip (GH200) nodes, not on the x86_64 login nodes.
 #
 # Submit once:
 #   sbatch slurm/setup_finetune_env.sh
 #
 # Verify afterwards:
-#   srun --partition=superChip --gres=gpu:gh200:1 --pty bash
+#   srun --partition=superChip --gres=gpu:gh200:1 --cpus-per-task=4 --mem=16G --time=00:15:00 --pty bash
+#   source ~/miniforge3/etc/profile.d/conda.sh
 #   conda activate finetune
 #   python3 -c "import torch, transformers, peft, trl, bitsandbytes; print('OK')"
 #
@@ -21,7 +30,7 @@
 #SBATCH --gres=gpu:gh200:1
 #SBATCH --cpus-per-task=8
 #SBATCH --mem=32G
-#SBATCH --time=02:00:00
+#SBATCH --time=01:00:00
 #SBATCH --output=logs/setup_finetune_%j.out
 #SBATCH --error=logs/setup_finetune_%j.err
 
@@ -31,8 +40,12 @@ mkdir -p logs
 source ~/miniforge3/etc/profile.d/conda.sh
 module load cuda/13
 
-echo "=== Creating finetune conda environment ==="
-conda create -n finetune python=3.11 -y
+if conda env list | grep -qE '^finetune\s'; then
+    echo "=== finetune env already exists — skipping creation ==="
+else
+    echo "=== Creating finetune conda environment ==="
+    conda create -n finetune python=3.11 -y
+fi
 conda activate finetune
 
 echo "=== Installing PyTorch ==="
@@ -43,12 +56,10 @@ pip install --no-cache-dir \
     "transformers>=4.40" \
     "datasets>=2.18" \
     "peft>=0.10" \
-    "trl>=0.8" \
+    "trl>=1.0" \
     "accelerate>=0.28" \
-    "bitsandbytes>=0.43"
-
-echo "=== Installing flash-attn (compiles from source) ==="
-pip install --no-cache-dir flash-attn --no-build-isolation
+    "bitsandbytes>=0.43" \
+    tensorboard
 
 echo "=== Verifying ==="
 python3 - <<'PYEOF'
@@ -58,11 +69,8 @@ print(f"transformers:   {transformers.__version__}")
 print(f"peft:           {peft.__version__}")
 print(f"trl:            {trl.__version__}")
 print(f"bitsandbytes:   {bitsandbytes.__version__}")
-try:
-    import flash_attn
-    print(f"flash_attn:     {flash_attn.__version__}")
-except ImportError:
-    print("flash_attn:     NOT installed — use --no-flash-attn flag when fine-tuning")
+from trl import SFTConfig, SFTTrainer
+print("TRL 1.x API:    OK (SFTConfig / SFTTrainer importable)")
 PYEOF
 
 echo "=== Done. ==="
