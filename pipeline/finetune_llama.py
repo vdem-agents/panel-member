@@ -151,7 +151,9 @@ def main() -> None:
     sample_size = min(5_000, len(train_dataset))
     n_over_sample = 0
     for messages in train_dataset.select(range(sample_size))["messages"]:
-        ids = tokenizer.apply_chat_template(messages, tokenize=True)
+        # return_dict=False: transformers 5.x returns a BatchEncoding by default,
+        # whose len() is the number of dict keys, not the token count
+        ids = tokenizer.apply_chat_template(messages, tokenize=True, return_dict=False)
         if len(ids) > args.max_seq_len:
             n_over_sample += 1
     est_truncated = int(n_over_sample / sample_size * len(train_dataset))

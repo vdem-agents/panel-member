@@ -71,7 +71,7 @@ tokenizer = AutoTokenizer.from_pretrained(model_path)
 with open(smoke_data) as f:
     messages = json.loads(f.readline())["messages"]
 
-ids = tokenizer.apply_chat_template(messages, tokenize=True)
+ids = tokenizer.apply_chat_template(messages, tokenize=True, return_dict=False)
 bos_id = tokenizer.convert_tokens_to_ids("<|begin_of_text|>")
 n_bos = ids.count(bos_id)
 completion_ids = tokenizer(messages[-1]["content"], add_special_tokens=False)["input_ids"]
