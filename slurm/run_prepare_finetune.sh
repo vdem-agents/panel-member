@@ -1,12 +1,19 @@
 #!/bin/bash
-# SLURM job: build fine-tuning training JSONL files (all three variants).
+# SLURM job: build one variant's fine-tuning training JSONL.
 #
-# CPU-only — no GPU needed. Runs prepare_finetune_data.py for raw, anon, and
-# summ variants sequentially. Each reads cached section text and human ratings,
-# then writes data/processed/finetune_train_{variant}.jsonl.
+# CPU-only — no GPU compute needed, but runs on superChip because the conda
+# envs are aarch64-only. Reads cached section text and human ratings, then
+# writes data/processed/finetune_train_{variant}.jsonl (overwrites) and
+# training_set_{variant}.csv.
 #
-# Submit:
-#   sbatch slurm/run_prepare_finetune.sh
+# Check the printed written/skipped counts against the previous run —
+# selection logic is unchanged, so they should match exactly (records differ
+# only by the added case-ID metadata, #58).
+#
+# Submit one job per variant (independent; can run concurrently):
+#   VARIANT=raw  sbatch slurm/run_prepare_finetune.sh
+#   VARIANT=anon sbatch slurm/run_prepare_finetune.sh
+#   VARIANT=summ sbatch slurm/run_prepare_finetune.sh
 #
 #SBATCH --job-name=pm-prepare-ft
 #SBATCH --partition=superChip
@@ -20,16 +27,12 @@
 set -eo pipefail
 mkdir -p logs
 
+VARIANT=${VARIANT:-anon}
+
 source ~/miniforge3/etc/profile.d/conda.sh
 conda activate panel-member
 
-echo "=== raw ==="
-python3 -m pipeline.prepare_finetune_data --variant raw
+echo "$(date): === $VARIANT ==="
+python3 -u -m pipeline.prepare_finetune_data --variant "$VARIANT"
 
-echo "=== anon ==="
-python3 -m pipeline.prepare_finetune_data --variant anon
-
-echo "=== summ ==="
-python3 -m pipeline.prepare_finetune_data --variant summ
-
-echo "Done."
+echo "$(date): Done."
