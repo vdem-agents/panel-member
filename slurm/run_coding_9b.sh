@@ -48,7 +48,7 @@ export PATH="$HOME/miniforge3/envs/vllm/bin:$PATH"
     --served-model-name meta-llama/Llama-3.1-8B-Instruct \
     --dtype bfloat16 \
     --port "$VLLM_PORT" \
-    --max-model-len 16384 \
+    --max-model-len 32768 \
     --gpu-memory-utilization 0.85 \
     --enable-prefix-caching \
     --safetensors-load-strategy prefetch &
