@@ -39,12 +39,15 @@ MODEL_PATH=/scratch/$USER/models/llama-3.3-70b-instruct
 if [ "$VARIANT" = "raw" ]; then
     TRAIN_DATA=data/processed/finetune_train_raw.jsonl
     OUTPUT_DIR=data/output/adapters/llama-70b-vdem-ft-raw
+    MAX_SEQ_LEN=8192   # p99=7,113 tokens; 0.52% truncated
 elif [ "$VARIANT" = "summ" ]; then
     TRAIN_DATA=data/processed/finetune_train_summ.jsonl
     OUTPUT_DIR=data/output/adapters/llama-70b-vdem-ft-summ
+    MAX_SEQ_LEN=4096   # p99=1,943 tokens; 0.00% truncated
 else
     TRAIN_DATA=data/processed/finetune_train_anon.jsonl
     OUTPUT_DIR=data/output/adapters/llama-70b-vdem-ft-anon
+    MAX_SEQ_LEN=8192   # p99=5,909 tokens; 0.17% truncated
 fi
 
 # ── Environment ────────────────────────────────────────────────────────────────
@@ -73,9 +76,9 @@ python3 -m pipeline.finetune_llama \
     --lora-rank   16 \
     --lora-alpha  32 \
     --lr          2e-4 \
-    --batch-size  4 \
-    --grad-accum  4 \
-    --max-seq-len 16384 \
+    --batch-size  8 \
+    --grad-accum  2 \
+    --max-seq-len "$MAX_SEQ_LEN" \
     --save-steps  500 \
     $RESUME_ARG
 
