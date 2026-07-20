@@ -98,8 +98,8 @@ def main() -> None:
     parser.add_argument("--lora-alpha",   type=int,   default=32)
     parser.add_argument("--lora-dropout", type=float, default=0.05)
     parser.add_argument("--lr",           type=float, default=2e-4)
-    parser.add_argument("--batch-size",   type=int,   default=8)
-    parser.add_argument("--grad-accum",   type=int,   default=2)
+    parser.add_argument("--batch-size",   type=int,   default=2)
+    parser.add_argument("--grad-accum",   type=int,   default=8)
     parser.add_argument("--max-seq-len",  type=int,   default=8192)
     parser.add_argument("--save-steps",   type=int,   default=500,
         help="Save and evaluate a checkpoint every N training steps")
