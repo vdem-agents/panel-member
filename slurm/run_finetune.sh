@@ -5,12 +5,14 @@
 # needs ~40GB for weights + ~15–20GB for optimizer states = well within 96GB.
 #
 # VARIANT controls which training data is used:
-#   raw  — raw evidence text (condition=finetuned-raw); default
-#   anon — anonymized text   (condition=finetuned-anon)
+#   raw  — raw evidence text  (condition=finetuned-raw); default
+#   anon — anonymized text    (condition=finetuned-anon)
+#   summ — summarized text    (condition=finetuned-summ)
 #
 # Prepare training data first (no GPU needed, run on login node):
 #   python3 -m pipeline.prepare_finetune_data --variant raw --years 2016 2017 2018
 #   python3 -m pipeline.prepare_finetune_data --variant anon --years 2016 2017 2018
+#   python3 -m pipeline.prepare_finetune_data --variant summ --years 2016 2017 2018
 #
 # If the job is preempted or hits the wall-clock limit, resubmit and it resumes
 # from the latest checkpoint automatically. Checkpoints are saved every 500 steps.
@@ -18,6 +20,7 @@
 # Submit:
 #   VARIANT=raw  sbatch slurm/run_finetune.sh
 #   VARIANT=anon sbatch slurm/run_finetune.sh
+#   VARIANT=summ sbatch slurm/run_finetune.sh
 #
 #SBATCH --job-name=pm-finetune
 #SBATCH --partition=superChip
