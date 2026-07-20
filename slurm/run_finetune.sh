@@ -53,8 +53,8 @@ elif [ "$VARIANT" = "summ" ]; then
     TRAIN_DATA=data/processed/finetune_train_summ.jsonl
     OUTPUT_DIR=data/output/adapters/llama-70b-vdem-ft-summ
     MAX_SEQ_LEN=4096   # p99=1,943 tokens; 0.00% truncated
-    BATCH_SIZE=4
-    GRAD_ACCUM=4
+    BATCH_SIZE=2
+    GRAD_ACCUM=8
 else
     TRAIN_DATA=data/processed/finetune_train_anon.jsonl
     OUTPUT_DIR=data/output/adapters/llama-70b-vdem-ft-anon
