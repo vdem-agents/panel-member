@@ -113,11 +113,11 @@
 
 ## Blocking: cannot run Condition 3 (anonymized) until resolved
 
-- [ ] **Run `anonymize_section.py`** on all few-shot example countries before running
+- [x] **Run `anonymize_section.py`** on all few-shot example countries before running
   any anonymized condition batches. The anonymized condition prompt uses anonymized
   few-shot examples as well as anonymized focal evidence.
 
-- [ ] **Build `data/fewshot_examples_anonymized.json`**.
+- [x] **Build `data/fewshot_examples_anonymized.json`**.
   After running anonymize_section.py on the few-shot example countries, compile the
   anonymized text into a JSON file parallel to `fewshot_examples.json`. Expected format:
   ```json
