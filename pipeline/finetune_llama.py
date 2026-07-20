@@ -101,15 +101,22 @@ def main() -> None:
     parser.add_argument("--batch-size",   type=int,   default=1)
     parser.add_argument("--grad-accum",   type=int,   default=16)
     parser.add_argument("--max-seq-len",  type=int,   default=8192)
-    parser.add_argument("--save-steps",   type=int,   default=500,
-        help="Save and evaluate a checkpoint every N training steps")
+    parser.add_argument("--save-steps",   type=int,   default=250,
+        help="Save and evaluate a checkpoint every N training steps "
+             "(~2.5h at the measured ~40s/step)")
     parser.add_argument("--val-split",    type=float, default=0.1,
         help="Fraction of training data held out for checkpoint evaluation")
-    parser.add_argument("--max-eval-examples", type=int, default=2000,
-        help="Cap the eval set at this many examples (0 = no cap). Keeps eval "
-             "passes cheap; a 2K sample is ample for early-stopping decisions")
-    parser.add_argument("--early-stopping-patience", type=int, default=10,
+    parser.add_argument("--max-eval-examples", type=int, default=500,
+        help="Cap the eval set at this many examples (0 = no cap). Ample for "
+             "early-stopping decisions; keeps eval passes to ~1 min")
+    parser.add_argument("--eval-batch-size", type=int, default=8,
+        help="Eval batch size — forward-only, so it can be much larger than "
+             "the training micro-batch")
+    parser.add_argument("--early-stopping-patience", type=int, default=4,
         help="Stop if eval_loss has not improved for this many eval steps (0 = disabled)")
+    parser.add_argument("--early-stopping-threshold", type=float, default=0.002,
+        help="Minimum eval_loss improvement that counts as progress — trivial "
+             "improvements no longer reset the patience counter")
     parser.add_argument("--resume-from-checkpoint", default=None,
         help="Path to a checkpoint directory to resume training from")
     parser.add_argument("--dataset-num-proc", type=int, default=8,
@@ -210,7 +217,7 @@ def main() -> None:
         output_dir=str(output_dir),
         num_train_epochs=args.epochs,
         per_device_train_batch_size=args.batch_size,
-        per_device_eval_batch_size=args.batch_size,
+        per_device_eval_batch_size=args.eval_batch_size,
         gradient_accumulation_steps=args.grad_accum,
         learning_rate=args.lr,
         lr_scheduler_type="cosine",
@@ -229,7 +236,10 @@ def main() -> None:
         load_best_model_at_end=True,
         metric_for_best_model="eval_loss",
         greater_is_better=False,
-        data_seed=42,              # reproducible shuffle order across epochs
+        # Seeds 2 and 3 of the three-seed protocol (#59): data_seed fixes the
+        # shuffle permutation, seed fixes LoRA init — identical across variants
+        seed=42,
+        data_seed=42,
         report_to="tensorboard",
         # SFT-specific
         max_length=args.max_seq_len,
@@ -242,9 +252,11 @@ def main() -> None:
     if args.early_stopping_patience > 0:
         callbacks.append(EarlyStoppingCallback(
             early_stopping_patience=args.early_stopping_patience,
+            early_stopping_threshold=args.early_stopping_threshold,
         ))
         print(f"Early stopping: patience = {args.early_stopping_patience} eval steps "
-              f"({args.early_stopping_patience * args.save_steps:,} training steps)")
+              f"({args.early_stopping_patience * args.save_steps:,} training steps), "
+              f"threshold = {args.early_stopping_threshold}")
 
     trainer = SFTTrainer(
         model=model,

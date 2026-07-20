@@ -9,13 +9,16 @@
 #   anon — anonymized text    (condition=finetuned-anon)
 #   summ — summarized text    (condition=finetuned-summ)
 #
-# Prepare training data first (no GPU needed, run on login node):
-#   python3 -m pipeline.prepare_finetune_data --variant raw --years 2016 2017 2018
-#   python3 -m pipeline.prepare_finetune_data --variant anon --years 2016 2017 2018
-#   python3 -m pipeline.prepare_finetune_data --variant summ --years 2016 2017 2018
+# Prepare training data first:
+#   1. VARIANT={raw,anon,summ} sbatch slurm/run_prepare_finetune.sh
+#   2. sbatch slurm/run_subsample_finetune.sh   (shared ~100K case pool, #59)
+#
+# Trains 1 epoch over the shared subsample with early stopping (#60). If a
+# variant ends the epoch with eval loss still declining, resubmit with
+# EPOCHS=2 to extend over the same pool (train-to-convergence protocol, #59).
 #
 # If the job is preempted or hits the wall-clock limit, resubmit and it resumes
-# from the latest checkpoint automatically. Checkpoints are saved every 500 steps.
+# from the latest checkpoint automatically. Checkpoints are saved every 250 steps.
 #
 # Submit:
 #   VARIANT=raw  sbatch slurm/run_finetune.sh
@@ -44,21 +47,21 @@ MODEL_PATH=/scratch/ejtgrp/models/llama-3.3-70b-instruct
 # batch 2 hit 93.8GB and OOMed at step 2 (jobs 73469097, 73469098) at seq 8192,
 # so the 8192 variants run micro-batch 1.
 if [ "$VARIANT" = "raw" ]; then
-    TRAIN_DATA=data/processed/finetune_train_raw.jsonl
+    TRAIN_DATA=data/processed/finetune_train_raw_sub.jsonl
     OUTPUT_DIR=data/output/adapters/llama-70b-vdem-ft-raw
-    MAX_SEQ_LEN=8192   # p99=7,113 tokens; 0.52% truncated
+    MAX_SEQ_LEN=8192   # p99=7,113 tokens; over-length cases dropped by subsampler
     BATCH_SIZE=1
     GRAD_ACCUM=16
 elif [ "$VARIANT" = "summ" ]; then
-    TRAIN_DATA=data/processed/finetune_train_summ.jsonl
+    TRAIN_DATA=data/processed/finetune_train_summ_sub.jsonl
     OUTPUT_DIR=data/output/adapters/llama-70b-vdem-ft-summ
-    MAX_SEQ_LEN=4096   # p99=1,943 tokens; 0.00% truncated
+    MAX_SEQ_LEN=4096   # p99=1,943 tokens; over-length cases dropped by subsampler
     BATCH_SIZE=2
     GRAD_ACCUM=8
 else
-    TRAIN_DATA=data/processed/finetune_train_anon.jsonl
+    TRAIN_DATA=data/processed/finetune_train_anon_sub.jsonl
     OUTPUT_DIR=data/output/adapters/llama-70b-vdem-ft-anon
-    MAX_SEQ_LEN=8192   # p99=5,909 tokens; 0.17% truncated
+    MAX_SEQ_LEN=8192   # p99=5,909 tokens; over-length cases dropped by subsampler
     BATCH_SIZE=1
     GRAD_ACCUM=16
 fi
@@ -87,14 +90,14 @@ python3 -m pipeline.finetune_llama \
     --model-path  "$MODEL_PATH" \
     --train-data  "$TRAIN_DATA" \
     --output-dir  "$OUTPUT_DIR" \
-    --epochs      3 \
+    --epochs      "${EPOCHS:-1}" \
     --lora-rank   16 \
     --lora-alpha  32 \
     --lr          2e-4 \
     --batch-size  "$BATCH_SIZE" \
     --grad-accum  "$GRAD_ACCUM" \
     --max-seq-len "$MAX_SEQ_LEN" \
-    --save-steps  500 \
+    --save-steps  250 \
     $RESUME_ARG
 
 # ── Archive adapter and TensorBoard logs to home (scratch purged after 30 days) ─
