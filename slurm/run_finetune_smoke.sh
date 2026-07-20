@@ -63,10 +63,11 @@ echo "$(date): Smoke subset: $(wc -l < "$SMOKE_DATA") examples from $FULL_DATA"
 # ── 2. Tokenization sanity: single BOS, completion is a short JSON rating ─────
 python3 - "$SMOKE_DATA" "$MODEL_PATH" <<'PYEOF'
 import json, sys
+from pathlib import Path
 from transformers import AutoTokenizer
 
-smoke_data, model_path = sys.argv[1], sys.argv[2]
-tokenizer = AutoTokenizer.from_pretrained(model_path, local_files_only=True)
+smoke_data, model_path = sys.argv[1], Path(sys.argv[2])
+tokenizer = AutoTokenizer.from_pretrained(model_path)
 with open(smoke_data) as f:
     messages = json.loads(f.readline())["messages"]
 

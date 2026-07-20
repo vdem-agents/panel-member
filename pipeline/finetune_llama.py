@@ -117,6 +117,8 @@ def main() -> None:
         help="Worker processes for TRL dataset preparation (tokenization)")
     args = parser.parse_args()
 
+    # transformers 5.x validates string args as Hub repo IDs; Path objects bypass this
+    model_path = Path(model_path)
     output_dir = Path(args.output_dir)
     output_dir.mkdir(parents=True, exist_ok=True)
 
@@ -133,8 +135,8 @@ def main() -> None:
     print(f"  {len(train_dataset):,} train  |  {len(eval_dataset):,} validation")
 
     # ── Tokenizer ──────────────────────────────────────────────────────────────
-    print(f"Loading tokenizer from {args.model_path}...")
-    tokenizer = AutoTokenizer.from_pretrained(args.model_path, local_files_only=True)
+    print(f"Loading tokenizer from {model_path}...")
+    tokenizer = AutoTokenizer.from_pretrained(model_path)
     tokenizer.pad_token = tokenizer.eos_token
 
     # ── Pre-flight: estimate truncation at the chosen --max-seq-len ────────────
@@ -169,14 +171,13 @@ def main() -> None:
         bnb_4bit_compute_dtype=torch.bfloat16,
         bnb_4bit_use_double_quant=True,
     )
-    print(f"Loading base model from {args.model_path} (attn=sdpa)...")
+    print(f"Loading base model from {model_path} (attn=sdpa)...")
     model = AutoModelForCausalLM.from_pretrained(
-        args.model_path,
+        model_path,
         quantization_config=bnb_config,
         device_map="auto",
         dtype=torch.bfloat16,
         attn_implementation="sdpa",
-        local_files_only=True,
     )
     model = prepare_model_for_kbit_training(model)
 
