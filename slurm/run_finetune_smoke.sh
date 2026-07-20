@@ -45,8 +45,8 @@ if [ "$VARIANT" = "raw" ]; then
 elif [ "$VARIANT" = "summ" ]; then
     FULL_DATA=data/processed/finetune_train_summ.jsonl
     MAX_SEQ_LEN=4096
-    BATCH_SIZE=4
-    GRAD_ACCUM=4
+    BATCH_SIZE=2
+    GRAD_ACCUM=8
 else
     FULL_DATA=data/processed/finetune_train_anon.jsonl
     MAX_SEQ_LEN=8192
