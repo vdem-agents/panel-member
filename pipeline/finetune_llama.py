@@ -162,13 +162,15 @@ def main() -> None:
           f"({n_over_sample / sample_size:.1%})")
 
     # ── Convert messages → prompt/completion ───────────────────────────────────
+    # remove_columns drops `messages` plus any case-ID metadata columns
+    # (country_text_id, iso3, year, indicator, coder_id — see issue #58)
     print("Converting records to prompt/completion format...")
     train_dataset = train_dataset.map(
-        to_prompt_completion, remove_columns=["messages"],
+        to_prompt_completion, remove_columns=train_dataset.column_names,
         num_proc=args.dataset_num_proc,
     )
     eval_dataset = eval_dataset.map(
-        to_prompt_completion, remove_columns=["messages"],
+        to_prompt_completion, remove_columns=eval_dataset.column_names,
     )
 
     # ── Model ──────────────────────────────────────────────────────────────────

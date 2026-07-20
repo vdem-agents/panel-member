@@ -265,6 +265,16 @@ def main() -> None:
                     bar.update(1)
                     continue
 
+                # Case-ID metadata for cross-variant subsampling; dropped by
+                # finetune_llama.py before training
+                record.update({
+                    "country_text_id": row["country_text_id"],
+                    "iso3":            iso3,
+                    "year":            year,
+                    "indicator":       row["indicator"],
+                    "coder_id":        row["coder_id"],
+                })
+
                 record_str = json.dumps(record)
                 out_f.write(record_str + "\n")
                 written += 1
