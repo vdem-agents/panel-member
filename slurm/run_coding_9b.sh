@@ -4,7 +4,9 @@
 # 9B at bfloat16 requires ~18GB VRAM — well within the GH200's 96GB HBM3e.
 # No quantization needed.
 #
-# Submit: sbatch slurm/run_coding_9b.sh
+# Submit:
+#   YEAR=2019 CONDITION=evidence   sbatch slurm/run_coding_9b.sh
+#   YEAR=2019 CONDITION=anonymized sbatch slurm/run_coding_9b.sh
 #
 #SBATCH --job-name=pm-llama9b
 #SBATCH --partition=superChip
@@ -20,7 +22,7 @@ mkdir -p logs
 
 # ── Configuration ──────────────────────────────────────────────────────────────
 YEAR=${YEAR:-2019}
-CONDITION=${CONDITION:-evidence}
+CONDITION=${CONDITION:-evidence}    # codebook | evidence | anonymized | summarized
 MODEL_KEY=llama-9b-local
 MODEL_PATH=/scratch/ejtgrp/models/llama-3.1-8b-instruct
 VLLM_PORT=8000
