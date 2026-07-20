@@ -27,7 +27,7 @@
 #SBATCH --gres=gpu:gh200:1
 #SBATCH --cpus-per-task=32
 #SBATCH --mem=200G
-#SBATCH --time=20:00:00
+#SBATCH --time=6-00:00:00
 #SBATCH --requeue
 #SBATCH --open-mode=append
 #SBATCH --output=logs/finetune_%j.out
