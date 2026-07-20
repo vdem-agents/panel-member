@@ -134,7 +134,7 @@ def main() -> None:
 
     # ── Tokenizer ──────────────────────────────────────────────────────────────
     print(f"Loading tokenizer from {args.model_path}...")
-    tokenizer = AutoTokenizer.from_pretrained(args.model_path)
+    tokenizer = AutoTokenizer.from_pretrained(args.model_path, local_files_only=True)
     tokenizer.pad_token = tokenizer.eos_token
 
     # ── Pre-flight: estimate truncation at the chosen --max-seq-len ────────────
@@ -176,6 +176,7 @@ def main() -> None:
         device_map="auto",
         dtype=torch.bfloat16,
         attn_implementation="sdpa",
+        local_files_only=True,
     )
     model = prepare_model_for_kbit_training(model)
 
