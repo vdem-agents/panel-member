@@ -19,7 +19,7 @@ set -eo pipefail
 
 source .env   # loads HF_TOKEN
 
-MODEL_DIR=/scratch/$USER/models
+MODEL_DIR=/scratch/ejtgrp/models
 
 mkdir -p "$MODEL_DIR"
 
