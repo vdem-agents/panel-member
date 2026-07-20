@@ -19,7 +19,7 @@ source ~/miniforge3/etc/profile.d/conda.sh
 set -a; source .env; set +a
 conda activate panel-member
 
-huggingface-cli download meta-llama/Llama-3.1-8B-Instruct \
+hf download meta-llama/Llama-3.1-8B-Instruct \
     --local-dir /scratch/ejtgrp/models/llama-3.1-8b-instruct \
     --token "$HF_TOKEN"
 
