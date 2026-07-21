@@ -552,7 +552,14 @@ The three identification comparisons yield directional predictions:
 
 - **Primary year**: 2019. All country-year-indicator cells with a raw panel mean in V-Dem
   v15 and a processed source document in both State Department and Freedom House archives.
-- **Minimum coders**: [ ] to be confirmed before running.
+- **Minimum coders**: none for the primary evaluation pool — any CYI with a raw panel
+  mean (n_coders ≥ 1) and a processed source document in both archives is included.
+  Empirically inconsequential either way: cells below 3 coders are 0.17% of the 2019 pool
+  and 0.78% of the 2023 pool (22 and 42 cells respectively have exactly 1 coder). A floor
+  of n_coders ≥ 2 applies only to the agreement test's human LOO benchmark, which is
+  mathematically undefined at n=1 (removing the sole coder leaves nothing to average
+  against); those same ~0.1% of cells are excluded from that one supplementary analysis
+  only, not from the primary pool.
 - **Robustness year**: 2023, best-performing model only. Source documents confirmed clean
   (issue #14, closed 2026-07-12).
 - **Structural holdout year**: 2024, Freedom House only, best-performing model only.
@@ -595,13 +602,27 @@ secondary calibration summaries.
   one-point scale comparison. No frontier-model API calls are made. Because these are
   fixed exclusions rather than contingencies, there is no fallback trigger tied to model
   availability.
-- [ ] Minimum coders per country-year-indicator cell for inclusion in the evaluation pool:
-  value to be confirmed before running.
-- [ ] Divergence threshold for the k=1 replacement check: value and justification (in
-  rating points on the 0–4 scale) confirmed before running.
-- [ ] Name-swap pairing rule: exact matching criteria (regime type, region, coverage tier)
-  and the sampling procedure for transition-adjacent / stable-neighbor pairs, fixed before
-  running.
+- **Minimum coders**: no floor for the primary evaluation pool; n_coders ≥ 2 required only
+  for the agreement test's human LOO benchmark (a computability constraint, not a design
+  choice — see Evaluation sample, above).
+- **Divergence threshold for the k=1 replacement check**: set empirically rather than as
+  an arbitrary fixed number. Using only the 2023 human-only panel data (the same ≤8-coder
+  pool used for augmentation), compute the one-coder swing
+  `|mean(full panel) − mean(panel \ coder i)|` for every coder i in every CYI in that
+  pool — the human-only analog of adding one AI rating. The threshold is the **90th
+  percentile** of that empirical distribution: the AI-augmentation divergence must exceed
+  what all but the most extreme 10% of ordinary single-human-coder swaps produce before
+  the k=1 result counts as exceeding normal replacement tolerance. Computed once from
+  human data alone, before any AI ratings are examined. "Exceeded" is defined as the 95%
+  CI **lower bound** of the AI-augmentation divergence clearing this threshold, not just
+  the point estimate.
+- **Name-swap pairing rule**: mandatory exact match on regime type (`v2x_regime`) and
+  region; within the matched bucket, nearest-neighbor match on the transitioning country's
+  *pre-transition* `v2x_polyarchy` level; ties broken by a fixed random seed; one-to-one
+  matching without replacement, so no stable country-year is used in more than one pair.
+  Fallback order if a bucket has no eligible candidate, fixed here before any pairs are
+  drawn: (1) relax region — search globally within the same regime type; (2) if still
+  empty, relax to the adjacent regime-type category within the original region.
 
 ### Robustness analyses locked before running
 

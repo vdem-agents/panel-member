@@ -283,9 +283,11 @@ which is Condition 4 in the reconciled 4-condition design; see `docs/experimenta
 
 ## Pre-registration (before running replacement experiment)
 
-- [ ] **Divergence threshold**: choose and justify the value (in raw rating points on 0–4
-  scale) above which the 95% CI lower bound triggers "replacement tolerance exceeded."
-  Document in a pre-registration file.
+- [x] **Divergence threshold** (locked 2026-07-21). Set empirically: the 90th percentile
+  of the one-coder-swing distribution (`|mean(full panel) − mean(panel \ coder i)|`,
+  computed from 2023 human-only data in the same ≤8-coder pool used for augmentation) is
+  the threshold; "exceeded" means the 95% CI lower bound of the AI-augmentation divergence
+  clears it. See `docs/experimental-design.md`, "Modeling choices locked before running."
 
 - [ ] **Persona exploratory condition**: lock strict and lenient framing text; specify
   indicator subset (suggest: 4 high-observability indicators). Run on best fine-tuned
