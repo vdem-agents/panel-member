@@ -137,7 +137,7 @@ def _backoff_call(
             last_exc = e
             retryable = any(
                 kw in str(e).lower()
-                for kw in ("rate", "limit", "503", "502", "timeout", "429", "overload")
+                for kw in ("rate limit", "limit", "503", "502", "timeout", "429", "overload")
             )
             if retryable and attempt < max_attempts:
                 print(
