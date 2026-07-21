@@ -42,6 +42,7 @@ conda activate panel-member
 # ── Build flags ────────────────────────────────────────────────────────────────
 FLAGS="--year $YEAR --workers $WORKERS --output-csv $OUTPUT_CSV"
 FLAGS="$FLAGS --conditions $CONDITIONS"
+FLAGS="$FLAGS --thresholds 16384 20480 24576 32768"
 [ "$TOKENIZER" = "1" ] && FLAGS="$FLAGS --tokenizer-path $TOKENIZER_PATH"
 
 echo "Year: $YEAR | Conditions: $CONDITIONS | Workers: $WORKERS"
