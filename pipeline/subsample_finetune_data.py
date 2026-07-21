@@ -38,7 +38,9 @@ import csv
 import json
 import random
 import sys
+import threading
 from collections import Counter, defaultdict
+from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 
 DATA_DIR = Path(__file__).parent.parent / "data" / "processed"
@@ -108,26 +110,73 @@ def sample_indicator(cases: list[tuple], ratings: dict, budget: int,
 
 
 def measure_lengths(path: Path, offsets: dict, cids: list[tuple],
-                    tokenizer) -> dict[tuple, int]:
+                    tokenizer, n_workers: int = 1) -> dict[tuple, int]:
+    """Tokenize selected records and return {case_id: token_count}.
+
+    With n_workers > 1, splits cids across threads — each thread opens its own
+    file handle (shared handle + seek() is not thread-safe). Fast tokenizers
+    release the GIL, so threads get real CPU parallelism on tokenization.
+    """
+    total = len(cids)
     lengths: dict[tuple, int] = {}
-    with open(path, "rb") as f:
-        for i, cid in enumerate(cids):
-            f.seek(offsets[cid])
-            rec = json.loads(f.readline())
-            ids = tokenizer.apply_chat_template(
-                rec["messages"], tokenize=True, return_dict=False)
-            lengths[cid] = len(ids)
-            if (i + 1) % 10_000 == 0:
-                print(f"    ... {i + 1:,}/{len(cids):,} measured", flush=True)
+
+    if n_workers <= 1:
+        with open(path, "rb") as f:
+            for i, cid in enumerate(cids):
+                f.seek(offsets[cid])
+                rec = json.loads(f.readline())
+                ids = tokenizer.apply_chat_template(
+                    rec["messages"], tokenize=True, return_dict=False)
+                lengths[cid] = len(ids)
+                if (i + 1) % 10_000 == 0:
+                    print(f"    ... {i + 1:,}/{total:,} measured", flush=True)
+        return lengths
+
+    lock = threading.Lock()
+    done = [0]
+
+    def process_chunk(chunk: list[tuple]) -> dict[tuple, int]:
+        local: dict[tuple, int] = {}
+        with open(path, "rb") as f:
+            for cid in chunk:
+                f.seek(offsets[cid])
+                rec = json.loads(f.readline())
+                ids = tokenizer.apply_chat_template(
+                    rec["messages"], tokenize=True, return_dict=False)
+                local[cid] = len(ids)
+                with lock:
+                    done[0] += 1
+                    if done[0] % 10_000 == 0:
+                        print(f"    ... {done[0]:,}/{total:,} measured", flush=True)
+        return local
+
+    chunk_size = max(1, (total + n_workers - 1) // n_workers)
+    chunks = [cids[i:i + chunk_size] for i in range(0, total, chunk_size)]
+    with ThreadPoolExecutor(max_workers=n_workers) as ex:
+        for result in ex.map(process_chunk, chunks):
+            lengths.update(result)
     return lengths
 
 
 def write_subsample(src: Path, dst: Path, offsets: dict, cids: list[tuple]) -> None:
-    """Write selected records in the given (canonical) order."""
-    with open(src, "rb") as f, open(dst, "wb") as out:
+    """Write selected records in canonical order.
+
+    Reads src with a single sequential pass (offset-sorted), collecting the
+    100K wanted lines, then writes them in canonical (case-ID sorted) order.
+    One forward scan avoids 100K random GPFS seeks and is much faster on a
+    network filesystem regardless of page-cache state.
+    """
+    wanted = {offsets[cid]: cid for cid in cids}
+    records: dict[tuple, bytes] = {}
+    pos = 0
+    with open(src, "rb") as f:
+        for line in f:
+            if pos in wanted:
+                records[wanted[pos]] = line
+            pos += len(line)
+    with open(dst, "wb") as out:
         for cid in cids:
-            f.seek(offsets[cid])
-            out.write(f.readline())
+            out.write(records[cid])
 
 
 def main() -> None:
@@ -144,6 +193,8 @@ def main() -> None:
         help="Tokenizer for the length filter")
     parser.add_argument("--skip-length-filter", action="store_true",
         help="Skip tokenization-based over-length dropping (for quick dry runs)")
+    parser.add_argument("--n-workers", type=int, default=8,
+        help="Threads for tokenization in measure_lengths (default 8; matches --cpus-per-task)")
     parser.add_argument("--data-dir", default=None,
         help="Override data/processed directory (testing)")
     args = parser.parse_args()
@@ -152,20 +203,25 @@ def main() -> None:
     rng = random.Random(args.seed)
     variants = list(MAX_SEQ_LEN)
 
-    # ── Scan all variants, build the intersection pool ─────────────────────────
+    # ── Scan all variants in parallel, build the intersection pool ─────────────
     offsets: dict[str, dict] = {}
     ratings: dict[tuple, int] = {}
     key_sets: dict[str, set] = {}
-    for v in variants:
+
+    def _scan(v: str) -> tuple[str, dict, dict]:
         path = data_dir / f"finetune_train_{v}.jsonl"
         print(f"Scanning {path}...", flush=True)
         offs, rats = scan_variant(path)
         if not offs:
             sys.exit(f"No records in {path}")
-        offsets[v] = offs
-        ratings.update(rats)
-        key_sets[v] = set(offs)
-        print(f"  {len(offs):,} records", flush=True)
+        print(f"  {v}: {len(offs):,} records", flush=True)
+        return v, offs, rats
+
+    with ThreadPoolExecutor(max_workers=len(variants)) as ex:
+        for v, offs, rats in ex.map(_scan, variants):
+            offsets[v] = offs
+            ratings.update(rats)
+            key_sets[v] = set(offs)
 
     pool = set.intersection(*key_sets.values())
     print(f"\nIntersection pool: {len(pool):,} cases present in all variants")
@@ -193,11 +249,11 @@ def main() -> None:
         tokenizer = AutoTokenizer.from_pretrained(Path(args.tokenizer_path))
         over: set[tuple] = set()
         for v in variants:
-            print(f"Measuring templated lengths: {v} (cap {MAX_SEQ_LEN[v]:,})...",
-                  flush=True)
+            print(f"Measuring templated lengths: {v} (cap {MAX_SEQ_LEN[v]:,},"
+                  f" {args.n_workers} workers)...", flush=True)
             lengths = measure_lengths(
                 data_dir / f"finetune_train_{v}.jsonl", offsets[v],
-                selected, tokenizer)
+                selected, tokenizer, n_workers=args.n_workers)
             n_over = sum(1 for l in lengths.values() if l > MAX_SEQ_LEN[v])
             over |= {cid for cid, l in lengths.items() if l > MAX_SEQ_LEN[v]}
             print(f"  {n_over:,} over-length in {v}")
@@ -216,11 +272,15 @@ def main() -> None:
             writer.writerow(list(cid) + [args.seed, args.n])
     print(f"\nCase-ID artifact: {ids_path}")
 
-    for v in variants:
+    # Write all three variants in parallel (independent files, sequential scan each)
+    def _write(v: str) -> None:
         dst = data_dir / f"finetune_train_{v}_sub.jsonl"
         write_subsample(data_dir / f"finetune_train_{v}.jsonl", dst,
                         offsets[v], selected)
-        print(f"Written: {dst} ({len(selected):,} records)")
+        print(f"Written: {dst} ({len(selected):,} records)", flush=True)
+
+    with ThreadPoolExecutor(max_workers=len(variants)) as ex:
+        list(ex.map(_write, variants))
 
     # ── Coverage report ────────────────────────────────────────────────────────
     print("\n=== Coverage report ===")
