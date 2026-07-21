@@ -26,7 +26,7 @@ LLM_CONFIGS = {
         "model": "meta-llama/Llama-3.3-70B-Instruct-Turbo",
         "api_key_env": "TOGETHER_API_KEY",
     },
-    "llama-9b": {
+    "llama-8b": {
         "base_url": "https://api.together.xyz/v1",
         "model": "meta-llama/Llama-3.1-8B-Instruct-Turbo",
         "api_key_env": "TOGETHER_API_KEY",
@@ -45,7 +45,7 @@ LLM_CONFIGS = {
         "model": "meta-llama/Llama-3.3-70B-Instruct",
         "api_key_env": "VLLM_API_KEY",
     },
-    "llama-9b-local": {
+    "llama-8b-local": {
         "base_url": _VLLM_URL,
         "model": "meta-llama/Llama-3.1-8B-Instruct",
         "api_key_env": "VLLM_API_KEY",
@@ -88,14 +88,22 @@ FT_CONDITIONS = ["codebook", "evidence-zeroshot", "anonymized-zeroshot", "summar
 # All runnable conditions (primary + ablation)
 ALL_CONDITIONS = CONDITIONS + CONDITIONS_ZEROSHOT
 
-# Base models for the primary experiment (405B contingent on HPC availability)
-PRIMARY_MODELS = ["llama-405b", "llama-70b", "llama-9b"]
+# Base model for the confirmatory design: Llama 3.3 70B only. 405B and 8B are not part
+# of the confirmatory 4-condition x 4-model design (see docs/experimental-design.md).
+#   - llama-405b: aspirational only. Does not fit GW Pegasus's available allocation
+#     (2 eight-A100 nodes cluster-wide). If compute becomes available it may be run later
+#     as an exploratory addition, reported separately from the confirmatory results —
+#     never folded into them after the fact. Left in LLM_CONFIGS for that possibility.
+#   - llama-8b: used only for an early pipeline-validation smoke test (codebook + evidence,
+#     unanalyzed). Not part of the confirmatory design. Left in LLM_CONFIGS for reuse if
+#     more smoke testing is needed.
+PRIMARY_MODELS = ["llama-70b"]
 
-# All models (base + fine-tuned)
-ALL_MODELS = ["llama-405b", "llama-70b", "llama-9b",
+# All confirmatory models (base + fine-tuned)
+ALL_MODELS = ["llama-70b",
               "llama-70b-ft-raw", "llama-70b-ft-anon", "llama-70b-ft-summ"]
 
 # On GW Pegasus, swap in local variants:
-# PRIMARY_MODELS_LOCAL = ["llama-405b-local", "llama-70b-local", "llama-9b-local"]
+# PRIMARY_MODELS_LOCAL = ["llama-70b-local"]
 
 PROMPT_VARIANT = "panel-member-v1"

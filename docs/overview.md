@@ -28,27 +28,27 @@ A third concern, *benchmark contamination* bears on evaluation validity rather t
 
 ## The identification strategy
 
-This study utilizes V-Dem coder-level data and a three primary experimental conditions to isolate and rule out each source of potential bias in AI ratings of V-Dem indicators. The codebook-only condition provides no source text, measuring the baseline calibration available from pretraining alone. The evidence condition adds raw section text, isolating what structured primary source evidence contributes over pretrained knowledge. The anonymized condition strips country-identifying information from that text, isolating how much country identity, rather than described conditions, drives the ratings. Benchmark contamination is ruled out because the evaluation target (coder-level ratings) have no presence in textual sources that the model may have been trained on, making memorization of the labels implausible in principle.
+This study utilizes V-Dem coder-level data and four experimental conditions to isolate and rule out each source of potential bias in AI ratings of V-Dem indicators. The codebook-only condition provides no source text, measuring the baseline calibration available from pretraining alone. The evidence condition adds raw section text, isolating what structured primary source evidence contributes over pretrained knowledge. The anonymized condition strips country-identifying information — names, named institutions, officials, datable events — from that text, isolating how much country identity, rather than described conditions, drives the ratings. A fourth condition, summarized, goes further: instead of removing named entities from the source text, an LLM rewrites the evidence as a generic, indicator-targeted description of political conditions, discarding not just names but the content fingerprints (distinctive institutional arrangements, treaty relationships, electoral structures) that survive named-entity anonymization. Preliminary piloting (98 CYIs, see `notes/exec-summary-policy-and-summarization-condition.md`) found named-entity anonymization plateaus around 51–61% top-1 re-identification; summarization brings this down to 29–47% depending on whether executive-summary text is included. Benchmark contamination is ruled out because the evaluation target (coder-level ratings) have no presence in textual sources that the model may have been trained on, making memorization of the labels implausible in principle.
 
-The study design features thre primary conditions:
+The study design features four conditions and the following primary comparisons:
 
 | Comparison | What it isolates |
 |---|---|
 | Codebook-only → Evidence | What structured primary source text adds over pretrained knowledge alone |
 | Evidence → Anonymized | How much country identity (not text) drives ratings — regime-type anchoring |
-| Anonymized (base 70B) → Fine-tuned 70B | What embedding calibration in weights adds over in-context few-shot examples |
-| Models (same condition) | Scale effects on each information source |
+| Anonymized → Summarized | Whether residual content fingerprints (not just names) still drive ratings |
+| Anonymized / Summarized (base 70B) → Fine-tuned 70B (FT-anon / FT-summ) | What embedding calibration in weights adds over in-context few-shot examples |
 
 The codebook-only condition serves as the key baseline for the study against which the other conditions are measured. If textual evidence adds substantially to model performance, we can infer that the model is reading the text. If anonymization helps
-further, we can infer that country-identity shortcuts were inflating apparent calibration.
+further, we can infer that country-identity shortcuts were inflating apparent calibration. If summarization helps still further, we can infer that residual content fingerprints — not just named entities — were also driving apparent calibration.
 
 ## Scope and source data
 
 ### Training and inference
 
-Model training for the fine-tuned variants of the Llama 70B Instruct model will be performed on V-Dem v15 coder-level ratings from 2016–2018 (~898K training examples across all 206 indicators). The training window was selected because source documents are reliably available from 2016 onward while panels had not yet been severely thinned by post-2013 attrition.  a clean temporal holdout, with no overlap with the 2019 primary evaluation year or the 2023 robustness check.
+Model training for three fine-tuned variants of the Llama 3.3 70B Instruct model — FT-raw (raw evidence text), FT-anon (anonymized text), and FT-summ (summarized text) — will be performed on V-Dem v15 coder-level ratings from 2016–2018 (~898K coder-CYI training rows across all 206 indicators, prior to subsampling). Each variant trains on a shared, indicator-stratified subsample of that pool (~100K cases; see `notes/finetuning-epochs.md`) with early stopping on held-out validation loss, rather than a fixed epoch count over the full pool. The training window was selected because source documents are reliably available from 2016 onward while panels had not yet been severely thinned by post-2013 attrition — a clean temporal holdout, with no overlap with the 2019 primary evaluation year or the 2023 robustness check.
 
-Inference is performed on two holdout years — 2019 and 2023. We use 2019 to select the best performing model and then run a series of robustness checks using the best model with 2023 data. 2019 is chosen as the primary evaluation year because it is a clean one-year temporal holdout after the training window, with full panels and no exogenous anomalies. 2020 is avoided because COVID-19 emergency measures systematically distort civil society, media, and judicial indicators, making the human panel mean a noisier target. 2023 is the last year of intact State Department and Freedom House reporting before a 2024 format restructuring, and panel sizes by that year are smaller on average due to continued post-2013 attrition, making it a harder test of the replacement scenario.
+Inference is performed on three holdout years — 2019, 2023, and 2024 (Freedom House only). We use 2019 to select the best performing model and then run a series of robustness checks using the best model with 2023 and 2024 data. 2019 is chosen as the primary evaluation year because it is a clean one-year temporal holdout after the training window, with full panels and no exogenous anomalies. 2020 is avoided because COVID-19 emergency measures systematically distort civil society, media, and judicial indicators, making the human panel mean a noisier target. 2023 is the last year of intact State Department and Freedom House reporting before a 2024 format restructuring, and panel sizes by that year are smaller on average due to continued post-2013 attrition, making it a harder test of the replacement scenario. A third holdout year, 2024, is used for a Freedom-House-only structural check: Llama 3.3's pretraining cutoff is 2023, so the model cannot hold parametric priors about 2024 events, making any calibration gain from evidence in 2024 attributable to reading the text rather than stored knowledge. Freedom House is used exclusively for this check because the 2024 State Department reports changed substantially in content and editorial mandate, confounding a clean temporal comparison; Freedom House maintained format and editorial continuity through 2024.
 
 ### Indicator scope
 
@@ -64,18 +64,27 @@ The primary metric is AI mean absolute error (MAE), the absolute difference betw
 
 The identification claims are reported as three delta metrics, Δ(Evidence − Codebook), Δ(Anonymized − Codebook), and Δ(Anonymized − Evidence), each of which is the difference in AI MAE between two prompt conditions, bootstrapped at the country-year-indicator level. A negative delta means the added or modified prompt element reduced AI deviation from the panel mean, that is, improved calibration. Δ(Anonymized − Codebook) is the primary identification result. If it is negative, the calibration gain from source evidence holds even when country identity has been stripped, ruling out named-entity anchoring as the main driver of apparent calibration. Δ(Anonymized − Evidence) shows the additional gain from stripping country identity from text that already contains source evidence.
 
-Five robustness analyses all run on 2023 data using the best-performing model from the primary 2019 analysis. Four retest the identification claims: a test-year replication reruns the winning model under all three primary conditions and compares the delta estimates to their 2019 counterparts; a few-shot calibration ablation reruns the evidence and anonymized conditions without calibration examples, isolating the marginal contribution of the few-shot block; an information shift test compares transition-adjacent country-years against stable ones to test whether Δ(Evidence − Codebook) is more negative where source evidence carries more novel information than stored knowledge of the country; and a re-identification test asks the model, after each anonymized coding call, to name its top three country guesses, comparing correctly re-identified cases against non-identified cases on signed deviation to test whether residual identity leakage drives the remaining compression signature. The fifth analysis — the agreement test — compares AI MAE against the average deviation of individual human coders from the same panel mean, testing whether AI deviation from the consensus falls within the range of normal expert disagreement. Thin-panel augmentation (adding one AI rating to 2023 country-years with ≤8 coders and measuring panel mean shift) is reported as an exploratory illustration in the appendix.
+Beyond the primary 2019 analysis, four further analyses use the best-performing model (of the four: 70B base, FT-raw, FT-anon, FT-summ) on 2023 and 2024 data. A test-year replication reruns the winning model under all four primary conditions on 2023 data and compares the delta estimates to their 2019 counterparts. A few-shot calibration ablation reruns the evidence, anonymized, and summarized conditions without calibration examples on 2023 data, isolating the marginal contribution of the few-shot block. A unified mechanism-test section, also on 2023 data, combines three pieces that each rule out a different alternative explanation for the main result: a re-identification test (does the model still guess the country from de-identified text?); a name-swap test (does the model's rating track a named country's prior or the actual conditions described, when the two are placed in conflict?); and an information-shift test (is the calibration gain from evidence larger for transition-adjacent country-years, where pretraining knowledge is most outdated?). An agreement test compares AI MAE against the average deviation of individual human coders from the same panel mean, testing whether AI deviation from the consensus falls within the range of normal expert disagreement. Finally, a 2024 Freedom-House-only temporal holdout reruns all four conditions on data entirely outside the model's pretraining cutoff, giving a structural — rather than experimental — test of evidence-reading versus prior-reliance. Thin-panel augmentation (adding one AI rating to 2023 country-years with ≤8 coders and measuring panel mean shift) is reported as an exploratory illustration in the appendix.
 
 ## Design summary
 
-**Conditions (3)**: codebook-only; evidence (raw section text + few-shot calibration
-examples); anonymized (country identity stripped + anonymized few-shot examples).
+**Conditions (4)**: codebook-only; evidence (raw section text + few-shot calibration
+examples); anonymized (named-entity-stripped text + anonymized few-shot examples);
+summarized (LLM-generated de-identified summary + summarized few-shot examples).
 
-**Models (5)**: Llama 405B, 70B, 9B (open weights, GW Pegasus); Llama 70B FT-raw and
-Llama 70B FT-anon (fine-tuned on raw and anonymized evidence respectively, V-Dem v15
-coder ratings 2016–2018, all 206 mapped Type C indicators, ~898K training examples each).
+**Models (4)**: Llama 3.3 70B Instruct (base, open weights, GW Pegasus); three fine-tuned
+variants — FT-raw, FT-anon, FT-summ — trained on raw, anonymized, and summarized evidence
+respectively (V-Dem v15 coder ratings 2016–2018, all 206 mapped Type C indicators, ~898K
+coder-CYI rows, indicator-stratified ~100K training subsample per variant). Llama 405B and
+8B were considered but dropped: 405B cannot run within GW Pegasus's available allocation
+(2 eight-A100 nodes cluster-wide), and 8B was dropped to keep the design focused on
+information-source effects rather than adding an underpowered scale comparison. No
+frontier-model API calls are made.
 
-**Evaluation**: 2019 (primary); 2023 (five robustness analyses, best model only). AI MAE
+**Evaluation**: full universe of ~205 mapped indicators, all eligible country-years — no
+indicator sampling fallback. 2019 (primary, ~32,800 CYI cells per condition per model);
+2023 (test-year replication, few-shot ablation, mechanism tests, agreement test — best
+model only); 2024, Freedom House only (temporal holdout — best model only). AI MAE
 against panel mean with bootstrap CIs; signed deviation by quintile.
 
 **Thin-panel augmentation (exploratory / appendix)**: for all 2023 CYIs with ≤8 coders,
@@ -87,10 +96,10 @@ against panel mean with bootstrap CIs; signed deviation by quintile.
 political texts, using a three-condition identification design. Applicable beyond V-Dem
 to any structured expert annotation task with multi-annotator panels.
 
-**Primary (political science)**: which prompt strategy and model scale produces AI
-ratings that fall within the range of human expert disagreement for V-Dem democracy
-indicators, and does calibration degrade across the strong → weak source-coverage
-gradient?
+**Primary (political science)**: which prompt strategy / information-source treatment
+produces AI ratings that fall within the range of human expert disagreement for V-Dem
+democracy indicators, and does calibration degrade across the strong → weak
+source-coverage gradient?
 
 **Applied**: evidence-based guidance on whether AI augmentation of contemporary thin
 panels is safe — whether the raw panel mean shifts detectably under `k=1` substitution.
