@@ -12,7 +12,7 @@ Usage:
     # Condition 1 (codebook-only), all base models, 2019:
     python3 -m pipeline.run_coding_batch \\
         --year 2019 --condition codebook \\
-        --models llama-405b llama-70b llama-9b \\
+        --models llama-405b llama-70b llama-8b \\
         --output data/output/runs/codebook_2019.jsonl
 
     # Condition 2 (evidence), 70B only:
@@ -24,7 +24,7 @@ Usage:
     # Condition 3 (anonymized) — requires anonymize_section.py to have been run first.
     python3 -m pipeline.run_coding_batch \\
         --year 2019 --condition anonymized \\
-        --models llama-70b llama-9b \\
+        --models llama-70b llama-8b \\
         --output data/output/runs/anonymized_2019.jsonl
 
     # Re-running is safe: completed rows (country × year × indicator × condition × model)
@@ -48,17 +48,17 @@ Parameters:
     --models      One or more model keys from vdem_config.LLM_CONFIGS (default: PRIMARY_MODELS).
                     llama-405b          — Together.xyz 405B (dev/testing)
                     llama-70b           — Together.xyz 70B (dev/testing)
-                    llama-9b            — Together.xyz 9B (dev/testing)
+                    llama-8b            — Together.xyz 8B (dev/testing)
                     llama-405b-local    — vLLM on Pegasus 8×A100 (requires VLLM_BASE_URL)
                     llama-70b-local     — vLLM on Pegasus A100 (requires VLLM_BASE_URL)
-                    llama-9b-local      — vLLM on Pegasus V100 (requires VLLM_BASE_URL)
+                    llama-8b-local      — vLLM on Pegasus V100 (requires VLLM_BASE_URL)
                     llama-70b-ft-raw    — FT-raw adapter via vLLM --lora-modules (use run_finetuned_batch.py)
                     llama-70b-ft-anon   — FT-anon adapter via vLLM --lora-modules (use run_finetuned_batch.py)
     --output      Output JSONL path (appended to if exists; default: timestamped file).
     --workers     Concurrent requests sent to the inference server (default: 1).
                   Values > 1 let vLLM batch requests together and improve GPU utilization.
                   Has no effect on response quality. Not recommended for Claude API (rate limits).
-                  Suggested: 4 for 70B/9B on one GPU; 8–16 for 405B on 8×A100.
+                  Suggested: 4 for 70B/8B on one GPU; 8–16 for 405B on 8×A100.
 """
 
 import argparse

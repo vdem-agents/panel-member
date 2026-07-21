@@ -1,21 +1,21 @@
 #!/bin/bash
 # SLURM job: code one year × one condition using Llama 3.1 8B on a single GH200.
 #
-# 9B at bfloat16 requires ~18GB VRAM — well within the GH200's 96GB HBM3e.
+# 8B at bfloat16 requires ~18GB VRAM — well within the GH200's 96GB HBM3e.
 # No quantization needed.
 #
 # Submit:
-#   YEAR=2019 CONDITION=evidence   sbatch slurm/run_coding_9b.sh
-#   YEAR=2019 CONDITION=anonymized sbatch slurm/run_coding_9b.sh
+#   YEAR=2019 CONDITION=evidence   sbatch slurm/run_coding_8b.sh
+#   YEAR=2019 CONDITION=anonymized sbatch slurm/run_coding_8b.sh
 #
-#SBATCH --job-name=pm-llama9b
+#SBATCH --job-name=pm-llama8b
 #SBATCH --partition=superChip
 #SBATCH --gres=gpu:gh200:1
 #SBATCH --cpus-per-task=32
 #SBATCH --mem=200G
 #SBATCH --time=06:00:00
-#SBATCH --output=logs/llama9b_%j.out
-#SBATCH --error=logs/llama9b_%j.err
+#SBATCH --output=logs/llama8b_%j.out
+#SBATCH --error=logs/llama8b_%j.err
 
 set -eo pipefail
 mkdir -p logs
@@ -23,10 +23,10 @@ mkdir -p logs
 # ── Configuration ──────────────────────────────────────────────────────────────
 YEAR=${YEAR:-2019}
 CONDITION=${CONDITION:-evidence}    # codebook | evidence | anonymized | summarized
-MODEL_KEY=llama-9b-local
+MODEL_KEY=llama-8b-local
 MODEL_PATH=/scratch/ejtgrp/models/llama-3.1-8b-instruct
 VLLM_PORT=8000
-OUTPUT=data/output/runs/${CONDITION}_${YEAR}_llama9b.jsonl
+OUTPUT=data/output/runs/${CONDITION}_${YEAR}_llama8b.jsonl
 
 # ── Environment ────────────────────────────────────────────────────────────────
 source ~/miniforge3/etc/profile.d/conda.sh

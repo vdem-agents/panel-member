@@ -1,6 +1,15 @@
 # Panel Member: Outstanding Work
 
-*Updated 2026-07-14. Items are roughly ordered by pipeline dependency.*
+*Updated 2026-07-21. Items are roughly ordered by pipeline dependency.*
+
+**Status at pre-registration**: no blocking conditions remain. Anonymization, summarization,
+and fine-tuning training-data preparation are complete for all years needed so far
+(2016–2018, 2019, 2023). Fine-tuning (FT-raw, FT-anon, FT-summ) is in the
+pipeline-testing / smoke-test stage — no adapter has been trained to completion. **No
+inference or evaluation has been run** on any confirmatory condition, model, or year.
+Llama 405B and 8B are dropped from the design outright (not contingently); an early,
+unanalyzed two-condition (codebook, evidence) smoke test was run on Llama 8B to validate
+pipeline mechanics only. See `docs/experimental-design.md` for the full reconciled design.
 
 ---
 
@@ -11,18 +20,19 @@
   GRES names via `sinfo` on login node log001. All `slurm/*.sh` scripts updated.
   See `notes/hpc-sequencing-strategy.md` for full details and TRES resource table.
   - Partitions: `cpu` (non-GPU), `gpu` (all GPU jobs), `basestar` (Grace Hopper)
-  - GRES: `gpu:v100:1` (9B), `gpu:a100:1` (70B / fine-tuning), `gpu:a100:4` (405B)
+  - GRES: `gpu:v100:1` (8B), `gpu:a100:1` (70B / fine-tuning), `gpu:a100:4` (405B)
   - TRES style: use `--cpus-per-gpu` and `--mem-per-gpu` for GPU jobs
 
 - [ ] **Download model weights to Pegasus scratch storage** (run once on login node).
   Run `slurm/setup_models.sh` after setting `HF_TOKEN` in `.env`. Requires a
-  HuggingFace account with Meta Llama access approved. Approximate sizes:
-  - Llama 3.1 8B: ~18 GB
-  - Llama 3.3 70B: ~140 GB
-  - Llama 3.1 405B: ~810 GB (check scratch quota before downloading)
+  HuggingFace account with Meta Llama access approved. Llama 3.3 70B (~140 GB) is the only
+  model needed for the confirmatory design — base and all three fine-tuned variants
+  (FT-raw, FT-anon, FT-summ) use the same weights. Llama 3.1 8B (~18 GB) was downloaded
+  for the pipeline-validation smoke test only and is not otherwise part of the design.
+  Llama 3.1 405B (~810 GB) is dropped from the design outright — do not download.
 
 - [x] **Confirm scratch quota** is sufficient for model weights + output data.
-  810 GB for 405B alone; 70B + 9B add another ~160 GB. Contact research computing
+  810 GB for 405B alone; 70B + 8B add another ~160 GB. Contact research computing
   if quota needs to be increased. (Can potentially run 405B on A100 node but it would be a long wait)
 
 - [x] **Set up conda environments** on Pegasus:
@@ -41,8 +51,8 @@
 - [x] **Copy `ingest.py` and `extract_sections.py` to Pegasus** (already copied locally on 2026-07-09;
   repeat after pushing to the remote or cloning fresh on Pegasus).
 
-- [x] **Test vLLM startup** with a small model (9B) before running full batches.
-  Submit `slurm/run_coding_9b.sh` with `--indicators v2csreprss` and `--year 2020`
+- [x] **Test vLLM startup** with a small model (8B) before running full batches.
+  Submit `slurm/run_coding_8b.sh` with `--indicators v2csreprss` and `--year 2020`
   on a handful of countries to confirm the vLLM health-check loop and batch runner
   work end-to-end before committing GPU time to 405B.
 
@@ -59,11 +69,13 @@
 
 - [x] **Decide inference scope** (#3 — closed). **Training**: all indicators meeting
   filtering criteria and present in `config/indicator_sections.yaml` (206 indicators,
-  2016–2018). **Inference/evaluation**: full universe of ~205 mapped Type C indicators
-  (primary). Pre-registered fallback: proportional stratified sample, one third per module,
-  floor of 2 (~60–70 total, fixed seed), triggered if 405B cannot complete within 3 job
-  submissions. Same evaluation set for all conditions and models.
-  See `notes/evaluation-indicator-scope.md`.
+  2016–2018). **Inference/evaluation**: full universe of ~205 mapped Type C indicators,
+  unconditionally — no sampling fallback. The proportional-stratified-sample fallback
+  (one third per module, floor of 2, ~60–70 total, fixed seed) originally pre-registered
+  as a contingency for 405B not completing within 3 job submissions is retired: 405B is
+  now dropped from the design outright, so there is no trigger condition left to key a
+  fallback to. Same evaluation set for all conditions and models.
+  See `notes/evaluation-indicator-scope.md` (rationale retained for the record).
 
 - [x] **Populate section mappings in `config/indicator_sections.yaml`** (#1 — closed).
   All 206 retained indicators now have `state-dept` and `freedom-house` fields filled
@@ -111,7 +123,7 @@
 
 ---
 
-## Blocking: cannot run Condition 3 (anonymized) until resolved
+## Condition 3 (anonymized) and Condition 4 (summarized) prerequisites — resolved
 
 - [x] **Run `anonymize_section.py`** on all few-shot example countries before running
   any anonymized condition batches. The anonymized condition prompt uses anonymized
@@ -130,6 +142,18 @@
   ```
   Note: anonymized examples do not include `country`, `slug`, or `country_name` fields
   (that is the point). The text is the full combined anonymized evidence from both sources.
+
+- [x] **Run `summarize_indicator.py`** on all few-shot example countries before running
+  any summarized condition batches, and run `run_summarize_batch.py` for the 2016–2018
+  training window and the 2019/2023 evaluation pools. Unlike anonymization, summarization
+  caches at the indicator level, not the section level (see `notes/summarization-strategy.md`).
+
+- [x] **Build `data/fewshot_examples_summarized.json`** via `populate_fewshot_summarized.py`,
+  parallel in structure to `fewshot_examples_anonymized.json` but storing summarized text.
+
+- [x] **Anonymize and summarize the 2019 and 2023 evaluation pools.** Both batches are
+  complete; no further ingestion is required before running the `anonymized` or
+  `summarized` conditions on 2019 or 2023 data.
 
 ---
 
@@ -150,16 +174,22 @@ multiple genuinely distinct AI coders.
 
 ---
 
-## Blocking: cannot run Condition 4 (fine-tuning) until resolved
+## Fine-tuning infrastructure — resolved
+*(Note: this section predates the current condition numbering. "Condition 4" below refers
+to the fine-tuning training-data-assembly shorthand, not the summarized condition —
+which is Condition 4 in the reconciled 4-condition design; see `docs/experimental-design.md`.)*
 
-- [x] **Write `pipeline/prepare_finetune_data.py`**. Done 2026-07-09.
-  Builds training JSONL from (Condition 4 prompt, individual coder rating) pairs.
-  Training window 2016–2018. Outputs `finetune_train.jsonl` and `training_set.csv`.
+- [x] **Write `pipeline/prepare_finetune_data.py`**. Done 2026-07-09; extended to a
+  `--variant {raw,anon,summ}` flag and cross-variant stratified subsampling (issues #58, #59).
+  Builds training JSONL from (evidence-variant prompt, individual coder rating) pairs.
+  Training window 2016–2018. Outputs `finetune_train_{variant}.jsonl` and
+  `training_set_{variant}.csv`.
 
-- [x] **Write `pipeline/finetune_llama.py`**. Done 2026-07-09.
-  QLoRA fine-tune on Pegasus A100 80GB. Base: `meta-llama/Llama-3.3-70B-Instruct`.
-  LoRA rank 16, alpha 32, lr 2e-4, batch 4 × grad_accum 4, 3 epochs.
-  Saves adapter only to `data/output/adapters/llama-70b-vdem-ft/`.
+- [x] **Write `pipeline/finetune_llama.py`**. Done 2026-07-09; retuned for early stopping
+  and epoch extension over the shared ~100K subsample (see `notes/finetuning-epochs.md`).
+  QLoRA fine-tune on Pegasus GH200/A100 80GB. Base: `meta-llama/Llama-3.3-70B-Instruct`.
+  LoRA rank 16, alpha 32, lr 2e-4. Run once per variant (raw, anon, summ); currently in
+  the pipeline-testing / smoke-test stage for all three, no adapter trained to completion.
 
 - [x] **Write `slurm/run_finetune.sh`**. Done 2026-07-09.
   SLURM wrapper for `finetune_llama.py`. Single A100 80GB, ~3–5 hr wall-clock.
@@ -206,19 +236,21 @@ multiple genuinely distinct AI coders.
   Already ingested and confirmed clean — all 16 SD sections in 193 files; all 7 FH
   sections in 210 files (confirmed via issue #14, closed 2026-07-12).
 
-- [] **Download 2024 source documents** (robustness check on data not in model training). Decide on scope of documents to use for robustness check (FH only or SD and FH), download and do any additional mapping (if using SD documents). Also have to process.  
+- [ ] **Download 2024 source documents** (temporal holdout on data outside the model's pretraining cutoff). Scope decided: **Freedom House only** — the 2024 State Department reports changed substantially in content and editorial mandate under a new administration, confounding a clean temporal comparison, while Freedom House maintained format and editorial continuity (see `docs/experimental-design.md`, "2024 Freedom-House-only temporal holdout"). Still need: download 2024 FH documents, confirm section mapping holds, and run a Freedom-House-only 2023 companion pass for a clean within-source comparison.  
 
 ---
 
 ## Infrastructure
 
 - [x] **Add zero-shot prompt conditions to the pipeline** (#20 — closed 2026-07-14).
-  `"evidence-zeroshot"` and `"anonymized-zeroshot"` implemented in `assemble_prompt.py`:
-  same text-loading path as their few-shot counterparts but `calibration_section = ""`.
+  `"evidence-zeroshot"`, `"anonymized-zeroshot"`, and (since extended to the summarized
+  condition) `"summarized-zeroshot"` implemented in `assemble_prompt.py`: same
+  text-loading path as their few-shot counterparts but `calibration_section = ""`.
   `CONDITIONS_ZEROSHOT` and `ALL_CONDITIONS` added to `vdem_config.py`. Validation and
   CLI choices updated in `assemble_prompt.py`, `code_country_year.py`, and
   `run_coding_batch.py`. No special-casing needed in the batch runner.
-  **Still blocked on**: primary 3×5 results — do not run until best base model identified.
+  **Still blocked on**: primary 4×4 results — do not run until the best-performing model
+  is identified.
 
 - [x] **Reconcile `vdem_config.py` model list with experimental design docs** (#19 — closed 2026-07-14).
   Removed `claude-sonnet` from `PRIMARY_MODELS`, `ALL_MODELS`, `MODEL_PRIORITY` in
@@ -235,10 +267,10 @@ multiple genuinely distinct AI coders.
   All corrected. `SLUG_OVERRIDES` and `build_country_map()` consolidated into
   `pipeline/country_map.py`; duplicated code removed from both batch runners.
 
-- [x] **Set up vLLM on GW Pegasus** for Llama 405B, 70B, 9B.
+- [x] **Set up vLLM on GW Pegasus** for Llama 405B, 70B, 8B.
   - 405B: 8×A100 80GB node (needs ~200GB at 4-bit). May require allocation request.
   - 70B: single A100 80GB node (~35GB at 4-bit).
-  - 9B: V100 16GB node (~5GB at 4-bit).
+  - 8B: V100 16GB node (~5GB at 4-bit).
   Set `VLLM_BASE_URL` to the node's address; `VLLM_API_KEY` to any non-empty string
   if auth is disabled (typical for cluster jobs).
 
@@ -276,7 +308,13 @@ multiple genuinely distinct AI coders.
   (`indicator_sections.yaml`, `fewshot_examples.json`, `panel_means.csv`,
   `human_ratings.csv`).
 
-- [x] **Redo documentation to reflect third FT mode** Since the documentation was written, it was decided to add a "summary" condition to fine tuning and inference. Update documentation to reflect this.
+- [x] **Redo documentation to reflect third FT mode** (completed 2026-07-21). `docs/overview.md`,
+  `docs/architecture.md`, and `docs/experimental-design.md` now describe the 4-condition
+  (codebook, evidence, anonymized, summarized) / 4-model (70B base + FT-raw + FT-anon +
+  FT-summ) design, the dropped 405B/8B scale comparison, and the restructured mechanism-test
+  section (re-identification + name swap + information shift) and 2024 FH-only holdout from
+  `notes/mechanism-test-design.md`. The earlier checked-off instance of this item (prior to
+  2026-07-21) was inaccurate — the docs had not actually been updated at that time.
 
 ---
 
@@ -292,24 +330,27 @@ Finetune on State Department Human Rights Reports and Freedom House Freedom in t
 
 ### Inference on 2019 validation set
 
-Run inference on four variants for all models: 1) codebook only; 2) raw evidence packets; 3) anonymized evidence packets; 4) summarized evidence packets. Plan should be to run first two and see how long base 70B model takes then make adjustments as needed. The 9B runs should go quickly. The 16 70B runs may be unwieldy while the desired run on 405B model is unlikely given current resources. 
+Run inference on four conditions for all four models: 1) codebook only; 2) raw evidence packets; 3) anonymized evidence packets; 4) summarized evidence packets. 405B and 8B are dropped from the design (see `docs/experimental-design.md`) — the only base model is 70B.
 
-- [] **Inference on base 9B model** - Run inference on Llama 3.2 Instruct 9B base model.
-- [] **Inference on base 70B model** - Run inference on Llama 3.3 Instruct 70B base model.
-- [] **Inference on FT-raw** - Run inference on Llama 3.3. Instruct 70B model finetuned on raw evidence packets. 
-- [] **Inference on FT-anonymized** - Run inference on Llama 3.3 Instruct 70B model finetuned on anonymized evidence packets.  
-- [] **Inference on FT-summarized** - Run inference on Llama 3.3 Instruct 70B model finetuned on summarized evidence packets. 
-- [] **Inference on 405B** - Run inference on Llama 3.3 (unlikely to be able to run on GW servers).
+- [ ] **Inference on base 70B model** - Run inference on Llama 3.3 Instruct 70B base model, all four conditions.
+- [ ] **Inference on FT-raw** - Run inference on Llama 3.3 Instruct 70B model finetuned on raw evidence packets.
+- [ ] **Inference on FT-anonymized** - Run inference on Llama 3.3 Instruct 70B model finetuned on anonymized evidence packets.
+- [ ] **Inference on FT-summarized** - Run inference on Llama 3.3 Instruct 70B model finetuned on summarized evidence packets.
 
 ### Robustness checks on 2023 data (with best model)
 
-This stage will involve eleven full inference runs on the best model from the validation run on 2019 data plus re-identification tests for the anonymous and summarized conditions.
+- [ ] **Test year replication** - Rerun experiment on 2023 test set across four conditions (codebook only, raw evidence, anonymized and summarized).
+- [ ] **Few shot ablation** - Rerun inference for the raw evidence, anonymized and summarized versions of the best model without few shot examples.
+- [ ] **Mechanism tests** - Unified section per `notes/mechanism-test-design.md`:
+  - Re-identification test for the anonymized and summarized conditions (reuse test-year-replication inference results; only the follow-up identification prompt is new).
+  - Name-swap test: transition-adjacent country-year paired with a stable same-regime-type neighbor, three-condition prompt structure (name+codebook, name+correct summary, name+swapped summary), stratified by re-identification status.
+  - Information shift test: ERT-tagged transition-adjacent vs. stable country-years (reuse test-year-replication results).
+- [ ] **Applied performance (agreement test)** - Compare MAE and directional bias of model codings versus human codings, all four conditions (can use test year replication results - no new inference required).
 
-- [] **Test year replication** - Rerun experiment on 2023 test set across four conditions (codebook only, raw evidence, anonymized and summarized).
-- [] **Few shot ablation** - Rerun inference for the raw evidence, anonymized and summarized versions of the best model without few shot examples.
-- [] **Re-identification test** - Run re-identification tests for anonymized and summarized versions. Compare performance of models across CYIs that were correctly identified and those that were not (should only run re-identification here - should be able to reuse inference results from test year replication).
-- [] **Out of sample test** - Rerun best model across four conditions on 2024 data (last year of Llama 3 training data was 2023). Perform information shift test on subset of CYIs experiencing major shifts in political conditions. 
-- [] **Applied performance** - Compare MAE and directional bias of model codings versus human codings (can use test year replication results - no new inference required).
+### 2024 Freedom-House-only temporal holdout
+
+- [ ] **FH-only 2023 companion run** - Rerun best model, all four conditions, Freedom House sources only (needed for a clean within-source comparison against the 2024 run).
+- [ ] **2024 out-of-sample run** - Run best model across all four conditions on 2024 FH-only data (outside Llama 3.3's pretraining cutoff). Report Δ(Evidence − Codebook) and Δ(Anonymized − Codebook) for 2023 FH-only vs. 2024 FH-only as the year-level information-shift result.
 
 ---
 

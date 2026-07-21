@@ -42,7 +42,7 @@ OUTPUT_DIR = Path(__file__).parent.parent / "data" / "output" / "replacement"
 MODEL_PRIORITY = [
     "llama-405b",
     "llama-70b",
-    "llama-9b",
+    "llama-8b",
 ]
 
 
