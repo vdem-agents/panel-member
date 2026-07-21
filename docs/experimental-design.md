@@ -286,6 +286,46 @@ dual-source indicators (both SD and FH sections). Compare group means with boots
 CIs. **Figure**: coefficient plot with three rows (one per mapping tier), x-axis =
 Δ(Evidence − Codebook), reference line at 0.
 
+### IRT-corrected reference check (exploratory / appendix)
+
+V-Dem's primary measurement outputs are IRT-derived rather than raw panel averages. For
+each indicator and country-year, V-Dem publishes an ordinal transformation (`_ord`) —
+the posterior modal category from the Bayesian IRT model, which corrects for coder-level
+reliability differences and threshold idiosyncrasies before aggregating across the panel.
+The `_ord` score and the raw panel mean are derived from the same underlying coder ratings
+but differ wherever IRT corrections are non-trivial: most commonly when coders are
+regionally immersed and systematically shift the autocratic floor upward, or when a panel
+contains outlier coders whose ratings receive low reliability weights.
+
+This analysis computes AI MAE against `_ord` as a secondary reference target alongside
+the primary `panel_mean` metric, on **2023 data** using all models. Two questions motivate
+the comparison:
+
+**Weidman comparability.** Weidman et al. (2025) evaluate zero-shot GPT-4o and
+Llama-3.1 70B against `_ord` for 2023. Reporting AI MAE against `_ord` on the same year
+allows direct positioning relative to their findings: specifically, how much does
+fine-tuning and structured source evidence reduce the deviation from the IRT-corrected
+consensus that Weidman document for zero-shot models?
+
+**Finetuning bias diagnostic.** If finetuning on individual coder ratings embeds the
+regional threshold biases present in those ratings, the finetuned models (FT-raw, FT-anon)
+should show a characteristic asymmetry: lower AI MAE against `panel_mean` than base models
+(the finetuning target), but not necessarily lower AI MAE against `_ord` (the IRT-corrected
+target). A gap between the two reference targets — `|FT − panel_mean|` vs.
+`|FT − _ord|` — that is larger for the finetuned models than for the base models would
+indicate that finetuning absorbs the systematic biases embedded in raw coder ratings rather
+than converging on the IRT-corrected consensus.
+
+This analysis requires no new inference — it runs on the same 2023 output already
+generated for the Agreement test. Implementation requires adding the `_ord` column from
+V-Dem v15 to the panel-means lookup and computing a second MAE column in
+`pipeline/substitution_eval.py`.
+
+**Display**: a supplementary table reporting, for each model × condition, both
+`|AI − panel_mean|` and `|AI − _ord|` side by side on 2023 data. A brief narrative in
+the appendix notes the comparison to Weidman et al. and flags whether the finetuning
+asymmetry is present.
+
 ### Persona variation and temperature sensitivity (feasibility checks for future work)
 
 These are not registered analyses for the current paper. Persona variation (strict vs.
