@@ -532,9 +532,8 @@ v2clprptym:
     - >-
       More than half of men enjoy most private property rights, yet a
       smaller share of men have much more restricted rights.
-    - >-
-      Most men enjoy most private property rights but a small minority does
-      not.  5: Virtually all men enjoy all, or almost all property rights.
+    - "Most men enjoy most private property rights but a small minority does not."
+    - "Virtually all men enjoy all, or almost all property rights."
   state-dept: []
   freedom-house: ["F", "G"]
 
@@ -560,10 +559,8 @@ v2clprptyw:
     - >-
       More than half of women enjoy most private property rights, yet a
       smaller share of women have much more restricted rights.
-    - >-
-      Most women enjoy most private property rights but a small minority
-      does not.  5: Virtually all women enjoy all, or almost all, property
-      rights.
+    - "Most women enjoy most private property rights but a small minority does not."
+    - "Virtually all women enjoy all, or almost all, property rights."
   state-dept: ["6"]
   freedom-house: ["F", "G"]
   sec6_subsections: "women"
