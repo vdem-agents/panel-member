@@ -70,6 +70,7 @@ done
 echo "vLLM ready (pid $VLLM_PID)"
 
 # ── Run inference batch ────────────────────────────────────────────────────────
+ulimit -n 65536
 python3 -m pipeline.run_finetuned_batch \
     --year       "$YEAR" \
     --variant    "$VARIANT" \
