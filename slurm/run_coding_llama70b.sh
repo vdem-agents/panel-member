@@ -63,6 +63,7 @@ done
 echo "vLLM ready (pid $VLLM_PID)"
 
 # ── Run coding batch ───────────────────────────────────────────────────────────
+ulimit -n 65536
 echo "Running $CONDITION coding for year $YEAR..."
 python3 -m pipeline.run_coding_batch \
     --year      "$YEAR" \
