@@ -18,7 +18,7 @@
 # EPOCHS=2 to extend over the same pool (train-to-convergence protocol, #59).
 #
 # If the job is preempted or hits the wall-clock limit, resubmit and it resumes
-# from the latest checkpoint automatically. Checkpoints are saved every 250 steps.
+# from the latest checkpoint automatically. Checkpoints are saved every 100 steps.
 #
 # Submit:
 #   VARIANT=raw  sbatch slurm/run_finetune.sh
@@ -56,8 +56,12 @@ elif [ "$VARIANT" = "summ" ]; then
     TRAIN_DATA=data/processed/finetune_train_summ_sub.jsonl
     OUTPUT_DIR=data/output/adapters/llama-70b-vdem-ft-summ
     MAX_SEQ_LEN=4096   # p99=1,943 tokens; over-length cases dropped by subsampler
-    BATCH_SIZE=2
-    GRAD_ACCUM=8
+    # Micro-batch 1, like the other variants. Batch 2 / grad-accum 8 ran ~2.75x
+    # SLOWER per example (110s vs 40s/step, ~171h ETA > the 6-day wall limit):
+    # peak activation memory sat near the 95GB HBM ceiling and thrashed instead
+    # of benefiting from the shorter summarized prompts. Effective batch stays 16.
+    BATCH_SIZE=1
+    GRAD_ACCUM=16
 else
     TRAIN_DATA=data/processed/finetune_train_anon_sub.jsonl
     OUTPUT_DIR=data/output/adapters/llama-70b-vdem-ft-anon
@@ -97,7 +101,8 @@ python3 -m pipeline.finetune_llama \
     --batch-size  "$BATCH_SIZE" \
     --grad-accum  "$GRAD_ACCUM" \
     --max-seq-len "$MAX_SEQ_LEN" \
-    --save-steps  250 \
+    --save-steps  100 \
+    --early-stopping-patience 10 \
     $RESUME_ARG
 
 # ── Archive adapter and TensorBoard logs to home (scratch purged after 30 days) ─
