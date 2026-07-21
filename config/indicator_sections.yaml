@@ -443,8 +443,8 @@ v2clgeocl:
       than residents of urban areas.
     - >-
       Residents of rural areas enjoy the same level of civil liberties as
-      those in urban areas.  5: Residents of rural areas enjoy more civil
-      liberties than those in urban areas.
+      those in urban areas.
+    - "Residents of rural areas enjoy more civil liberties than those in urban areas."
   state-dept: ["6"]
   freedom-house: ["D", "G"]
 
@@ -3848,8 +3848,7 @@ v2peapsgeo:
     - >-
       Equal. Because they live in rural areas, less than 5 percent (%) of
       the population lack access to basic public services of good quality.
-      5: Rural-Bias: Because they live in urban areas, 25% or more of the
-      population lack access to basic public services of good quality.
+    - "Rural-Bias: Because they live in urban areas, 25% or more of the population lack access to basic public services of good quality."
   state-dept: ["6"]
   freedom-house: ["G"]
 
@@ -4002,9 +4001,8 @@ v2peasbegeo:
     - >-
       Equal. Because they live in rural areas, less than 5 percent (%) of
       the population, even if qualified, lack access to state business
-      opportunities.  5: Rural-Bias. Because they live in urban areas, 25
-      percent (%) of the population, even if qualified, lack access to
-      state business opportunities.
+      opportunities.
+    - "Rural-Bias. Because they live in urban areas, 25 percent (%) of the population, even if qualified, lack access to state business opportunities."
   state-dept: ["6"]
   freedom-house: ["G"]
 
@@ -4168,9 +4166,8 @@ v2peasjgeo:
       state jobs.
     - >-
       Equal. Because they live in rural areas, less than 5 percent (%) of
-      the population, even if qualified, lack access to state jobs. 5:
-      Rural-Bias. Because they live in urban areas, 25% or more of the
-      population, even if qualified, lack access to state jobs.
+      the population, even if qualified, lack access to state jobs.
+    - "Rural-Bias. Because they live in urban areas, 25% or more of the population, even if qualified, lack access to state jobs."
   state-dept: ["6"]
   freedom-house: ["G"]
 
@@ -4382,9 +4379,8 @@ v2pepwrgeo:
     - >-
       People living in any area have roughly equal political power or
       people living in rural areas have more access to political power than
-      those in urban areas.  5: People living in rural areas have much more
-      political power but those living in urban areas have some areas of
-      influence.
+      those in urban areas.
+    - "People living in rural areas have much more political power but those living in urban areas have some areas of influence."
   state-dept: ["6"]
   freedom-house: ["G"]
 
@@ -4540,14 +4536,11 @@ v2pscnslnl:
     - >-
       National legislative candidate selection is dominated by national
       party leaders but with some limited influence from local or state
-      level organizations. 2:National legislative candidates are chosen
-      through bargaining across different levels of party organization.
-      3:National legislative candidates are chosen by regional or
-      state-level organizations, perhaps with some input from local party
-      organizations or constituency groups. 4:National legislative
-      candidates are chosen by a small cadre of local or municipal level
-      actors. 5: National legislative candidates are chosen by constituency
-      groups or direct primaries.
+      level organizations.
+    - "National legislative candidates are chosen through bargaining across different levels of party organization."
+    - "National legislative candidates are chosen by regional or state-level organizations, perhaps with some input from local party organizations or constituency groups."
+    - "National legislative candidates are chosen by a small cadre of local or municipal level actors."
+    - "National legislative candidates are chosen by constituency groups or direct primaries."
   state-dept: ["3"]
   freedom-house: ["B"]
 
@@ -5271,9 +5264,8 @@ v2dlconslt:
     - "Consultation includes the former plus leaders of other parties."
     - >-
       Consultation includes the former plus a select range of
-      society/labor/business representatives. 5: Consultation engages
-      elites from essentially all parts of the political spectrum and all
-      politically relevant sectors of society and business.
+      society/labor/business representatives.
+    - "Consultation engages elites from essentially all parts of the political spectrum and all politically relevant sectors of society and business."
   state-dept: []
   freedom-house: ["C"]
 
@@ -5300,10 +5292,8 @@ v2dlcountr:
       negative or positive statements about them.
     - >-
       Elites almost always acknowledge counterarguments and explicitly
-      value them, even if they ultimately reject them for the most part. 5:
-      Elites almost always acknowledge counterarguments and explicitly
-      value them, and frequently also even accept them and change their
-      position.
+      value them, even if they ultimately reject them for the most part.
+    - "Elites almost always acknowledge counterarguments and explicitly value them, and frequently also even accept them and change their position."
   state-dept: []
   freedom-house: []
 
@@ -5369,10 +5359,8 @@ v2dlengage:
     - >-
       Public deliberation is actively encouraged and a relatively broad
       segment of non-elite groups often participate and vary with different
-      issue-areas. 5: Large numbers of non-elite groups as well as ordinary
-      people tend to discuss major policies among themselves, in the media,
-      in associations or neighborhoods, or in the streets. Grass-roots
-      deliberation is common and unconstrained.
+      issue-areas.
+    - "Large numbers of non-elite groups as well as ordinary people tend to discuss major policies among themselves, in the media, in associations or neighborhoods, or in the streets. Grass-roots deliberation is common and unconstrained."
   state-dept: ["5"]
   freedom-house: ["E"]
 
@@ -5444,9 +5432,8 @@ v2dlunivl:
       means-tested and universalistic.
     - >-
       Most welfare state policies are universalistic, but a significant
-      portion (e.g., 1/4 or 1/3) are means-tested.  5: Almost all welfare
-      state policies are universal in character. Only a small portion is
-      means-tested.
+      portion (e.g., 1/4 or 1/3) are means-tested.
+    - "Almost all welfare state policies are universal in character. Only a small portion is means-tested."
   state-dept: ["4"]
   freedom-house: ["C"]
 
