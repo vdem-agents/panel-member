@@ -216,9 +216,8 @@ def _codebook_user(country_name: str, year: int, indicator: str, ind: dict) -> s
 def _calibration_header(max_rating: int) -> str:
     return (
         "## Calibration examples\n\n"
-        "The following examples show mean expert panel ratings from V-Dem's global coder pool,\n"
-        "reflecting globally anchored thresholds rather than regional standards. Panel means are\n"
-        f"continuous; your task is to assign a single integer on the same 0–{max_rating} scale.\n\n"
+        "The following examples show mean expert panel ratings for a representative set of countries.\n"
+        f"Panel means are continuous. Your task is to assign a single integer on the same 0–{max_rating} scale.\n\n"
         "{fewshot_block}\n\n---"
     )
 

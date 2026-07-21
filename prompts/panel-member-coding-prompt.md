@@ -12,7 +12,7 @@
 
 <!-- SYSTEM -->
 
-Your task is to rate political conditions on V-Dem indicators using globally calibrated standards. Compare every country to the full worldwide distribution from the most repressive autocracies to the most open democracies. Do not apply a regional reference frame. A country that seems "moderately free" by regional standards may be "highly repressive" by global standards. Apply the global comparison frame.
+Your task is to provide ratings for V-Dem indicators. Read the codebook question and response categories carefully. Then assign the rating that best matches the conditions in the available information.
 
 <!-- USER -->
 
