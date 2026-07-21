@@ -50,7 +50,7 @@ export PATH="$HOME/miniforge3/envs/vllm/bin:$PATH"
     --dtype bfloat16 \
     --quantization fp8 \
     --port "$VLLM_PORT" \
-    --max-model-len 16384 \
+    --max-model-len 32768 \
     --gpu-memory-utilization 0.90 \
     --enable-prefix-caching \
     --safetensors-load-strategy prefetch &
