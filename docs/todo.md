@@ -1,12 +1,15 @@
 # Panel Member: Outstanding Work
 
-*Updated 2026-07-21. Items are roughly ordered by pipeline dependency.*
+*Updated 2026-07-22. Items are roughly ordered by pipeline dependency.*
 
 **Status at pre-registration**: no blocking conditions remain. Anonymization, summarization,
 and fine-tuning training-data preparation are complete for all years needed so far
-(2016–2018, 2019, 2023). Fine-tuning (FT-raw, FT-anon, FT-summ) is in the
-pipeline-testing / smoke-test stage — no adapter has been trained to completion. **No
-inference or evaluation has been run** on any confirmatory condition, model, or year.
+(2016–2018, 2019, 2023). Fine-tuning (FT-raw, FT-anon, FT-summ): one full run per variant
+completed (jobs 73473530–73473532) but discarded — the internal train/eval split leaked
+byte-identical prompts across the split (`notes/finetune-validation-split-leakage.md`);
+adapters deleted, all three variants retraining from scratch under the corrected
+cell-grouped split. **No inference or evaluation has been run** on any confirmatory
+condition, model, or year, including the discarded adapters.
 Llama 405B and 8B are dropped from the design outright (not contingently); an early,
 unanalyzed two-condition (codebook, evidence) smoke test was run on Llama 8B to validate
 pipeline mechanics only. See `docs/experimental-design.md` for the full reconciled design.
