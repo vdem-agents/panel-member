@@ -30,6 +30,7 @@ Usage (direct, for testing on a single GPU):
 
 import argparse
 import json
+import random
 from pathlib import Path
 
 import torch
@@ -74,6 +75,59 @@ def to_prompt_completion(example: dict) -> dict:
     return {"prompt": messages[:-1], "completion": messages[-1:]}
 
 
+def grouped_cell_split(
+    dataset: Dataset, val_split: float, max_eval_examples: int
+) -> tuple[Dataset, Dataset, dict]:
+    """Split train/eval by CYI cell — (country_text_id, iso3, year, indicator).
+
+    All ~8 coder-rows for one cell share a byte-identical prompt, so a
+    row-level split leaks eval prompts into training and lets eval_loss reward
+    memorization (notes/finetune-validation-split-leakage.md). Cells move as
+    units; sorted keys + a fixed-seed shuffle hold out the identical cells in
+    all three variants (the _sub files share one canonical case set).
+
+    The eval cap keeps whole cells in shuffled order. A row-prefix cap
+    (select(range(N))) would be biased here: the training file is in canonical
+    case-ID sort order and a grouped split preserves it, so the first N rows
+    would be the alphabetically first countries. Held-out cells beyond the cap
+    stay out of training either way.
+    """
+    missing = [c for c in ("country_text_id", "iso3", "year", "indicator")
+               if c not in dataset.column_names]
+    if missing:
+        raise ValueError(
+            f"Training data lacks case-ID columns {missing} needed for the "
+            "grouped train/eval split — regenerate with prepare_finetune_data.py"
+        )
+    rows_by_cell: dict[str, list[int]] = {}
+    for i, key in enumerate(zip(
+        dataset["country_text_id"], dataset["iso3"],
+        dataset["year"], dataset["indicator"],
+    )):
+        rows_by_cell.setdefault("|".join(map(str, key)), []).append(i)
+    cells = sorted(rows_by_cell)
+    random.Random(42).shuffle(cells)
+    n_eval_cells = max(1, round(len(cells) * val_split))
+
+    eval_idx: list[int] = []
+    n_cells_eval = 0
+    for cell in cells[:n_eval_cells]:
+        if max_eval_examples and len(eval_idx) >= max_eval_examples:
+            break
+        eval_idx.extend(rows_by_cell[cell])
+        n_cells_eval += 1
+    train_idx = sorted(
+        i for cell in cells[n_eval_cells:] for i in rows_by_cell[cell]
+    )
+    stats = {
+        "n_cells": len(cells),
+        "n_train_cells": len(cells) - n_eval_cells,
+        "n_holdout_cells": n_eval_cells,
+        "n_eval_cells": n_cells_eval,
+    }
+    return dataset.select(train_idx), dataset.select(eval_idx), stats
+
+
 def main() -> None:
     parser = argparse.ArgumentParser(
         description="QLoRA fine-tune Llama 3.3 70B on V-Dem coder ratings"
@@ -105,10 +159,11 @@ def main() -> None:
         help="Save and evaluate a checkpoint every N training steps "
              "(~2.5h at the measured ~40s/step)")
     parser.add_argument("--val-split",    type=float, default=0.1,
-        help="Fraction of training data held out for checkpoint evaluation")
-    parser.add_argument("--max-eval-examples", type=int, default=500,
-        help="Cap the eval set at this many examples (0 = no cap). Ample for "
-             "early-stopping decisions; keeps eval passes to ~1 min")
+        help="Fraction of CYI cells held out for checkpoint evaluation")
+    parser.add_argument("--max-eval-examples", type=int, default=2000,
+        help="Cap the eval set at ~this many examples, taking whole CYI cells "
+             "in shuffled order (0 = no cap). ~240 cells at the default; "
+             "keeps eval passes to ~4 min")
     parser.add_argument("--eval-batch-size", type=int, default=8,
         help="Eval batch size — forward-only, so it can be much larger than "
              "the training micro-batch")
@@ -139,12 +194,13 @@ def main() -> None:
     dataset = load_jsonl(Path(args.train_data))
     print(f"  {len(dataset):,} total examples")
 
-    split = dataset.train_test_split(test_size=args.val_split, seed=42)
-    train_dataset = split["train"]
-    eval_dataset  = split["test"]
-    if args.max_eval_examples and len(eval_dataset) > args.max_eval_examples:
-        eval_dataset = eval_dataset.select(range(args.max_eval_examples))
-    print(f"  {len(train_dataset):,} train  |  {len(eval_dataset):,} validation")
+    train_dataset, eval_dataset, split_stats = grouped_cell_split(
+        dataset, args.val_split, args.max_eval_examples
+    )
+    print(f"  {split_stats['n_cells']:,} CYI cells | "
+          f"{len(train_dataset):,} train rows ({split_stats['n_train_cells']:,} cells) | "
+          f"{len(eval_dataset):,} validation rows ({split_stats['n_eval_cells']:,} "
+          f"of {split_stats['n_holdout_cells']:,} held-out cells)")
 
     # ── Tokenizer ──────────────────────────────────────────────────────────────
     print(f"Loading tokenizer from {model_path}...")

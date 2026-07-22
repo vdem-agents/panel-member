@@ -111,10 +111,14 @@ training data changes calibration independently of the corresponding manipulatio
 inference; FT-anon vs. FT-summ shows whether the stronger de-identification of
 summarization changes what fine-tuning learns.
 
-As of pre-registration, all three fine-tuning tracks are in the pipeline-testing stage —
-smoke tests to validate the training loop — with no adapter yet trained to completion and
-no inference run on any fine-tuned model. Anonymization and summarization of the
-2016–2018 training window and the 2019/2023 evaluation pools are complete.
+As of pre-registration, no inference has been run on any fine-tuned model. One full
+training run per variant was completed and then discarded upon discovery of a defective
+internal train/eval split, without any inference or evaluation of the resulting adapters
+(see Pilot work disclosure); the training script now splits its internal validation set
+by country-year-indicator cell (`notes/finetune-validation-split-leakage.md`), and all
+three variants are being retrained from scratch under the corrected split.
+Anonymization and summarization of the 2016–2018 training window and the 2019/2023
+evaluation pools are complete.
 
 ### Country-year pool (calibration)
 
@@ -661,3 +665,16 @@ non-confirmatory pilot runs, disclosed here for transparency:
   schema and pipeline mechanics only. No metric was computed from it and it played no role
   in any design decision; it is not part of the confirmatory results, and Llama 8B is not
   otherwise part of the design (see Models, above).
+- One full fine-tuning run per variant (FT-raw, FT-anon, FT-summ; SLURM jobs
+  73473530–73473532, July 2026) was completed and then discarded upon discovery that the
+  training script's internal train/eval split was drawn at the coder-row level, letting
+  byte-identical prompts appear on both sides of the split and rendering the early-stopping
+  and checkpoint-selection metric unreliable
+  (`notes/finetune-validation-split-leakage.md`). No inference was run on any of the three
+  discarded adapters and no evaluation metric was computed from them; the only quantities
+  ever read from these runs are their training-log loss curves, used to diagnose the split
+  defect itself. All adapters and checkpoints from these runs were deleted, and all three
+  variants retrained from scratch under a corrected split that holds out whole
+  country-year-indicator cells. The discarded runs used the same training pool, hyperparameters,
+  and stopping rule as the corrected runs, so their existence conveys no information about
+  2019/2023/2024 evaluation outcomes.
