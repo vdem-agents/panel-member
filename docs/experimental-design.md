@@ -293,12 +293,14 @@ evaluation pool are tagged as transition-adjacent using the V-Dem Episodes of Re
 Transformation (ERT) dataset (onset or peak year flag); the continuous moderator is
 |Δv2x_polyarchy| from year t−1 to t. AI MAE is computed separately for transition-adjacent
 and stable country-years under each condition. Pre-registered hypothesis: Δ(Evidence −
-Codebook) is more negative — the gain from adding evidence is larger — in
-transition-adjacent country-years than in stable ones.
+Codebook), Δ(Anonymized − Codebook), and Δ(Summarized − Codebook) are each more negative
+— the gain from adding text is larger — in transition-adjacent country-years than in
+stable ones, tested across the full information-source gradient (no text → anonymized →
+summarized).
 
-**Figure**: coefficient plot with two panels — Δ(Evidence − Codebook) and
-Δ(Anonymized − Codebook) — each showing three dots with bootstrapped CIs: all
-country-years, stable, and transition-adjacent. Reference line at 0.
+**Figure**: coefficient plot with three panels — Δ(Evidence − Codebook),
+Δ(Anonymized − Codebook), and Δ(Summarized − Codebook) — each showing three dots with
+bootstrapped CIs: all country-years, stable, and transition-adjacent. Reference line at 0.
 
 ### Applied performance
 
@@ -515,12 +517,14 @@ The three identification comparisons yield directional predictions:
    holds even without named entities, establishing that the model is reading and using the
    source text rather than relying on pretrained knowledge of the country.
 
-4. **Evidence matters more in transition-adjacent country-years**: Δ(Evidence − Codebook)
-   is more negative for country-years tagged as transition-adjacent (ERT onset or peak
-   year) than for stable country-years, reflecting that source evidence contributes most
-   when stored knowledge of the country is most outdated. Tested on 2023 data as part of
-   the mechanism-test section; replicated at the year level via the 2023-vs-2024
-   Freedom-House-only comparison in the temporal holdout.
+4. **Text matters more in transition-adjacent country-years**: Δ(Evidence − Codebook),
+   Δ(Anonymized − Codebook), and Δ(Summarized − Codebook) are each more negative for
+   country-years tagged as transition-adjacent (ERT onset or peak year) than for stable
+   country-years, reflecting that source text contributes most when stored knowledge of
+   the country is most outdated — tested across the full information-source gradient, not
+   just the named-evidence condition. Tested on 2023 data as part of the mechanism-test
+   section; replicated at the year level via the 2023-vs-2024 Freedom-House-only
+   comparison in the temporal holdout.
 
 5. **Re-identification predicts bias**: in the anonymized and summarized conditions, cases
    where the model correctly identifies the country show larger directional deviation from
