@@ -1,0 +1,677 @@
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml" lang="en" xml:lang="en"><head>
+
+<meta charset="utf-8">
+<meta name="generator" content="quarto-1.7.31">
+
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
+
+
+<title>hypothesis-cell-map-and-featuring-plan</title>
+<style>
+code{white-space: pre-wrap;}
+span.smallcaps{font-variant: small-caps;}
+div.columns{display: flex; gap: min(4vw, 1.5em);}
+div.column{flex: auto; overflow-x: auto;}
+div.hanging-indent{margin-left: 1.5em; text-indent: -1.5em;}
+ul.task-list{list-style: none;}
+ul.task-list li input[type="checkbox"] {
+  width: 0.8em;
+  margin: 0 0.8em 0.2em -1em; /* quarto-specific, see https://github.com/quarto-dev/quarto-cli/issues/4556 */ 
+  vertical-align: middle;
+}
+</style>
+
+
+<script src="hypothesis-cell-map-and-featuring-plan_files/libs/clipboard/clipboard.min.js"></script>
+<script src="hypothesis-cell-map-and-featuring-plan_files/libs/quarto-html/quarto.js" type="module"></script>
+<script src="hypothesis-cell-map-and-featuring-plan_files/libs/quarto-html/tabsets/tabsets.js" type="module"></script>
+<script src="hypothesis-cell-map-and-featuring-plan_files/libs/quarto-html/popper.min.js"></script>
+<script src="hypothesis-cell-map-and-featuring-plan_files/libs/quarto-html/tippy.umd.min.js"></script>
+<script src="hypothesis-cell-map-and-featuring-plan_files/libs/quarto-html/anchor.min.js"></script>
+<link href="hypothesis-cell-map-and-featuring-plan_files/libs/quarto-html/tippy.css" rel="stylesheet">
+<link href="hypothesis-cell-map-and-featuring-plan_files/libs/quarto-html/quarto-syntax-highlighting-e1a5c8363afafaef2c763b6775fbf3ca.css" rel="stylesheet" id="quarto-text-highlighting-styles">
+<script src="hypothesis-cell-map-and-featuring-plan_files/libs/bootstrap/bootstrap.min.js"></script>
+<link href="hypothesis-cell-map-and-featuring-plan_files/libs/bootstrap/bootstrap-icons.css" rel="stylesheet">
+<link href="hypothesis-cell-map-and-featuring-plan_files/libs/bootstrap/bootstrap-81267100e462c21b3d6c0d5bf76a3417.min.css" rel="stylesheet" append-hash="true" id="quarto-bootstrap" data-mode="light">
+
+
+</head>
+
+<body class="fullcontent quarto-light">
+
+<div id="quarto-content" class="page-columns page-rows-contents page-layout-article">
+
+<main class="content" id="quarto-document-content">
+
+
+
+
+<section id="hypothesis-to-cell-map-and-main-text-featuring-plan" class="level1">
+<h1>Hypothesis-to-cell map and main-text featuring plan</h1>
+<section id="background" class="level2">
+<h2 class="anchored" data-anchor-id="background">Background</h2>
+<p>Follow-on to <code>notes/model-selection-for-robustness-checks.md</code>. That memo posed the model- selection question as a choice between running the full 4×4 grid (Path A) and dropping the nine representation-transfer off-diagonals (Path B), with compute as a live constraint. Subsequent discussion dissolved that framing: timing runs showed the full grid is affordable, so the question is no longer <strong>which cells to run</strong> but <strong>which cells to feature in the main text</strong>, which model-selection rule to lock, and which hypotheses each cell actually serves.</p>
+<p>The reframing that drove this: from a practical deployment standpoint, the headline question is <em>which model best codes raw evidence packets</em> — the evidence column across all four models, benchmarked against base-codebook. Under this reading, anonymization and summarization function two ways: as inference-time identification treatments for the base model (their original design role, carrying the identification hypotheses), and as <em>training devices</em> for the FT variants (does training on de-identified text make a model better at reading raw text?). The evidence column is the cleanest version of the training-representation-transfer question — manipulate the training representation, hold the deployment input fixed — and within the FT rows it is a fully controlled comparison: identical <code>evidence-zeroshot</code> prompts, only the adapter differs. (Base vs.&nbsp;FT within the column additionally differs in the few-shot calibration block; that is the designed prompt-calibration-vs-weight-calibration comparison, not a confound.)</p>
+</section>
+<section id="where-the-discussion-landed" class="level2">
+<h2 class="anchored" data-anchor-id="where-the-discussion-landed">Where the discussion landed</h2>
+<ul>
+<li><strong>Run the full 16-cell 2019 grid.</strong> No cells are dropped; Path A vs.&nbsp;Path B is moot.</li>
+<li><strong>Feature eight cells in the main text</strong>, organized as two results sections:
+<ol type="1">
+<li><strong>Deployment</strong> (5 cells): base-codebook baseline + the full evidence column (base, FT-raw, FT-anon, FT-summ). Headline applied result; the model-selection rule operates here.</li>
+<li><strong>Identification</strong> (base row, 4 cells — 3 beyond section 1): base × {codebook, evidence, anonymized, summarized}, carrying H1–H3 and H8 exactly as registered.</li>
+</ol></li>
+<li><strong>Appendix</strong>: the six FT × {anonymized, summarized} cells (representation-transfer / within-FT delta replication) and the three FT codebook probes (anchoring diagnostics).</li>
+<li><strong>Selection rule</strong>: the model carried forward to the 2023/2024 robustness work is the one with the lowest 2019 AI MAE in the evidence column (argmin over 4 cells). Tie rule: if bootstrap CIs overlap, prefer base as the simpler model. This is cleaner than the earlier memo’s options — one condition, four models — and unlike the rejected condition-specific rule (Option 2 there), the conditioning column is not chosen to flatter an identification hypothesis; it <em>is</em> the deployment target. The identification deltas are within-model comparisons, so selecting across models within one column does not bias them.</li>
+<li><strong>Conditional commitment</strong>: if FT-raw wins the evidence column, the anchoring probe (FT-raw × codebook vs.&nbsp;FT-anon/FT-summ × codebook) moves from appendix to main text as a mandatory qualifier — if FT-raw-on-codebook gets most of the way to FT-raw-on-evidence, the “win” is substantially country-name memorization, not evidence-reading.</li>
+</ul>
+<section id="why-the-base-identification-row-stays-in-the-main-text" class="level3">
+<h3 class="anchored" data-anchor-id="why-the-base-identification-row-stays-in-the-main-text">Why the base identification row stays in the main text</h3>
+<p>The design doc designates Δ(Anonymized − Codebook) as <em>the</em> primary identification result, and H2, H3, and H8 all live in the base row of columns 3–4. That machinery answers the one question that makes the deployment column interpretable: when evidence-column MAE looks good, is the model reading the packet or recognizing the country? Raw evidence text is full of country names; 2019 country-level ratings are highly autocorrelated with pretraining knowledge, so a low MAE in the featured column could come from memorized priors (“Norway ≈ 4”). For a deployment claim this matters <em>more</em>, not less — deployment value depends on tracking described conditions in future years. Appendixing the base-row identification results would turn the paper into a benchmarking exercise a reviewer can deflate with one sentence about anchoring, and would surrender what distinguishes it from Weidman-style zero-shot benchmarking. It costs two cells (base × anonymized, base × summarized), both already running.</p>
+</section>
+<section id="anchoring-probe-needs-all-three-ft-codebook-cells" class="level3">
+<h3 class="anchored" data-anchor-id="anchoring-probe-needs-all-three-ft-codebook-cells">Anchoring probe needs all three FT codebook cells</h3>
+<p>The probe is not “FT-raw × codebook vs.&nbsp;base × codebook” alone — that two-cell comparison is confounded, because an FT-raw advantage on codebook could reflect either country-name memorization or generic scale/format calibration that any fine-tuning imparts. FT-anon and FT-summ × codebook are the controls: same generic calibration training, but their training prompts never paired a real country name with a rating (“the focal country” everywhere). The memorization signature is FT-raw-codebook ≪ FT-anon/FT-summ-codebook, not FT-raw-codebook &lt; base-codebook. All three cells are near-free (no evidence text).</p>
+</section>
+</section>
+<section id="notation" class="level2">
+<h2 class="anchored" data-anchor-id="notation">Notation</h2>
+<p>Cells are (model × condition). Models: <strong>B</strong> = 70B base, <strong>R</strong> = FT-raw, <strong>A</strong> = FT-anon, <strong>S</strong> = FT-summ. Conditions: <strong>Cb</strong> = codebook, <strong>Ev</strong> = evidence, <strong>An</strong> = anonymized, <strong>Su</strong> = summarized. FT-row conditions are the <code>-zeroshot</code> variants throughout (no calibration block; see <code>assemble_prompt.py</code>).</p>
+<p>Four of the nine registered hypotheses (H4, H5, H7, H9) run on <strong>2023 data with the carried-forward model</strong>, so they use 2023 re-runs of grid cells — and in some cases extra cells that are not in the 4×4 at all.</p>
+</section>
+<section id="hypotheses-cells" class="level2">
+<h2 class="anchored" data-anchor-id="hypotheses-cells">Hypotheses → cells</h2>
+<table class="caption-top table">
+<colgroup>
+<col style="width: 20%">
+<col style="width: 20%">
+<col style="width: 20%">
+<col style="width: 20%">
+<col style="width: 20%">
+</colgroup>
+<thead>
+<tr class="header">
+<th>#</th>
+<th>Hypothesis (short form)</th>
+<th>Cells needed</th>
+<th>Year</th>
+<th>In the 4×4 grid?</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td>H1</td>
+<td>Evidence beats codebook-only: Δ(Ev − Cb) &lt; 0</td>
+<td>B×Ev vs.&nbsp;B×Cb</td>
+<td>2019</td>
+<td>Yes — base row</td>
+</tr>
+<tr class="even">
+<td>H2</td>
+<td>Anonymization beats raw evidence: Δ(An − Ev) &lt; 0</td>
+<td>B×An vs.&nbsp;B×Ev</td>
+<td>2019</td>
+<td>Yes — base row</td>
+</tr>
+<tr class="odd">
+<td>H3</td>
+<td>Information gain survives anonymization: Δ(An − Cb) &lt; 0. <em>Currently designated the primary identification result.</em></td>
+<td>B×An vs.&nbsp;B×Cb</td>
+<td>2019</td>
+<td>Yes — base row</td>
+</tr>
+<tr class="even">
+<td>H4</td>
+<td>Evidence gain is larger in transition-adjacent country-years (ERT moderator)</td>
+<td>Carried model × {Cb, Ev, An, Su}, split by transition status</td>
+<td>2023</td>
+<td>2023 re-runs of one full row</td>
+</tr>
+<tr class="odd">
+<td>H5</td>
+<td>Re-identification predicts directional bias</td>
+<td>Carried model × {An, Su} + re-identification follow-up prompts</td>
+<td>2023</td>
+<td>2023 re-runs + follow-up calls (not grid cells)</td>
+</tr>
+<tr class="even">
+<td>H6</td>
+<td>Calibration degrades with weaker source coverage</td>
+<td>All cells — coverage tier is a moderator <em>within</em> every cell</td>
+<td>2019</td>
+<td>Yes — whole grid</td>
+</tr>
+<tr class="odd">
+<td>H7</td>
+<td>Few-shot examples matter more as identity cues are stripped: Δ(few-shot − zero-shot) grows Ev → An → Su</td>
+<td>B×{Ev, An, Su} plus B×{Ev-zeroshot, An-zeroshot, Su-zeroshot}</td>
+<td>2023</td>
+<td>No — the three zero-shot ablation cells are outside the grid; <strong>base-only by construction</strong> (FT rows are already zero-shot)</td>
+</tr>
+<tr class="even">
+<td>H8</td>
+<td>Summarization de-identifies without large calibration cost: Δ(Su − An) not substantially positive, plus top-1 re-id &lt; 30% target</td>
+<td>B×Su vs.&nbsp;B×An; re-id part shares H5’s follow-ups</td>
+<td>2019 (delta) + 2023 (re-id)</td>
+<td>Yes — base row (delta part)</td>
+</tr>
+<tr class="odd">
+<td>H9</td>
+<td>Name-swap ratings track described conditions, not the named country</td>
+<td>Custom A/B/C prompt conditions built from summarized text, carried model</td>
+<td>2023</td>
+<td>No — bespoke cells outside the grid</td>
+</tr>
+</tbody>
+</table>
+<p>Two featured comparisons that are <strong>not</strong> numbered hypotheses:</p>
+<table class="caption-top table">
+<colgroup>
+<col style="width: 33%">
+<col style="width: 33%">
+<col style="width: 33%">
+</colgroup>
+<thead>
+<tr class="header">
+<th>Comparison</th>
+<th>Cells needed</th>
+<th>In the grid?</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td>Deployment: which model best codes raw evidence (headline column; selection rule)</td>
+<td>B×Ev, R×Ev, A×Ev, S×Ev (+ B×Cb as baseline)</td>
+<td>Yes — column 2 + cell (1,1); A×Ev and S×Ev are off-diagonals</td>
+</tr>
+<tr class="even">
+<td>Anchoring probe: does raw fine-tuning bake in country-name shortcuts</td>
+<td>R×Cb vs.&nbsp;A×Cb and S×Cb (vs.&nbsp;B×Cb)</td>
+<td>Yes — column 1, FT rows</td>
+</tr>
+</tbody>
+</table>
+</section>
+<section id="the-2019-grid-annotated" class="level2">
+<h2 class="anchored" data-anchor-id="the-2019-grid-annotated">The 2019 grid, annotated</h2>
+<table class="caption-top table">
+<colgroup>
+<col style="width: 20%">
+<col style="width: 20%">
+<col style="width: 20%">
+<col style="width: 20%">
+<col style="width: 20%">
+</colgroup>
+<thead>
+<tr class="header">
+<th></th>
+<th><strong>Codebook</strong></th>
+<th><strong>Evidence</strong></th>
+<th><strong>Anonymized</strong></th>
+<th><strong>Summarized</strong></th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td><strong>Base</strong></td>
+<td>H1, H3 baseline; H6; deployment baseline</td>
+<td>H1, H2; H6; <strong>deployment</strong></td>
+<td><strong>H3 (primary)</strong>, H2, H8; H6</td>
+<td>H8; H6</td>
+</tr>
+<tr class="even">
+<td><strong>FT-raw</strong></td>
+<td>anchoring probe; H6</td>
+<td>matched cell; <strong>deployment</strong>; H6</td>
+<td><em>FT-row delta replication only; H6</em></td>
+<td><em>FT-row delta replication only; H6</em></td>
+</tr>
+<tr class="odd">
+<td><strong>FT-anon</strong></td>
+<td>probe control; H6</td>
+<td><strong>deployment</strong> (off-diag); H6</td>
+<td>matched cell; H6</td>
+<td><em>FT-row delta replication only; H6</em></td>
+</tr>
+<tr class="even">
+<td><strong>FT-summ</strong></td>
+<td>probe control; H6</td>
+<td><strong>deployment</strong> (off-diag); H6</td>
+<td><em>FT-row delta replication only; H6</em></td>
+<td>matched cell; H6</td>
+</tr>
+</tbody>
+</table>
+<p>Main text = base row + evidence column (8 cells). Appendix = everything else (8 cells: six FT off-diagonal/matched cells in columns 3–4, plus R/A/S × codebook — with the conditional promotion of the codebook probes noted above).</p>
+</section>
+<section id="three-things-the-map-makes-visible" class="level2">
+<h2 class="anchored" data-anchor-id="three-things-the-map-makes-visible">Three things the map makes visible</h2>
+<ol type="1">
+<li><strong>H1–H3 and H8 live entirely in the base row.</strong> The four FT cells in columns 3–4 that are neither matched nor probes serve only the unregistered “do the deltas replicate within FT models” question (plus H6, which every cell serves). Weakest hypothesis coverage in the grid → natural appendix material.</li>
+<li><strong>Everything on 2023 (H4, H5, H7, H9) keys off which model is carried forward</strong> — and H7 must run on base regardless of who wins, since FT conditions have no few-shot block to ablate. If an FT variant wins, H4/H5/H9 run on it; H7’s six cells run on base either way. The design doc’s “best-performing model” language should be replaced with this explicit split.</li>
+<li><strong>The five deployment cells alone carry only H1 and the deployment comparison.</strong> H2, H3, and H8 — including the currently-designated primary identification result — sit in B×An and B×Su. This is why the featuring plan keeps the full base row in the main text rather than only the deployment cells.</li>
+</ol>
+</section>
+<section id="required-pre-registration-edits-not-yet-made" class="level2">
+<h2 class="anchored" data-anchor-id="required-pre-registration-edits-not-yet-made">Required pre-registration edits (not yet made)</h2>
+<p>This re-scoping is legitimate only if done <strong>before any Phase 1 inference runs</strong> — amended pre-data it is a design decision; post-results, moving identification arms to the appendix looks like burying. As of this writing no inference has run on any fine-tuned model, so the window is open. <code>docs/experimental-design.md</code> edits needed:</p>
+<ul class="task-list">
+<li><label><input type="checkbox">Designate the evidence-column model comparison (with the argmin selection rule and CI-overlap tie rule preferring base) as the primary confirmatory applied analysis.</label></li>
+<li><label><input type="checkbox">Decide whether H2/H3/H8 become co-primary (eight-cell main text, as recommended here) or secondary; update the “primary identification result” language accordingly.</label></li>
+<li><label><input type="checkbox">Replace “best-performing model” throughout Part 2 with the explicit split: carried model = evidence-column winner for H4/H5/H9, agreement test, and the 2024 FH holdout; H7 (few-shot ablation) locked to base regardless.</label></li>
+<li><label><input type="checkbox">Pre-specify the conditional promotion of the anchoring probe to the main text if FT-raw wins the evidence column, and what happens if no FT variant beats base (carry base; report the FT comparison honestly).</label></li>
+<li><label><input type="checkbox">Fix internal inconsistencies flagged earlier: Models table (“All 4 conditions”, lines ~83–85) is now accurate again under full-grid-runs, but Figure 1/2 descriptions and the “key comparisons” paragraph (lines ~108–112) should be aligned with the main-text/appendix split.</label></li>
+<li><label><input type="checkbox">Update <code>notes/model-selection-for-robustness-checks.md</code> to record the resolution (Path A/B superseded by run-everything + featuring plan + evidence-column selection rule).</label></li>
+</ul>
+</section>
+</section>
+
+</main>
+<!-- /main column -->
+<script id="quarto-html-after-body" type="application/javascript">
+  window.document.addEventListener("DOMContentLoaded", function (event) {
+    const icon = "";
+    const anchorJS = new window.AnchorJS();
+    anchorJS.options = {
+      placement: 'right',
+      icon: icon
+    };
+    anchorJS.add('.anchored');
+    const isCodeAnnotation = (el) => {
+      for (const clz of el.classList) {
+        if (clz.startsWith('code-annotation-')) {                     
+          return true;
+        }
+      }
+      return false;
+    }
+    const onCopySuccess = function(e) {
+      // button target
+      const button = e.trigger;
+      // don't keep focus
+      button.blur();
+      // flash "checked"
+      button.classList.add('code-copy-button-checked');
+      var currentTitle = button.getAttribute("title");
+      button.setAttribute("title", "Copied!");
+      let tooltip;
+      if (window.bootstrap) {
+        button.setAttribute("data-bs-toggle", "tooltip");
+        button.setAttribute("data-bs-placement", "left");
+        button.setAttribute("data-bs-title", "Copied!");
+        tooltip = new bootstrap.Tooltip(button, 
+          { trigger: "manual", 
+            customClass: "code-copy-button-tooltip",
+            offset: [0, -8]});
+        tooltip.show();    
+      }
+      setTimeout(function() {
+        if (tooltip) {
+          tooltip.hide();
+          button.removeAttribute("data-bs-title");
+          button.removeAttribute("data-bs-toggle");
+          button.removeAttribute("data-bs-placement");
+        }
+        button.setAttribute("title", currentTitle);
+        button.classList.remove('code-copy-button-checked');
+      }, 1000);
+      // clear code selection
+      e.clearSelection();
+    }
+    const getTextToCopy = function(trigger) {
+        const codeEl = trigger.previousElementSibling.cloneNode(true);
+        for (const childEl of codeEl.children) {
+          if (isCodeAnnotation(childEl)) {
+            childEl.remove();
+          }
+        }
+        return codeEl.innerText;
+    }
+    const clipboard = new window.ClipboardJS('.code-copy-button:not([data-in-quarto-modal])', {
+      text: getTextToCopy
+    });
+    clipboard.on('success', onCopySuccess);
+    if (window.document.getElementById('quarto-embedded-source-code-modal')) {
+      const clipboardModal = new window.ClipboardJS('.code-copy-button[data-in-quarto-modal]', {
+        text: getTextToCopy,
+        container: window.document.getElementById('quarto-embedded-source-code-modal')
+      });
+      clipboardModal.on('success', onCopySuccess);
+    }
+      var localhostRegex = new RegExp(/^(?:http|https):\/\/localhost\:?[0-9]*\//);
+      var mailtoRegex = new RegExp(/^mailto:/);
+        var filterRegex = new RegExp('/' + window.location.host + '/');
+      var isInternal = (href) => {
+          return filterRegex.test(href) || localhostRegex.test(href) || mailtoRegex.test(href);
+      }
+      // Inspect non-navigation links and adorn them if external
+     var links = window.document.querySelectorAll('a[href]:not(.nav-link):not(.navbar-brand):not(.toc-action):not(.sidebar-link):not(.sidebar-item-toggle):not(.pagination-link):not(.no-external):not([aria-hidden]):not(.dropdown-item):not(.quarto-navigation-tool):not(.about-link)');
+      for (var i=0; i<links.length; i++) {
+        const link = links[i];
+        if (!isInternal(link.href)) {
+          // undo the damage that might have been done by quarto-nav.js in the case of
+          // links that we want to consider external
+          if (link.dataset.originalHref !== undefined) {
+            link.href = link.dataset.originalHref;
+          }
+        }
+      }
+    function tippyHover(el, contentFn, onTriggerFn, onUntriggerFn) {
+      const config = {
+        allowHTML: true,
+        maxWidth: 500,
+        delay: 100,
+        arrow: false,
+        appendTo: function(el) {
+            return el.parentElement;
+        },
+        interactive: true,
+        interactiveBorder: 10,
+        theme: 'quarto',
+        placement: 'bottom-start',
+      };
+      if (contentFn) {
+        config.content = contentFn;
+      }
+      if (onTriggerFn) {
+        config.onTrigger = onTriggerFn;
+      }
+      if (onUntriggerFn) {
+        config.onUntrigger = onUntriggerFn;
+      }
+      window.tippy(el, config); 
+    }
+    const noterefs = window.document.querySelectorAll('a[role="doc-noteref"]');
+    for (var i=0; i<noterefs.length; i++) {
+      const ref = noterefs[i];
+      tippyHover(ref, function() {
+        // use id or data attribute instead here
+        let href = ref.getAttribute('data-footnote-href') || ref.getAttribute('href');
+        try { href = new URL(href).hash; } catch {}
+        const id = href.replace(/^#\/?/, "");
+        const note = window.document.getElementById(id);
+        if (note) {
+          return note.innerHTML;
+        } else {
+          return "";
+        }
+      });
+    }
+    const xrefs = window.document.querySelectorAll('a.quarto-xref');
+    const processXRef = (id, note) => {
+      // Strip column container classes
+      const stripColumnClz = (el) => {
+        el.classList.remove("page-full", "page-columns");
+        if (el.children) {
+          for (const child of el.children) {
+            stripColumnClz(child);
+          }
+        }
+      }
+      stripColumnClz(note)
+      if (id === null || id.startsWith('sec-')) {
+        // Special case sections, only their first couple elements
+        const container = document.createElement("div");
+        if (note.children && note.children.length > 2) {
+          container.appendChild(note.children[0].cloneNode(true));
+          for (let i = 1; i < note.children.length; i++) {
+            const child = note.children[i];
+            if (child.tagName === "P" && child.innerText === "") {
+              continue;
+            } else {
+              container.appendChild(child.cloneNode(true));
+              break;
+            }
+          }
+          if (window.Quarto?.typesetMath) {
+            window.Quarto.typesetMath(container);
+          }
+          return container.innerHTML
+        } else {
+          if (window.Quarto?.typesetMath) {
+            window.Quarto.typesetMath(note);
+          }
+          return note.innerHTML;
+        }
+      } else {
+        // Remove any anchor links if they are present
+        const anchorLink = note.querySelector('a.anchorjs-link');
+        if (anchorLink) {
+          anchorLink.remove();
+        }
+        if (window.Quarto?.typesetMath) {
+          window.Quarto.typesetMath(note);
+        }
+        if (note.classList.contains("callout")) {
+          return note.outerHTML;
+        } else {
+          return note.innerHTML;
+        }
+      }
+    }
+    for (var i=0; i<xrefs.length; i++) {
+      const xref = xrefs[i];
+      tippyHover(xref, undefined, function(instance) {
+        instance.disable();
+        let url = xref.getAttribute('href');
+        let hash = undefined; 
+        if (url.startsWith('#')) {
+          hash = url;
+        } else {
+          try { hash = new URL(url).hash; } catch {}
+        }
+        if (hash) {
+          const id = hash.replace(/^#\/?/, "");
+          const note = window.document.getElementById(id);
+          if (note !== null) {
+            try {
+              const html = processXRef(id, note.cloneNode(true));
+              instance.setContent(html);
+            } finally {
+              instance.enable();
+              instance.show();
+            }
+          } else {
+            // See if we can fetch this
+            fetch(url.split('#')[0])
+            .then(res => res.text())
+            .then(html => {
+              const parser = new DOMParser();
+              const htmlDoc = parser.parseFromString(html, "text/html");
+              const note = htmlDoc.getElementById(id);
+              if (note !== null) {
+                const html = processXRef(id, note);
+                instance.setContent(html);
+              } 
+            }).finally(() => {
+              instance.enable();
+              instance.show();
+            });
+          }
+        } else {
+          // See if we can fetch a full url (with no hash to target)
+          // This is a special case and we should probably do some content thinning / targeting
+          fetch(url)
+          .then(res => res.text())
+          .then(html => {
+            const parser = new DOMParser();
+            const htmlDoc = parser.parseFromString(html, "text/html");
+            const note = htmlDoc.querySelector('main.content');
+            if (note !== null) {
+              // This should only happen for chapter cross references
+              // (since there is no id in the URL)
+              // remove the first header
+              if (note.children.length > 0 && note.children[0].tagName === "HEADER") {
+                note.children[0].remove();
+              }
+              const html = processXRef(null, note);
+              instance.setContent(html);
+            } 
+          }).finally(() => {
+            instance.enable();
+            instance.show();
+          });
+        }
+      }, function(instance) {
+      });
+    }
+        let selectedAnnoteEl;
+        const selectorForAnnotation = ( cell, annotation) => {
+          let cellAttr = 'data-code-cell="' + cell + '"';
+          let lineAttr = 'data-code-annotation="' +  annotation + '"';
+          const selector = 'span[' + cellAttr + '][' + lineAttr + ']';
+          return selector;
+        }
+        const selectCodeLines = (annoteEl) => {
+          const doc = window.document;
+          const targetCell = annoteEl.getAttribute("data-target-cell");
+          const targetAnnotation = annoteEl.getAttribute("data-target-annotation");
+          const annoteSpan = window.document.querySelector(selectorForAnnotation(targetCell, targetAnnotation));
+          const lines = annoteSpan.getAttribute("data-code-lines").split(",");
+          const lineIds = lines.map((line) => {
+            return targetCell + "-" + line;
+          })
+          let top = null;
+          let height = null;
+          let parent = null;
+          if (lineIds.length > 0) {
+              //compute the position of the single el (top and bottom and make a div)
+              const el = window.document.getElementById(lineIds[0]);
+              top = el.offsetTop;
+              height = el.offsetHeight;
+              parent = el.parentElement.parentElement;
+            if (lineIds.length > 1) {
+              const lastEl = window.document.getElementById(lineIds[lineIds.length - 1]);
+              const bottom = lastEl.offsetTop + lastEl.offsetHeight;
+              height = bottom - top;
+            }
+            if (top !== null && height !== null && parent !== null) {
+              // cook up a div (if necessary) and position it 
+              let div = window.document.getElementById("code-annotation-line-highlight");
+              if (div === null) {
+                div = window.document.createElement("div");
+                div.setAttribute("id", "code-annotation-line-highlight");
+                div.style.position = 'absolute';
+                parent.appendChild(div);
+              }
+              div.style.top = top - 2 + "px";
+              div.style.height = height + 4 + "px";
+              div.style.left = 0;
+              let gutterDiv = window.document.getElementById("code-annotation-line-highlight-gutter");
+              if (gutterDiv === null) {
+                gutterDiv = window.document.createElement("div");
+                gutterDiv.setAttribute("id", "code-annotation-line-highlight-gutter");
+                gutterDiv.style.position = 'absolute';
+                const codeCell = window.document.getElementById(targetCell);
+                const gutter = codeCell.querySelector('.code-annotation-gutter');
+                gutter.appendChild(gutterDiv);
+              }
+              gutterDiv.style.top = top - 2 + "px";
+              gutterDiv.style.height = height + 4 + "px";
+            }
+            selectedAnnoteEl = annoteEl;
+          }
+        };
+        const unselectCodeLines = () => {
+          const elementsIds = ["code-annotation-line-highlight", "code-annotation-line-highlight-gutter"];
+          elementsIds.forEach((elId) => {
+            const div = window.document.getElementById(elId);
+            if (div) {
+              div.remove();
+            }
+          });
+          selectedAnnoteEl = undefined;
+        };
+          // Handle positioning of the toggle
+      window.addEventListener(
+        "resize",
+        throttle(() => {
+          elRect = undefined;
+          if (selectedAnnoteEl) {
+            selectCodeLines(selectedAnnoteEl);
+          }
+        }, 10)
+      );
+      function throttle(fn, ms) {
+      let throttle = false;
+      let timer;
+        return (...args) => {
+          if(!throttle) { // first call gets through
+              fn.apply(this, args);
+              throttle = true;
+          } else { // all the others get throttled
+              if(timer) clearTimeout(timer); // cancel #2
+              timer = setTimeout(() => {
+                fn.apply(this, args);
+                timer = throttle = false;
+              }, ms);
+          }
+        };
+      }
+        // Attach click handler to the DT
+        const annoteDls = window.document.querySelectorAll('dt[data-target-cell]');
+        for (const annoteDlNode of annoteDls) {
+          annoteDlNode.addEventListener('click', (event) => {
+            const clickedEl = event.target;
+            if (clickedEl !== selectedAnnoteEl) {
+              unselectCodeLines();
+              const activeEl = window.document.querySelector('dt[data-target-cell].code-annotation-active');
+              if (activeEl) {
+                activeEl.classList.remove('code-annotation-active');
+              }
+              selectCodeLines(clickedEl);
+              clickedEl.classList.add('code-annotation-active');
+            } else {
+              // Unselect the line
+              unselectCodeLines();
+              clickedEl.classList.remove('code-annotation-active');
+            }
+          });
+        }
+    const findCites = (el) => {
+      const parentEl = el.parentElement;
+      if (parentEl) {
+        const cites = parentEl.dataset.cites;
+        if (cites) {
+          return {
+            el,
+            cites: cites.split(' ')
+          };
+        } else {
+          return findCites(el.parentElement)
+        }
+      } else {
+        return undefined;
+      }
+    };
+    var bibliorefs = window.document.querySelectorAll('a[role="doc-biblioref"]');
+    for (var i=0; i<bibliorefs.length; i++) {
+      const ref = bibliorefs[i];
+      const citeInfo = findCites(ref);
+      if (citeInfo) {
+        tippyHover(citeInfo.el, function() {
+          var popup = window.document.createElement('div');
+          citeInfo.cites.forEach(function(cite) {
+            var citeDiv = window.document.createElement('div');
+            citeDiv.classList.add('hanging-indent');
+            citeDiv.classList.add('csl-entry');
+            var biblioDiv = window.document.getElementById('ref-' + cite);
+            if (biblioDiv) {
+              citeDiv.innerHTML = biblioDiv.innerHTML;
+            }
+            popup.appendChild(citeDiv);
+          });
+          return popup.innerHTML;
+        });
+      }
+    }
+  });
+  </script>
+</div> <!-- /content -->
+
+
+
+
+</body></html>

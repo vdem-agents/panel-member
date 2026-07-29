@@ -1,0 +1,219 @@
+---
+title: "Human MAE Floor: Rounding Floor and Leave-One-Out Baseline"
+format:
+  html:
+    toc: true
+    toc-depth: 3
+    embed-resources: true
+    code-fold: true
+execute:
+  warning: false
+  message: false
+params:
+  n_boot: 500
+  years: !expr c(2019, 2023, 2024)
+  min_coders: 2
+---
+
+AI MAE against the panel mean has no natural zero. Even a hypothetical oracle coder
+constrained to integer ratings cannot always reproduce a fractional panel mean exactly,
+and the panel mean itself is a noisy estimate from a small panel. This notebook computes
+both floors from human data alone — no AI output required, so it can be finalized now:
+
+1. **Rounding floor** — the error a hypothetical oracle rater would post if it always
+   guessed `round(panel_mean)` exactly. A property of the panel means alone.
+2. **Human leave-one-out (LOO) MAE** — how far a real human coder's rating falls from the
+   panel mean of everyone else in their panel. Folds in panel-size noise as well as the
+   rounding constraint, since humans code the same integer scale. This is the benchmark
+   used in the agreement test and the intended reference line for the primary results
+   figure.
+
+Restricted to the 205 evaluable indicators (`config/indicator_sections.yaml` minus
+`v2exl_legitideolcr`, which has no panel-mean data in any year — see
+`preregistration/indicator-selection.md`). See `notes/loo-mae-computation.md` and
+`preregistration/evaluation-metrics.md` for full construction and rationale.
+
+---
+
+## 1. Setup
+
+```{r setup}
+library(tidyverse)
+library(rsample)
+library(gt)
+library(here)
+library(yaml)
+
+config <- read_yaml(here("config", "indicator_sections.yaml"))
+eval_indicators <- names(config)
+length(eval_indicators)
+
+data_dir <- here("data", "processed")
+```
+
+---
+
+## 2. Data loading
+
+```{r load-data}
+#| cache: true
+#| cache.lazy: false
+
+panel_means <- read_csv(file.path(data_dir, "panel_means.csv"), show_col_types = FALSE) |>
+  filter(indicator %in% eval_indicators, year %in% params$years)
+
+human_ratings <- read_csv(file.path(data_dir, "human_ratings.csv"), show_col_types = FALSE) |>
+  filter(indicator %in% eval_indicators, year %in% params$years)
+```
+
+### Sanity check: 206 config indicators → 205 evaluable
+
+```{r indicator-check}
+missing_indicators <- setdiff(eval_indicators, unique(panel_means$indicator))
+missing_indicators
+
+stopifnot(identical(missing_indicators, "v2exl_legitideolcr"))
+length(unique(panel_means$indicator))
+```
+
+---
+
+## 3. Rounding floor
+
+```{r rounding-floor}
+rounding_floor <- panel_means |>
+  mutate(rounding_error = abs(round(raw_mean) - raw_mean))
+
+rounding_floor_summary <- rounding_floor |>
+  group_by(year) |>
+  summarise(
+    mean_floor   = mean(rounding_error),
+    median_floor = median(rounding_error),
+    n_cyi        = n(),
+    .groups      = "drop"
+  )
+
+rounding_floor_summary
+```
+
+### Bootstrap CI (CYI-level resampling, per year)
+
+```{r rounding-floor-boot}
+set.seed(42)
+
+boot_mean <- function(df, col, times) {
+  bootstraps(df, times = times, apparent = TRUE) |>
+    mutate(stat = map_dbl(splits, \(s) mean(analysis(s)[[col]]))) |>
+    summarise(
+      mean_est = mean(stat[id == "Apparent"]),
+      ci_lo    = quantile(stat, 0.025),
+      ci_hi    = quantile(stat, 0.975)
+    )
+}
+
+floor_boot <- rounding_floor |>
+  group_by(year) |>
+  group_modify(~ boot_mean(.x, "rounding_error", params$n_boot)) |>
+  ungroup()
+
+floor_boot
+```
+
+---
+
+## 4. Human leave-one-out (LOO) MAE
+
+For each CYI with at least `r params$min_coders` coders, compute each coder's
+leave-one-out error — how far their rating falls from the panel mean with them removed —
+using the O(n) shortcut (`(panel_sum - rating) / (n_coders - 1)`) rather than recomputing
+the mean n times. See `notes/loo-mae-computation.md`.
+
+```{r human-loo}
+#| cache: true
+
+human_loo <- human_ratings |>
+  group_by(country_text_id, year, indicator) |>
+  filter(n() >= params$min_coders) |>
+  mutate(
+    panel_sum = sum(rating),
+    n_coders  = n(),
+    loo_mean  = (panel_sum - rating) / (n_coders - 1),
+    loo_error = abs(rating - loo_mean)
+  ) |>
+  summarise(
+    human_loo_mae = mean(loo_error),
+    n_coders      = first(n_coders),
+    .groups       = "drop"
+  )
+
+human_loo_summary <- human_loo |>
+  group_by(year) |>
+  summarise(
+    mean_loo_mae   = mean(human_loo_mae),
+    median_loo_mae = median(human_loo_mae),
+    n_cyi          = n(),
+    .groups        = "drop"
+  )
+
+human_loo_summary
+```
+
+### Bootstrap CI (CYI-level resampling, per year)
+
+```{r human-loo-boot}
+set.seed(42)
+
+loo_boot <- human_loo |>
+  group_by(year) |>
+  group_modify(~ boot_mean(.x, "human_loo_mae", params$n_boot)) |>
+  ungroup()
+
+loo_boot
+```
+
+---
+
+## 5. Combined summary
+
+```{r combined-summary}
+combined <- floor_boot |>
+  rename(rounding_floor = mean_est, floor_ci_lo = ci_lo, floor_ci_hi = ci_hi) |>
+  left_join(
+    loo_boot |> rename(human_loo_mae = mean_est, loo_ci_lo = ci_lo, loo_ci_hi = ci_hi),
+    by = "year"
+  ) |>
+  left_join(rounding_floor_summary |> select(year, floor_n_cyi = n_cyi), by = "year") |>
+  left_join(human_loo_summary |> select(year, loo_n_cyi = n_cyi), by = "year")
+
+combined |>
+  gt() |>
+  tab_header(
+    title    = "Human MAE floor: rounding floor vs. leave-one-out MAE",
+    subtitle = glue::glue("205-indicator evaluable universe; bootstrap B = {params$n_boot}")
+  ) |>
+  fmt_number(columns = where(is.numeric), decimals = 3) |>
+  fmt_integer(columns = c(floor_n_cyi, loo_n_cyi)) |>
+  cols_label(
+    year           = "Year",
+    rounding_floor = "Rounding floor",
+    floor_ci_lo    = "Floor 95% CI (lo)",
+    floor_ci_hi    = "Floor 95% CI (hi)",
+    human_loo_mae  = "Human LOO MAE",
+    loo_ci_lo      = "LOO 95% CI (lo)",
+    loo_ci_hi      = "LOO 95% CI (hi)",
+    floor_n_cyi    = "N (CYI, floor)",
+    loo_n_cyi      = "N (CYI, LOO ≥2 coders)"
+  )
+```
+
+These numbers are the two reference points for the metrics write-up:
+
+- The **rounding floor** is the theoretical minimum achievable by any integer-constrained
+  rater — it belongs in `preregistration/evaluation-metrics.md` and
+  `docs/experimental-design.md` as the answer to "why can't AI MAE be read against zero."
+- The **human LOO MAE** (2019 row) is the intended reference line for Figure 1 and the
+  benchmark for the registered agreement-test hypothesis (R10, `preregistration/key-hypotheses.md`).
+  The 2023 row is the confirmatory replication value for the same test.
+
+Both require no AI output and are therefore finalized as of this notebook — they will not
+change when inference results land.

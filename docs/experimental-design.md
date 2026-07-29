@@ -35,12 +35,16 @@ dropped to keep the design focused on information-source effects rather than an
 underpowered scale comparison. No frontier-model API calls are made anywhere in the
 design. Because there is a single base scale, the design carries no scale-effect claim;
 the four-model comparison is entirely about what each information-source treatment and its
-embedded (fine-tuned) analog contribute.
+embedded (fine-tuned) analog contribute. The primary 2019 analysis also includes a
+few-shot calibration ablation: the base model additionally runs the evidence, anonymized,
+and summarized conditions without the calibration block — three zero-shot cells matching
+the prompt structure the fine-tuned models use throughout — isolating the marginal
+contribution of the few-shot examples and giving the base-vs.-fine-tuned comparisons a
+prompt-structure-matched baseline.
 
 Beyond the primary 2019 analysis, robustness and validation work runs on 2023 and 2024
 data using the best-performing model from the primary analysis. A test-year replication
-reruns all four conditions on 2023 data. A few-shot calibration ablation reruns the
-evidence, anonymized, and summarized conditions without calibration examples. A unified
+reruns all four conditions on 2023 data. A unified
 mechanism-test section combines three pieces on 2023 data — re-identification, a name-swap
 test, and an information-shift test — that each rule out a different alternative
 explanation for the main result. An agreement test compares AI MAE to the average
@@ -60,9 +64,9 @@ illustration in the appendix.
 | Evidence | + raw section text + calibration examples | All | Source evidence + calibration anchors |
 | Anonymized | + anonymized section text + anonymized calibration examples | All | Country-identity stripped |
 | Summarized | + summarized section text + summarized calibration examples | All | Content fingerprints stripped, not just names |
-| Evidence, no calibration examples | + raw section text only | Best model | Evidence without anchors |
-| Anonymized, no calibration examples | + anonymized section text only | Best model | Anonymization without anchors |
-| Summarized, no calibration examples | + summarized section text only | Best model | Summarization without anchors |
+| Evidence, no calibration examples | + raw section text only | 70B base | Evidence without anchors |
+| Anonymized, no calibration examples | + anonymized section text only | 70B base | Anonymization without anchors |
+| Summarized, no calibration examples | + summarized section text only | 70B base | Summarization without anchors |
 
 The first four conditions are additive: Evidence adds source text and calibration examples
 to Codebook-only; Anonymized strips named entities from both the focal evidence and the
@@ -71,9 +75,10 @@ LLM-generated generic descriptions, stripping content fingerprints that survive
 named-entity anonymization. The no-calibration-examples conditions repeat the evidence,
 anonymization, and summarization manipulations without the calibration block, allowing a
 direct read on how much of the observed improvement comes from the source text versus the
-few-shot anchors. These three conditions run on the best-performing model only, on
-**2023 data**, as part of the robustness section — not the primary 2019 analysis. See the
-Few-shot calibration ablation section below.
+few-shot anchors. These three conditions run on the 70B base model only, on **2019
+data**, as part of the primary analysis — the contrast is defined only for the base
+model, since the fine-tuned rows are zero-shot in every condition by construction. See
+the Few-shot calibration ablation section below.
 
 ### Models
 
@@ -144,9 +149,9 @@ Freedom House maintained format and editorial continuity through 2024. See Part 
 
 ### Outcome
 
-**AI MAE**: `|AI_rating − panel_mean|` per CYI, bootstrapped at the CYI level (B=500). This is the primary metric for both the identification claims (comparing AI MAE across prompt conditions) and the substitution check in the robustness section (comparing AI MAE against the average human coder's deviation from the same panel mean). Because the panel mean is a fixed reference shared by all models, the model with the lowest AI MAE is also the model that performs best on the substitution check. An alternative — averaging the AI's absolute deviation from each individual coder — is always ≥ AI MAE by Jensen's inequality; the gap equals within-panel disagreement. That alternative conflates AI error with normal human variance and is uninterpretable across indicators with different panel dispersion. The LOO framework (used for the human benchmark, not the AI metric) is the principled operationalization of comparing the AI to individual coders. See `notes/evaluation-metrics.md`.
+**AI MAE**: `|AI_rating − panel_mean|` per CYI, bootstrapped at the CYI level (B=500). This is the primary metric for both the identification claims (comparing AI MAE across prompt conditions) and the substitution check in the robustness section (comparing AI MAE against the average human coder's leave-one-out deviation from the same panel mean). Because the panel mean is a fixed reference shared by all models, the model with the lowest AI MAE is also the model that performs best on the substitution check. An alternative — averaging the AI's absolute deviation from each individual coder — is always ≥ AI MAE by Jensen's inequality; the gap equals within-panel disagreement. That alternative conflates AI error with normal human variance and is uninterpretable across indicators with different panel dispersion. The LOO framework (used for the human benchmark, not the AI metric) is the principled operationalization of comparing the AI to individual coders. AI MAE has no natural zero to be read against — even a hypothetical oracle coder constrained to integer ratings cannot always reproduce a fractional panel mean exactly, and the panel mean itself carries small-panel sampling noise — so it should always be read against the human LOO MAE benchmark rather than zero; both floors are common to every condition and model, so they cancel out of the identification deltas below. See `preregistration/evaluation-metrics.md` for the full construction and the computed floor values.
 
-Primary display is a **coefficient plot** (Figure 1): rows = condition × model combinations, x-axis = aggregate AI MAE. The identification claims are reported as a **delta coefficient plot** (Figure 2): four panels showing Δ(Evidence − Codebook), Δ(Anonymized − Codebook), Δ(Anonymized − Evidence), and Δ(Summarized − Anonymized), with rows = models and a reference line at 0. Negative values indicate the added element improved calibration. Δ(Anonymized − Codebook) is the primary identification result: it shows that the information gain from source evidence holds even when country identity is stripped, ruling out anchoring bias as the source of apparent calibration. Δ(Anonymized − Evidence) shows the additional gain from removing country identity from text that already provides source evidence. Δ(Summarized − Anonymized) shows whether stripping residual content fingerprints — beyond named entities — yields a further calibration gain, or instead costs calibration by discarding evaluatively relevant specificity.
+Primary display is a **coefficient plot** (Figure 1): rows = condition × model combinations, x-axis = aggregate AI MAE, with a vertical reference line at the human LOO MAE (2019: 0.709; `analysis/05-human-mae-floor.qmd`) so each cell's distance from normal human disagreement is visible directly. The identification claims are reported as a **delta coefficient plot** (Figure 2): four panels showing Δ(Evidence − Codebook), Δ(Anonymized − Codebook), Δ(Anonymized − Evidence), and Δ(Summarized − Anonymized), with rows = models and a reference line at 0. Negative values indicate the added element improved calibration. Δ(Anonymized − Codebook) is the primary identification result: it shows that the information gain from source evidence holds even when country identity is stripped, ruling out anchoring bias as the source of apparent calibration. Δ(Anonymized − Evidence) shows the additional gain from removing country identity from text that already provides source evidence. Δ(Summarized − Anonymized) shows whether stripping residual content fingerprints — beyond named entities — yields a further calibration gain, or instead costs calibration by discarding evaluatively relevant specificity.
 
 Supplementary display: a module-level summary table (indicators grouped by V-Dem module, coverage tier noted) reporting condition × model AI MAE. Secondary: signed deviation by democracy quintile.
 
@@ -159,42 +164,29 @@ Supplementary display: a module-level summary table (indicators grouped by V-Dem
 | Codebook vs. Summarized (same model) | Combined value of summarized evidence and calibration examples |
 | Evidence vs. Anonymized (same model) | Marginal cost of exposing country identity in the evidence |
 | Anonymized vs. Summarized (same model) | Marginal cost of residual content fingerprints beyond named entities |
-| Evidence vs. Evidence, no calibration examples (best model) | Marginal value of the few-shot calibration block |
-| Anonymized vs. Anonymized, no calibration examples (best model) | Marginal value of calibration examples under anonymization |
-| Summarized vs. Summarized, no calibration examples (best model) | Marginal value of calibration examples under summarization |
+| Evidence vs. Evidence, no calibration examples (70B base) | Marginal value of the few-shot calibration block |
+| Anonymized vs. Anonymized, no calibration examples (70B base) | Marginal value of calibration examples under anonymization |
+| Summarized vs. Summarized, no calibration examples (70B base) | Marginal value of calibration examples under summarization |
 | Anonymized (70B base) vs. FT-anon; Summarized (70B base) vs. FT-summ | Marginal value of embedding calibration in model weights vs. prompt |
 | Quintile signed deviation | Regime-type anchoring bias |
 
-## Part 2: Robustness and validation analyses
+### Few-shot calibration ablation (2019, 70B base)
 
-Robustness and validation analyses use the best-performing model from the primary 2019
-analysis (of the four: 70B base, FT-raw, FT-anon, FT-summ). Four analyses run on 2023
-data; a fifth reruns all four primary conditions on 2024 Freedom-House-only data as a
-structural holdout. The analytical logic is explicit: test-year replication and the
-few-shot ablation retest generalization and prompt-structure sensitivity; the
-mechanism-test section and the 2024 holdout each rule out the same alternative explanation
-— model priors rather than evidence-reading — for the main identification result, one
-experimentally and one structurally.
+The base model's evidence, anonymized, and summarized conditions all include a few-shot
+calibration block — five examples spanning the 0–4 scale — alongside the source evidence.
+This ablation isolates what those examples contribute over the source evidence alone.
 
-### Test-year replication (2023)
-
-The winning model from the primary analysis is re-run on 2023 data under all four primary
-conditions. The delta estimates from Figure 2 — Δ(Evidence − Codebook), Δ(Anonymized −
-Codebook), Δ(Anonymized − Evidence), and Δ(Summarized − Anonymized) — are recomputed for
-2023 and compared to the 2019 estimates. If the identification results replicate in
-direction and magnitude, the decomposition generalizes beyond the primary test year. Source
-documents for 2023 are already ingested and confirmed clean (issue #14, closed 2026-07-12).
-
-### Few-shot calibration ablation (2023)
-
-The evidence, anonymized, and summarized conditions all include a few-shot calibration
-block — five examples spanning the 0–4 scale — alongside the source evidence. This
-ablation isolates what those examples contribute over the source evidence alone.
-
-The best-performing model from the primary 4×4 analysis is re-run on **2023 data** under
-three additional conditions: evidence, anonymized, and summarized text, each without
-calibration examples. Source documents for 2023 are already ingested and confirmed clean,
-so no additional ingestion is required.
+The 70B base model runs on **2019 data** under three additional conditions: evidence,
+anonymized, and summarized text, each without calibration examples — the same `-zeroshot`
+prompt structure the fine-tuned models use in all their non-codebook cells. The few-shot
+comparators are the base model's primary-condition cells, so only the three zero-shot
+cells are added. The ablation is defined only for the base model: the fine-tuned rows are
+zero-shot by construction, so a few-shot-vs.-zero-shot contrast does not exist for them.
+The three cells serve double duty: they isolate the few-shot block's marginal contribution
+(hypothesis 7), and they give the base-vs.-fine-tuned comparisons a
+prompt-structure-matched baseline — base zero-shot vs. FT isolates what fine-tuning
+contributes with the prompt held fixed, while base few-shot vs. base zero-shot isolates
+what the prompt block contributes.
 
 | Comparison | What it isolates |
 |---|---|
@@ -220,6 +212,26 @@ appendix (see `notes/mechanism-test-design.md`).
 condition (Panel A), the anonymized condition (Panel B), and the summarized condition
 (Panel C) — each showing bootstrapped CIs around the AI MAE difference. Reference line at
 0; negative values indicate few-shot improves on zero-shot.
+
+## Part 2: Robustness and validation analyses
+
+Robustness and validation analyses use the best-performing model from the primary 2019
+analysis (of the four: 70B base, FT-raw, FT-anon, FT-summ). Three analyses run on 2023
+data; a fourth reruns all four primary conditions on 2024 Freedom-House-only data as a
+structural holdout. The analytical logic is explicit: the test-year replication retests
+generalization; the
+mechanism-test section and the 2024 holdout each rule out the same alternative explanation
+— model priors rather than evidence-reading — for the main identification result, one
+experimentally and one structurally.
+
+### Test-year replication (2023)
+
+The winning model from the primary analysis is re-run on 2023 data under all four primary
+conditions. The delta estimates from Figure 2 — Δ(Evidence − Codebook), Δ(Anonymized −
+Codebook), Δ(Anonymized − Evidence), and Δ(Summarized − Anonymized) — are recomputed for
+2023 and compared to the 2019 estimates. If the identification results replicate in
+direction and magnitude, the decomposition generalizes beyond the primary test year. Source
+documents for 2023 are already ingested and confirmed clean (issue #14, closed 2026-07-12).
 
 ### Mechanism tests (2023)
 
@@ -307,12 +319,13 @@ bootstrapped CIs: all country-years, stable, and transition-adjacent. Reference 
 ### Agreement test (2023)
 
 The best-performing model from the primary 2019 analysis is evaluated on 2023 data by
-comparing its AI MAE against the human panel MAE — the average deviation of individual
-human coders from the same panel mean. Both are computed against the full panel mean for
-each CYI. If AI MAE is at or below the human panel MAE, the AI deviates from the panel
-consensus by no more than a typical human coder. This is reported for all four primary
-conditions to show whether the result holds across the full prompt design, not only under
-the best condition.
+comparing its AI MAE against the human LOO MAE — the average deviation of individual
+human coders from the mean of the *rest* of their panel (leave-one-out; each coder is
+scored against a mean that excludes them, the same way the AI is scored against a mean it
+was never part of; see `preregistration/evaluation-metrics.md`). If AI MAE is at or below
+the human LOO MAE, the AI deviates from the panel consensus by no more than a typical
+human coder. This is reported for all four primary conditions to show whether the result
+holds across the full prompt design, not only under the best condition.
 
 ### 2024 Freedom-House-only temporal holdout
 
@@ -448,7 +461,7 @@ diagnostics, not findings of the current paper.
 | Variable | Definition | Role |
 |---|---|---|
 | AI MAE | `mean(\|AI_rating − panel_mean\|)` per CYI, bootstrap CIs | Calibration primary |
-| Human panel MAE | `mean(\|rating_i − panel_mean\|)` averaged across coders per CYI | Substitution benchmark (robustness) |
+| Human LOO MAE | `mean(\|rating_i − mean(panel \ {i})\|)` averaged across coders per CYI | Substitution benchmark (robustness) |
 | Δ(Evidence − Codebook) MAE | `AI MAE_evidence − AI MAE_codebook`, per model, bootstrap CIs | Identification claim 1: value of source evidence |
 | Δ(Anonymized − Codebook) MAE | `AI MAE_anon − AI MAE_codebook`, per model, bootstrap CIs | Identification claim 2: clean information gain free of country-identity anchoring |
 | Δ(Anonymized − Evidence) MAE | `AI MAE_anon − AI MAE_evidence`, per model, bootstrap CIs | Identification claim 3: cost of exposing country identity |
@@ -475,7 +488,9 @@ Full list: `initial-exploration/explore-indicators/02-indicator-selection.html`.
 ### Evaluation set (~205 indicators)
 
 The full universe of all mapped Type C indicators in `config/indicator_sections.yaml`
-(~205 total), all eligible country-years — no indicator sampling. Same set for all four
+(206 entries; 205 of which have any panel-mean data to evaluate against — see
+`preregistration/indicator-selection.md` for the `v2exl_legitideolcr` exclusion), all
+eligible country-years — no indicator sampling. Same set for all four
 models — a prerequisite for clean cross-model comparison. Spans all three coverage tiers,
 preserving the tier-gradient as a within-study moderating variable. Section mapping
 complete per issue #1 (closed 2026-07-11). Few-shot examples locked
@@ -496,7 +511,7 @@ results by both dimensions.
 ## Pre-registration
 
 The following hypotheses, sample decisions, and analysis choices are locked before any
-LLM calls are made or v15 coder-level data is accessed for the evaluation pool. Model
+confirmatory inference is run or v15 coder-level data is accessed for the evaluation pool. Model
 weights, fine-tuning hyperparameters, and adapter checkpoint identifiers are recorded in
 the replication package rather than here.
 
@@ -572,8 +587,9 @@ The three identification comparisons yield directional predictions:
   (issue #14, closed 2026-07-12).
 - **Structural holdout year**: 2024, Freedom House only, best-performing model only.
   Requires a Freedom-House-only 2023 companion run for a clean within-source comparison.
-- **k=1 replacement pool**: country-years in the 2019 evaluation pool with ≥8 distinct
-  coders. No sampling cap.
+- **k=1 replacement pool**: country-years in the 2023 evaluation pool with ≤8 distinct
+  coders — the same thin-panel population used in the Thin-panel augmentation analysis
+  (Part 3) and the divergence-threshold derivation, below. No sampling cap.
 
 ### Primary outcomes
 
@@ -593,10 +609,11 @@ secondary calibration summaries.
   shared, indicator-stratified ~100K-case subsample of the ~898K-row pool, with early
   stopping on held-out validation loss and epoch extension over the same pool rather than
   a fixed epoch count. See `notes/finetuning-epochs.md`.
-- **No-calibration-example conditions**: run only after the best-performing model is
-  identified from the primary 4×4 results, on 2023 data as part of the robustness section.
-  Uses the identical prompt structure as the evidence, anonymized, and summarized
-  conditions minus the calibration block. Not part of the primary 2019 analysis.
+- **No-calibration-example conditions**: run on the 70B base model, on 2019 data, as part
+  of the primary analysis. Uses the identical prompt structure as the evidence, anonymized,
+  and summarized conditions minus the calibration block — the same zero-shot structure the
+  fine-tuned models use in all non-codebook conditions. Defined only for the base model,
+  since the fine-tuned rows never carry a calibration block.
 - **Anonymization**: system prompt for the anonymization agent locked before any anonymized
   condition runs; applied identically to focal evidence and calibration examples.
 - **Summarization**: system prompt for the summarizer agent locked before any summarized
