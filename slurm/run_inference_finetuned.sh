@@ -13,11 +13,17 @@
 #   VARIANT=anon sbatch slurm/run_inference_finetuned.sh
 #   VARIANT=summ sbatch slurm/run_inference_finetuned.sh
 #
+# CONDITIONS defaults to all four FT conditions (codebook evidence-zeroshot
+# anonymized-zeroshot summarized-zeroshot); override to run a subset, e.g.:
+#   VARIANT=raw CONDITIONS=codebook sbatch slurm/run_inference_finetuned.sh
+#
 #SBATCH --job-name=pm-ft-infer
 #SBATCH --partition=superChip
 #SBATCH --gres=gpu:gh200:1
 #SBATCH --cpus-per-task=32
-#SBATCH --mem=200G
+#SBATCH --mem=400G
+# See slurm/run_coding_llama70b.sh for the 200G->400G rationale (page-cache thrashing
+# under --safetensors-load-strategy prefetch); same base model load, same fix applies.
 #SBATCH --time=20:00:00
 #SBATCH --output=logs/ft_infer_%j.out
 #SBATCH --error=logs/ft_infer_%j.err
@@ -28,6 +34,7 @@ mkdir -p logs
 # ── Configuration ──────────────────────────────────────────────────────────────
 YEAR=${YEAR:-2019}
 VARIANT=${VARIANT:-anon}    # raw | anon | summ
+CONDITIONS=${CONDITIONS:-"codebook evidence-zeroshot anonymized-zeroshot summarized-zeroshot"}
 MODEL_PATH=/scratch/ejtgrp/models/llama-3.3-70b-instruct
 ADAPTER_NAME=llama-70b-vdem-ft-${VARIANT}    # must match vdem_config.py
 ADAPTER_PATH=/scratch/ejtgrp/panel-member/data/output/adapters/${ADAPTER_NAME}
@@ -74,6 +81,7 @@ ulimit -n 65536
 python3 -m pipeline.run_finetuned_batch \
     --year       "$YEAR" \
     --variant    "$VARIANT" \
+    --conditions $CONDITIONS \
     --workers    16 \
     --output-dir "$OUTPUT_DIR"
 

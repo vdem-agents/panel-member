@@ -13,7 +13,13 @@
 #SBATCH --partition=superChip
 #SBATCH --gres=gpu:gh200:1
 #SBATCH --cpus-per-task=32
-#SBATCH --mem=200G
+#SBATCH --mem=400G
+# 200G caused severe page-cache thrashing during `--safetensors-load-strategy prefetch`
+# model loading (job 73491302, 2026-07-24): the ~140GB checkpoint prefetch evicts its own
+# earlier pages under the 200G cgroup ceiling before shard deserialization catches up,
+# forcing repeat disk reads — shard load time climbed from ~48s/it to 256s/it and rising.
+# Same root cause as the summ fine-tune OOM (200G -> 400G fix); see
+# notes/finetune-eval-oom-diagnosis.md.
 #SBATCH --time=20:00:00
 #SBATCH --output=logs/llama70b_%j.out
 #SBATCH --error=logs/llama70b_%j.err
@@ -23,7 +29,7 @@ mkdir -p logs
 
 # ── Configuration ──────────────────────────────────────────────────────────────
 YEAR=${YEAR:-2019}
-CONDITION=${CONDITION:-evidence}    # codebook | evidence | anonymized | summarized
+CONDITION=${CONDITION:-evidence}    # codebook | evidence | anonymized | summarized | {evidence,anonymized,summarized}-zeroshot
 MODEL_KEY=llama-70b-local
 MODEL_PATH=/scratch/ejtgrp/models/llama-3.3-70b-instruct
 VLLM_PORT=8000

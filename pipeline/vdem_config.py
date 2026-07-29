@@ -74,9 +74,11 @@ LLM_CONFIGS = {
 # Valid prompt conditions for the 4-condition primary experiment.
 CONDITIONS = ["codebook", "evidence", "anonymized", "summarized"]
 
-# Zero-shot ablation conditions (2023 robustness only, best base model only).
+# Zero-shot ablation conditions (2019 primary year, 70B base only).
 # Same as the primary conditions but with the few-shot calibration block omitted.
-# Run only after the best base model is identified from the primary results.
+# Part of the primary analysis: isolates the few-shot block's contribution and gives
+# the FT-vs-base comparison a prompt-structure-matched baseline. The few-shot
+# comparators are the base model's primary-condition runs.
 CONDITIONS_ZEROSHOT = ["evidence-zeroshot", "anonymized-zeroshot", "summarized-zeroshot"]
 
 # Conditions for fine-tuned model inference.

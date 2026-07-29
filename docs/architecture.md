@@ -198,9 +198,9 @@ Motivation: a pilot re-identification experiment (98 CYIs) found that named-enti
 | `evidence` | raw section text | yes | 70B base only |
 | `anonymized` | anonymized text | yes (anonymized) | 70B base only |
 | `summarized` | summarized text | yes (summarized) | 70B base only |
-| `evidence-zeroshot` | raw section text | none | FT-raw; also 2023 ablation (best model) |
-| `anonymized-zeroshot` | anonymized text | none | FT-anon; also 2023 ablation (best model) |
-| `summarized-zeroshot` | summarized text | none | FT-summ; also 2023 ablation (best model) |
+| `evidence-zeroshot` | raw section text | none | FT-raw; also 2019 few-shot ablation (70B base) |
+| `anonymized-zeroshot` | anonymized text | none | FT-anon; also 2019 few-shot ablation (70B base) |
+| `summarized-zeroshot` | summarized text | none | FT-summ; also 2019 few-shot ablation (70B base) |
 | `finetuned-raw` | raw section text | none | Training-data-assembly shorthand; maps to `evidence-zeroshot` at inference |
 | `finetuned-anon` | anonymized text | none | Training-data-assembly shorthand; maps to `anonymized-zeroshot` at inference |
 | `finetuned-summ` | summarized text | none | Training-data-assembly shorthand; maps to `summarized-zeroshot` at inference |
