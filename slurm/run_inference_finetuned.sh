@@ -44,8 +44,15 @@ OUTPUT_DIR=data/output/runs
 
 # ── Environment ────────────────────────────────────────────────────────────────
 source ~/miniforge3/etc/profile.d/conda.sh
-module --ignore_cache load cuda/13.1
-NVCC_BIN=$(which nvcc 2>/dev/null || true); [ -n "$NVCC_BIN" ] && export CUDA_HOME="$(dirname "$(dirname "$NVCC_BIN")")"
+module load cuda/13
+# module load cuda/13 doesn't provide a compiler on GH200 nodes (confirmed
+# 2026-07-30, on the only partition this script targets: only CUDA
+# runtime/driver installed, no nvcc anywhere in the system tree). Use the
+# vllm conda env's own bundled nvcc (pip package nvidia-cu13) directly --
+# flashinfer needs it for on-the-fly kernel builds.
+export CUDA_HOME="$HOME/miniforge3/envs/vllm/lib/python3.11/site-packages/nvidia/cu13"
+export PATH="$CUDA_HOME/bin:$PATH"
+NVCC_BIN="$CUDA_HOME/bin/nvcc"
 echo "DEBUG: hostname=$(hostname)"
 echo "DEBUG: NVCC_BIN=${NVCC_BIN:-<empty>}"
 echo "DEBUG: CUDA_HOME=${CUDA_HOME:-<unset>}"
