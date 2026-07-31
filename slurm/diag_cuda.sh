@@ -26,4 +26,8 @@ echo "--- find nvcc under /usr and /opt ---"
 find /usr /opt -maxdepth 6 -iname "nvcc" 2>/dev/null
 echo "--- find cuda* dirs under /usr and /opt ---"
 find /usr /opt -maxdepth 5 -iname "cuda*" -type d 2>/dev/null
+echo "--- ls /usr/local/cuda-13.3/bin ---"
+ls -la /usr/local/cuda-13.3/bin/ 2>&1
+echo "--- ls /c1/apps/cuda/cuda-13.1/bin ---"
+ls -la /c1/apps/cuda/cuda-13.1/bin/ 2>&1
 echo "done."
