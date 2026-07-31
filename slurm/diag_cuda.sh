@@ -30,4 +30,15 @@ echo "--- ls /usr/local/cuda-13.3/bin ---"
 ls -la /usr/local/cuda-13.3/bin/ 2>&1
 echo "--- ls /c1/apps/cuda/cuda-13.1/bin ---"
 ls -la /c1/apps/cuda/cuda-13.1/bin/ 2>&1
+echo "--- module purge, then module load cuda/13, then which nvcc ---"
+module purge 2>&1
+module load cuda/13 2>&1
+which nvcc 2>&1
+NVCC_PATH=$(which nvcc 2>/dev/null)
+if [ -n "$NVCC_PATH" ]; then
+    echo "--- ls $(dirname "$NVCC_PATH") ---"
+    ls -la "$(dirname "$NVCC_PATH")" 2>&1
+else
+    echo "nvcc still not found after module load cuda/13"
+fi
 echo "done."
