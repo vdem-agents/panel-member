@@ -4,7 +4,7 @@
 
 ### Title
 
-Reading the Evidence or Reading the Country: An Identification Strategy for AI-Assisted Coding of V-Dem Democracy Indicators
+Reading the Evidence or Reading the Country? AI-Assisted Coding of V-Dem Democracy Indicators
 
 ### Research Questions
 
