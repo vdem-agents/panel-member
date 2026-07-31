@@ -18,5 +18,7 @@ venv/
 *_files/
 analysis/*.html
 docs/*.html
+paper/*.html
+preregistration/*.html
 .ipynb_checkpoints/
 logs/
