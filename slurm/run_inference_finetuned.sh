@@ -64,6 +64,14 @@ export VLLM_API_KEY="local"
 export HF_HUB_OFFLINE=1
 export TRANSFORMERS_OFFLINE=1
 
+# The env's pip CUDA toolkit is version-skewed: bundled nvcc is 13.2 but its
+# cuda.h is CUDA_VERSION 13000 (13.0), so flashinfer's runtime JIT of the sampler
+# kernel dies in cccl ("CUDA compiler and CUDA toolkit headers are incompatible").
+# Confirmed via slurm/diag_cuda.sh (job 73559366). Only the sampler needs nvcc --
+# model load and attention graphs compile fine -- so route sampling through vLLM's
+# native Torch path and skip the JIT entirely.
+export VLLM_USE_FLASHINFER_SAMPLER=0
+
 # ── Start vLLM with LoRA adapter ───────────────────────────────────────────────
 VLLM_PYTHON=~/miniforge3/envs/vllm/bin/python
 export PATH="$HOME/miniforge3/envs/vllm/bin:$PATH"
