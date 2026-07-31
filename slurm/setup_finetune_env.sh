@@ -38,7 +38,7 @@ set -eo pipefail
 mkdir -p logs
 
 source ~/miniforge3/etc/profile.d/conda.sh
-module load cuda/13
+module load cuda/13.1
 
 if conda env list | grep -qE '^finetune\s'; then
     echo "=== finetune env already exists — skipping creation ==="
