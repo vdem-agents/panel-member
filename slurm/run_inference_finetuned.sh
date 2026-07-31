@@ -4,9 +4,10 @@
 # Starts vLLM with the LoRA adapter loaded via --lora-modules, runs the batch,
 # then shuts vLLM down. The adapter name must match the model name in vdem_config.py.
 #
-# The base model weights (~140GB) and adapter (~500MB) must both be available
-# on scratch before submitting. Run setup_models.sh for the base model and
-# rsync the adapter from ~/panel-member-archive/adapters/ after fine-tuning.
+# The base model weights (~140GB) must be on scratch before submitting (run
+# setup_models.sh). The adapter (~800MB) is read directly from the home-directory
+# archive (~/panel-member-archive/adapters/) written by run_finetune.sh — home
+# isn't purged like scratch, so there's no reason to stage a scratch copy too.
 #
 # Submit:
 #   VARIANT=raw  sbatch slurm/run_inference_finetuned.sh
@@ -37,7 +38,7 @@ VARIANT=${VARIANT:-anon}    # raw | anon | summ
 CONDITIONS=${CONDITIONS:-"codebook evidence-zeroshot anonymized-zeroshot summarized-zeroshot"}
 MODEL_PATH=/scratch/ejtgrp/models/llama-3.3-70b-instruct
 ADAPTER_NAME=llama-70b-vdem-ft-${VARIANT}    # must match vdem_config.py
-ADAPTER_PATH=/scratch/ejtgrp/panel-member/data/output/adapters/${ADAPTER_NAME}
+ADAPTER_PATH=$HOME/panel-member-archive/adapters/${ADAPTER_NAME}
 VLLM_PORT=8000
 OUTPUT_DIR=data/output/runs
 
@@ -45,6 +46,9 @@ OUTPUT_DIR=data/output/runs
 source ~/miniforge3/etc/profile.d/conda.sh
 module load cuda/13
 NVCC_BIN=$(which nvcc 2>/dev/null || true); [ -n "$NVCC_BIN" ] && export CUDA_HOME="$(dirname "$(dirname "$NVCC_BIN")")"
+echo "DEBUG: hostname=$(hostname)"
+echo "DEBUG: NVCC_BIN=${NVCC_BIN:-<empty>}"
+echo "DEBUG: CUDA_HOME=${CUDA_HOME:-<unset>}"
 set -a; source .env; set +a
 conda activate panel-member
 
