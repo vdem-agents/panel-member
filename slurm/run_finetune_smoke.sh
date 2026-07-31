@@ -58,7 +58,7 @@ OUTPUT_DIR=data/output/adapters/smoke-${VARIANT}
 
 # ── Environment ────────────────────────────────────────────────────────────────
 source ~/miniforge3/etc/profile.d/conda.sh
-module load cuda/13.1
+module load cuda/13
 conda activate finetune
 export PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True
 

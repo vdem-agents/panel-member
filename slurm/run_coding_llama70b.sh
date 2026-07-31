@@ -37,7 +37,7 @@ OUTPUT=data/output/runs/${CONDITION}_${YEAR}_llama70b.jsonl
 
 # ── Environment ────────────────────────────────────────────────────────────────
 source ~/miniforge3/etc/profile.d/conda.sh
-module load cuda/13.1
+module load cuda/13
 NVCC_BIN=$(which nvcc 2>/dev/null || true); [ -n "$NVCC_BIN" ] && export CUDA_HOME="$(dirname "$(dirname "$NVCC_BIN")")"
 set -a; source .env; set +a
 conda activate panel-member
