@@ -41,4 +41,9 @@ if [ -n "$NVCC_PATH" ]; then
 else
     echo "nvcc still not found after module load cuda/13"
 fi
+echo "--- bundled nvcc inside the vllm conda env ---"
+BUNDLED_NVCC="$HOME/miniforge3/envs/vllm/lib/python3.11/site-packages/nvidia/cu13/bin/nvcc"
+ls -la "$BUNDLED_NVCC" 2>&1
+echo "--- nvcc --version (bundled) ---"
+"$BUNDLED_NVCC" --version 2>&1
 echo "done."
