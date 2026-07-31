@@ -44,7 +44,7 @@ OUTPUT_DIR=data/output/runs
 
 # ── Environment ────────────────────────────────────────────────────────────────
 source ~/miniforge3/etc/profile.d/conda.sh
-module load cuda/13
+module load cuda/13.1
 NVCC_BIN=$(which nvcc 2>/dev/null || true); [ -n "$NVCC_BIN" ] && export CUDA_HOME="$(dirname "$(dirname "$NVCC_BIN")")"
 echo "DEBUG: hostname=$(hostname)"
 echo "DEBUG: NVCC_BIN=${NVCC_BIN:-<empty>}"
