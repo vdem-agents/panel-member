@@ -1,0 +1,285 @@
+---
+title: "2019 results — main-text figures and descriptive tables"
+format:
+  html:
+    toc: true
+    toc-depth: 2
+    embed-resources: true
+    code-fold: true
+    fig-width: 8
+    fig-height: 5
+execute:
+  warning: false
+  message: false
+---
+
+Main-text deliverable for the 2019 results. Everything here reads the precomputed bootstrap
+bundle written by `analysis/06-bootstrap-metrics-2019.qmd`; **no bootstrap is rerun**. The
+two figures are the reader-facing core — **Figure 1** (the MAE landscape) and **Figure 2**
+(divergence from the codebook-only prior) — followed by the descriptive tables that frame the
+opening discussion. Formal per-hypothesis tests live in `paper/appendix-2019.qmd`.
+
+Primary metric is **AI MAE against the panel mean**, read against the human leave-one-out
+(LOO) MAE. SESOI = half the 2019 rounding floor; a delta whose CI sits inside ±SESOI is not
+substantively meaningful.
+
+## Setup — load helpers and the bundle
+
+```{r setup}
+library(tidyverse)
+library(gt)
+library(glue)
+
+# paper/ lives inside the panel-member git repo, so the root is the enclosing .git.
+proj_root <- rprojroot::find_root(rprojroot::is_git_root)
+
+# Static vocabulary + paired-delta machinery (single source of truth).
+source(file.path(proj_root, "R", "bootstrap_helpers.R"))
+
+# Unpack the precomputed results into this environment: boot_ci, boot_results, human_ref,
+# persist_ref, sesoi, rounding_floor, movement_bins. paired_delta()/cell_series() read
+# `boot_results` and `sesoi` from here by default, so unpacking is what makes them run.
+list2env(readRDS(file.path(proj_root, "data", "derived", "bootstrap_2019.rds")),
+         environment())
+
+glue("bundle loaded · SESOI ±{round(sesoi, 3)} · human LOO {round(human_ref$human_mae, 3)} · ",
+     "persistence(round) {round(persist_ref$persist_mae, 3)}")
+```
+
+---
+
+## Figure 1 — Synthetic coder performance (the MAE landscape)
+
+One panel, all seven cells on a common AI-MAE axis: the base condition ladder (Cb→Ev→An→Su)
+and the fine-tuned diagonal, against the **Naive model** (persistence copy-forward) and
+**human LOO** rails. Two dynamics read straight off it — the *centrifugal* base ladder (adding
+evidence and stripping identity pushes the base model rightward, away from consensus) and the
+*centripetal* fine-tuned cluster (training pulls the models onto the human LOO line).
+
+```{r}
+#| label: fig-1
+#| fig-width: 8
+#| fig-height: 4.8
+
+land <- bind_rows(
+  boot_ci |>
+    filter(model_key == "llama-70b",
+           condition %in% c("codebook", "evidence", "anonymized", "summarized")) |>
+    mutate(family = "Base",
+           row = recode(condition, codebook = "Codebook", evidence = "Raw Text",
+                        anonymized = "Anonymized", summarized = "Summarized")),
+  boot_ci |>
+    semi_join(ft_diag, by = c("model_key", "condition")) |>
+    mutate(family = "Fine-tuned",
+           row = recode(model_key,
+             "llama-70b-ft-raw"  = "FT · Raw Text",
+             "llama-70b-ft-anon" = "FT · Anonymized",
+             "llama-70b-ft-summ" = "FT · Summarized"))
+) |>
+  mutate(
+    family = factor(family, levels = c("Base", "Fine-tuned")),
+    # first level plots at the bottom: FT block below, base ladder above
+    row = factor(row, levels = c("FT · Summarized", "FT · Anonymized", "FT · Raw Text",
+                                 "Summarized", "Anonymized", "Raw Text", "Codebook"))
+  )
+
+ggplot(land, aes(ai_mae, row, color = family)) +
+  # ±SESOI of the human LOO level: the band within which a synthetic cell's error is not
+  # substantively distinguishable from the human coder's. Reference lines and bands are capped
+  # just above the top row (y = 7.3) so the two labels sit in the clean strip above the plot.
+  annotate("rect", xmin = human_ref$human_mae - sesoi, xmax = human_ref$human_mae + sesoi,
+           ymin = -Inf, ymax = 7.3, fill = "grey85", alpha = 0.55) +
+  annotate("segment", x = persist_ref$persist_mae, xend = persist_ref$persist_mae,
+           y = -Inf, yend = 7.3, linetype = "dashed", color = "grey40") +
+  annotate("segment", x = human_ref$human_mae, xend = human_ref$human_mae,
+           y = -Inf, yend = 7.3, linetype = "longdash", color = "grey40") +
+  annotate("text", x = persist_ref$persist_mae, y = 6.8, label = "Naive model",
+           color = "grey40", size = 2.9, hjust = -0.07, vjust = 0.5) +
+  annotate("text", x = human_ref$human_mae, y = 7.5, label = "±SESOI of human LOO MAE",
+           color = "grey40", size = 2.9, hjust = 0.5, vjust = 0.5) +
+  # faint separator between the base block (top 4) and the FT block (bottom 3)
+  geom_hline(yintercept = 3.5, color = "grey85", linewidth = 0.4) +
+  geom_errorbar(aes(xmin = ai_lo, xmax = ai_hi), orientation = "y",
+                width = 0.20, linewidth = 0.7) +
+  geom_point(size = 2) +
+  scale_color_manual(values = family_pal, name = NULL) +
+  scale_y_discrete() +
+  scale_x_continuous(expand = expansion(mult = c(0.02, 0.08), add = c(0.02, 0))) +
+  coord_cartesian(clip = "off") +
+  labs(x = "AI Mean Absolute Error", y = NULL,
+       title = "Figure 1 — Synthetic coder performance on V-Dem ratings",
+       subtitle = "2019 · mean absolute error relative to panel mean (lower = closer to consensus)") +
+  theme_minimal(base_size = 12) +
+  theme(legend.position = "top", legend.justification = "left",
+        panel.grid.major.y = element_blank(), plot.title.position = "plot",
+        plot.title = element_text(face = "bold"))
+```
+
+---
+
+## Figure 2 — Divergence from the codebook-only prior
+
+A single ruler: the codebook-only base condition is the reference (0), and every other thing —
+the base de-identified conditions, the fine-tuned diagonal, and the human coder — is its own
+paired ΔMAE from that pure-prior floor, read against ±SESOI. Reading top to bottom: the base
+conditions fan *right* as identity is stripped (An, Su past SESOI), the fine-tuned models sit
+near the prior, and the human coder marks where a real held-out rater lands relative to the
+same anchor. (The delta for each cell is formed *within* each bootstrap draw and then quantiled,
+so these CIs are the honest paired test — not the overlap of two level bars.)
+
+```{r}
+#| label: fig-2
+#| fig-width: 8
+#| fig-height: 4.6
+
+vs_cb_all <- bind_rows(
+  paired_delta("llama-70b", "evidence",   "llama-70b", "codebook", "Ev") |> mutate(kind = "Base"),
+  paired_delta("llama-70b", "anonymized", "llama-70b", "codebook", "An") |> mutate(kind = "Base"),
+  paired_delta("llama-70b", "summarized", "llama-70b", "codebook", "Su") |> mutate(kind = "Base"),
+  paired_delta("llama-70b-ft-raw",  "evidence-zeroshot",   "llama-70b", "codebook", "FT-raw")  |> mutate(kind = "Fine-tuned"),
+  paired_delta("llama-70b-ft-anon", "anonymized-zeroshot", "llama-70b", "codebook", "FT-anon") |> mutate(kind = "Fine-tuned"),
+  paired_delta("llama-70b-ft-summ", "summarized-zeroshot", "llama-70b", "codebook", "FT-summ") |> mutate(kind = "Fine-tuned")
+)
+
+# human LOO − codebook-only, paired per draw off boot_results (human_mae = the LOO for that draw).
+loo_draws <- boot_results |>
+  filter(model_key == "llama-70b", condition == "codebook") |>
+  transmute(id, delta = human_mae - ai_mae)
+loo_vs_cb <- tibble(
+  label = "human LOO", kind = "Human coder",
+  est   = loo_draws$delta[loo_draws$id == "Apparent"],
+  lo    = quantile(loo_draws$delta[loo_draws$id != "Apparent"], 0.025),
+  hi    = quantile(loo_draws$delta[loo_draws$id != "Apparent"], 0.975),
+  p_gt  = mean(loo_draws$delta[loo_draws$id != "Apparent"] > 0),
+  sesoi_out = abs(loo_draws$delta[loo_draws$id == "Apparent"]) > sesoi
+)
+
+vs_cb_all <- bind_rows(vs_cb_all, loo_vs_cb) |>
+  mutate(
+    kind  = factor(kind, levels = c("Base", "Fine-tuned", "Human coder")),
+    # first level plots at the bottom: human at the very bottom, FT block, then base ladder on top
+    label = factor(label, levels = rev(c("Ev", "An", "Su",
+                                         "FT-raw", "FT-anon", "FT-summ", "human LOO")))
+  )
+
+ggplot(vs_cb_all, aes(est, label, color = kind)) +
+  annotate("rect", xmin = -sesoi, xmax = sesoi, ymin = -Inf, ymax = Inf,
+           fill = "grey85", alpha = 0.55) +
+  geom_vline(xintercept = 0, linetype = "dashed", color = "grey40") +
+  # separators: base ladder (top 3) | FT block (middle 3) | human coder (bottom 1)
+  geom_hline(yintercept = 4.5, color = "grey85", linewidth = 0.4) +
+  geom_hline(yintercept = 1.5, color = "grey85", linewidth = 0.4) +
+  geom_errorbar(aes(xmin = lo, xmax = hi), orientation = "y", width = 0.18, linewidth = 0.7) +
+  geom_point(size = 3) +
+  scale_color_manual(values = c(family_pal, "Human coder" = "grey25"), name = NULL) +
+  scale_x_continuous(expand = expansion(mult = c(0.04, 0.06))) +
+  labs(x = "ΔMAE vs. codebook-only prior", y = NULL,
+       title = "Figure 2 — Divergence from the codebook-only prior",
+       subtitle = glue("2019 · paired ΔMAE from the codebook-only baseline ",
+                       "(right = more divergent than the pure prior) · grey band = ±SESOI {round(sesoi, 3)}")) +
+  theme_minimal(base_size = 12) +
+  theme(legend.position = "top", legend.justification = "left",
+        panel.grid.major.y = element_blank(), plot.title.position = "plot",
+        plot.title = element_text(face = "bold"))
+```
+
+Companion numbers for Figure 2 (the divergence-from-prior estimates plotted above):
+
+```{r fig-2-readout}
+vs_cb_all |>
+  arrange(desc(as.integer(label))) |>
+  transmute(
+    Cell     = label,
+    Family   = kind,
+    ΔMAE     = est,
+    `95% CI` = glue("[{round(lo, 3)}, {round(hi, 3)}]"),
+    `Beyond SESOI?` = if_else(sesoi_out, "yes", "no")
+  ) |>
+  gt() |>
+  tab_header(
+    title    = "Divergence from the codebook-only prior",
+    subtitle = glue("Paired CYI bootstrap · SESOI = ±{round(sesoi, 3)}")
+  ) |>
+  fmt_number(columns = ΔMAE, decimals = 3)
+```
+
+**Reading these as preliminary.** Both figures are descriptive, single-year (2019) estimates on
+a metric — static MAE against the panel mean — that rewards central tendency: the naive
+copy-forward sits closest of all, and the pool is dominated by country-years that barely move
+between waves, where no independent rater can beat a copy-forward. Whether the synthetic coders
+earn their keep on the country-years that actually *move* — where a persistence copier is
+structurally blind and independent reading should pay — is what the movement split below
+motivates, and what the preregistered R2 transition test decides on 2023 with a pre-fixed flag.
+
+---
+
+## Descriptive tables (opening discussion)
+
+### Table 1 — Nobody beats copy-forward on the full 2019 pool
+
+The natural naive baseline is **persistence**: predict the 2019 panel mean with the (rounded)
+2018 panel mean. V-Dem panel means are very sticky year to year, so on the full pool a trivial
+copy-forward sits closest of all — below both the base model and a typical human coder. This is
+the fact that reframes the whole exercise: MAE against a sticky aggregate rewards redundant
+predictors and penalizes independent observation.
+
+```{r table-1-leaderboard}
+persist_cont <- weighted.mean(movement_bins$persist_cont, movement_bins$n)  # continuous persistence
+
+leaderboard <- bind_rows(
+  tibble(Predictor = "Persistence (2018 mean, rounded)",
+         MAE = persist_ref$persist_mae, lo = persist_ref$lo, hi = persist_ref$hi),
+  boot_ci |> filter(model_key == "llama-70b", condition == "codebook") |>
+    transmute(Predictor = "Base : Codebook-only", MAE = ai_mae, lo = ai_lo, hi = ai_hi),
+  boot_ci |> filter(model_key == "llama-70b", condition == "evidence") |>
+    transmute(Predictor = "Base : Evidence", MAE = ai_mae, lo = ai_lo, hi = ai_hi),
+  tibble(Predictor = "Human LOO (typical held-out coder)",
+         MAE = human_ref$human_mae, lo = human_ref$lo, hi = human_ref$hi)
+)
+
+leaderboard |>
+  transmute(Predictor, MAE, `95% CI` = glue("[{round(lo, 3)}, {round(hi, 3)}]")) |>
+  gt() |>
+  tab_header(
+    title    = "Panel-mean MAE, 2019 (lower = closer to the panel mean)",
+    subtitle = glue("Persistence beats every rater on the full pool · ",
+                    "continuous persistence MAE ≈ {round(persist_cont, 3)} (integer-fair shown)")
+  ) |>
+  fmt_number(columns = MAE, decimals = 3)
+```
+
+### Table 2 — The reversal is a stable-cell artifact (exploratory)
+
+Split the pool by how far the panel mean actually moved 2018→2019. On the ~87% of cells that
+barely move, persistence is unbeatable and reading evidence only adds noise that pulls the
+rating off the sticky mean (base:Ev > base:Cb). On the cells that genuinely move (|Δ| ≥ 1.0),
+the base model *beats* persistence and evidence helps most exactly there. The aggregate
+"evidence hurts" is a stable-cell artifact.
+
+**Exploratory / hypothesis-generating only.** The bin edge is the realized 2018→2019 change, so
+persistence's per-bin MAE is mechanical (it is just the bin's mean |Δ|), and the split is
+endogenous. The confirmatory movement test is preregistered R2 on 2023 with the ERT transition
+flag fixed in advance — this table is not a confirmatory 2019 result.
+
+```{r table-2-movement}
+movement_bins |>
+  transmute(
+    `|Δ| bin (2018→2019)` = bin,
+    n,
+    `Persistence (cont.)` = persist_cont,
+    `Base : Codebook`     = base_cb_mae,
+    `Base : Evidence`     = base_ev_mae
+  ) |>
+  gt() |>
+  tab_header(
+    title    = "Panel-mean MAE by 2018→2019 movement bin (≥2-coder pool)",
+    subtitle = "Exploratory. Persistence (cont.) = the bin's mean |Δ|; evidence helps only where the mean moves"
+  ) |>
+  fmt_number(columns = c(`Persistence (cont.)`, `Base : Codebook`, `Base : Evidence`), decimals = 3) |>
+  fmt_number(columns = n, decimals = 0)
+```
+
+The throughline: a rater's value is being an *independent observation*, not minimizing MAE
+against a quantity the past already predicts. "Worse than persistence" is not a deployment
+failure — it is what any honest independent coder looks like on a low-variance target, and it is
+why the study's real question is decided conditional on movement (R2), not on the full pool.
