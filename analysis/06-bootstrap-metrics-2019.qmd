@@ -1,0 +1,853 @@
+---
+title: "2019 bootstrap metrics — compute & prototype figures"
+format:
+  html:
+    toc: true
+    toc-depth: 3
+    embed-resources: true
+    code-fold: true
+    fig-width: 8
+    fig-height: 5
+execute:
+  warning: false
+  message: false
+params:
+  n_boot: 2000
+  year: 2019
+  min_coders: 2
+---
+
+This is the **2019 compute + prototype document**. Everything here is built on 2019 data;
+the 2023/2024 holdout work is a separate document, so the selected model is never validated
+on the data that selected it. The figure/table plan lives in `paper/figures-and-tables.md`.
+
+This document owns the expensive bootstrap and serializes its results (§9) to
+`data/derived/bootstrap_2019.rds`. The paper deliverables — `paper/results-2019.qmd`
+(main-text figures + descriptive tables) and `paper/appendix-2019.qmd` (the formal prereg
+tables) — load that bundle and never rerun the bootstrap. The figures below are working
+prototypes kept here as a lab notebook; the clean re-homed versions live in `paper/`.
+
+Primary metric is **AI MAE against the panel mean**, read against the human leave-one-out
+(LOO) MAE — the typical error of a randomly held-out human coder against the rest of
+their panel. Bootstrap CIs use `r params$n_boot` resamples at the country-year-indicator
+(CYI) level.
+
+---
+
+## 1. Setup
+
+```{r setup}
+library(tidyverse)
+library(rsample)
+library(gt)
+library(here)
+library(glue)
+library(patchwork)   # install.packages("patchwork") if missing — used for the 2-panel figures
+
+# `params` is injected by knitr from the YAML header only at render time. Running chunks
+# interactively there is no `params`, so define the same defaults when it's absent. At
+# render the guard is skipped (knitr has already set params), so the file works both ways.
+if (!exists("params")) {
+  params <- list(n_boot = 2000, year = 2019, min_coders = 2)
+}
+
+# Resolve the panel-member project root robustly, whatever the session's working dir is.
+# First walk UP to a .git (wd inside the project); if that fails because the session is
+# rooted in the parent workspace (v-dem-coding, which holds panel-member as a subdir),
+# step DOWN into panel-member. Beats here()'s cached root, which pins to wherever `here`
+# first loaded and is the usual cause of "dir.exists(runs_dir) is not TRUE".
+find_panel_member_root <- function() {
+  up <- tryCatch(rprojroot::find_root(rprojroot::is_git_root), error = function(e) NA_character_)
+  if (!is.na(up)) return(up)
+  down <- file.path(getwd(), "panel-member")
+  if (dir.exists(file.path(down, ".git"))) return(down)
+  stop("Could not locate the panel-member project root from working dir: ", getwd())
+}
+proj_root <- find_panel_member_root()
+
+# Shared vocabulary + paired-delta machinery (model_labels, family_pal, canon_col,
+# ft_diag, cell_series(), paired_delta()). Single source of truth for both this
+# compute doc and the paper deliverables.
+source(file.path(proj_root, "R", "bootstrap_helpers.R"))
+
+data_dir    <- file.path(proj_root, "data", "processed")
+runs_dir    <- file.path(proj_root, "data", "output", "runs")
+derived_dir <- file.path(proj_root, "data", "derived")
+dir.create(derived_dir, showWarnings = FALSE, recursive = TRUE)
+```
+
+---
+
+## 2. Data loading
+
+All JSONL files in `runs_dir` (one per model × condition). Each record carries
+`country`, `year`, `indicator`, `condition`, `model_key`, `rating`.
+
+```{r load-data}
+#| cache: true
+#| cache.lazy: false
+
+if (!dir.exists(runs_dir)) {
+  stop("runs dir not found:\n  ", runs_dir,
+       "\n  (working dir: ", getwd(), ", project root: ", proj_root, ")",
+       "\nDrop the 19 JSONL files in <project>/data/output/runs/ and confirm the root above.")
+}
+run_files <- list.files(runs_dir, pattern = "\\.jsonl$", full.names = TRUE)
+if (length(run_files) == 0) stop("No .jsonl files in ", runs_dir)
+
+# Records carry nested fields (sources, section_keys, tokens) and large text blobs
+# (justification, raw_response); a naive fromJSON |> bind_rows() trips on the ragged nested
+# arrays. Pull only the six scalar columns we need via stream_in, which reads NDJSON
+# column-wise and tolerates the nested fields we then drop. Base runs are logged under the
+# production vLLM key `llama-70b-local`; normalize the `-local` suffix back to `llama-70b`.
+needed_cols <- c("country", "year", "indicator", "condition", "model_key", "rating")
+
+read_run <- function(f) {
+  con <- file(f, "r")
+  on.exit(close(con))
+  jsonlite::stream_in(con, verbose = FALSE) |>
+    as_tibble() |>
+    select(all_of(needed_cols))
+}
+
+ai_raw <- run_files |>
+  map(read_run) |>
+  bind_rows() |>
+  mutate(model_key = str_remove(model_key, "-local$"))
+
+# Human panel means — country_text_id, year, indicator, raw_mean, n_coders, theta_quintile
+panel_means <- read_csv(file.path(data_dir, "panel_means.csv"), show_col_types = FALSE)
+
+# Individual coder ratings — country_text_id, iso3, year, indicator, coder_id, rating
+human_ratings <- read_csv(file.path(data_dir, "human_ratings.csv"), show_col_types = FALSE)
+```
+
+**Load diagnostic** — confirm all expected model × condition cells are present before
+trusting anything downstream. The 2019 grid should show 19 cells: base (7 = 4 primary +
+3 zero-shot ablation) and 12 FT (3 variants × 4 conditions).
+
+```{r load-diagnostic}
+ai_raw |>
+  filter(year == params$year) |>
+  count(model_key, condition) |>
+  mutate(model = recode(model_key, !!!model_labels)) |>
+  arrange(model_key, condition) |>
+  gt() |>
+  tab_header(
+    title    = glue("Cells present in runs/ for {params$year}"),
+    subtitle = glue("{n_distinct(paste(ai_raw$model_key, ai_raw$condition))} model×condition cells loaded")
+  )
+```
+
+---
+
+## 3. Metric construction
+
+### Human LOO baseline (per CYI)
+
+For each CYI with ≥ `r params$min_coders` coders, each coder's leave-one-out error is how
+far their rating falls from the panel mean computed with them removed.
+
+```{r human-loo}
+#| cache: true
+
+human_loo <- human_ratings |>
+  filter(year == params$year) |>
+  group_by(country_text_id, year, indicator) |>
+  filter(n() >= params$min_coders) |>
+  mutate(
+    panel_sum = sum(rating),
+    n_coders  = n(),
+    loo_mean  = (panel_sum - rating) / (n_coders - 1),
+    loo_error = abs(rating - loo_mean)
+  ) |>
+  summarise(
+    human_loo_mae = mean(loo_error),
+    n_coders      = first(n_coders),
+    .groups       = "drop"
+  )
+```
+
+### AI metrics (per CYI × model × condition)
+
+AI error is against the canonical panel mean (`raw_mean`). Restricted to CYIs that carry
+a human LOO floor, so AI and human are compared on the same cases.
+
+```{r ai-metrics}
+ai_metrics <- ai_raw |>
+  filter(year == params$year) |>
+  rename(country_text_id = country) |>
+  inner_join(
+    select(panel_means, country_text_id, year, indicator, raw_mean),
+    by = c("country_text_id", "year", "indicator")
+  ) |>
+  inner_join(
+    select(human_loo, country_text_id, year, indicator, human_loo_mae),
+    by = c("country_text_id", "year", "indicator")
+  ) |>
+  mutate(
+    ai_error = abs(rating - raw_mean), #calling ai_error here because not weighted yet
+    col      = canon_col(condition),
+    family   = recode(model_key, !!!model_family)
+  )
+```
+
+---
+
+## 4. Bootstrap CIs (grid-wide, reused by every figure)
+
+Resample CYIs with replacement; for each draw compute AI MAE per cell and the human LOO
+MAE, plus their difference. The draw is carried into the aggregation as per-CYI **counts**
+(`w`) via an `inner_join`, so a CYI drawn *k* times is weighted *k* — the multiplicity a
+bootstrap requires. (A filtering `semi_join` here would answer only "was this CYI drawn?"
+and collapse every draw to a ~63% subsample.) This block is deliberately general — every
+figure reads its cells and CIs off `boot_ci` / `boot_results`.
+
+```{r bootstrap}
+#| cache: true
+#| cache.lazy: false
+
+set.seed(42)
+
+# One row per unique CYI (shared human floor), then resample CYIs.
+cyi_pool <- ai_metrics |>
+  distinct(country_text_id, year, indicator, human_loo_mae)
+
+boots <- bootstraps(cyi_pool, times = params$n_boot, apparent = TRUE)
+
+boot_results <- boots |>
+  mutate(
+    result = map(splits, \(s) {
+      # Draw of CYIs with replacement -> collapse to per-CYI draw counts. The weight `w`
+      # carries the multiplicity a bootstrap needs
+      cyi_w <- analysis(s) |>
+        count(country_text_id, year, indicator, name = "w")
+      ai_metrics |>
+        inner_join(cyi_w, by = c("country_text_id", "year", "indicator")) |>
+        group_by(model_key, condition) |>
+        summarise(
+          ai_mae    = weighted.mean(ai_error, w),
+          human_mae = weighted.mean(human_loo_mae, w),
+          diff      = weighted.mean(ai_error, w) - weighted.mean(human_loo_mae, w),
+          .groups   = "drop"
+        )
+    })
+  ) |>
+  # Drop the `splits` list-column before unnesting: otherwise every unnested row
+  # carries a full copy of its resample-split object (each referencing the whole
+  # data), which blows serialization/caching past the 32 GB vector limit. Only
+  # id + the summarised stats are ever used downstream.
+  select(id, result) |>
+  unnest(result)
+
+# Per-cell AI MAE point estimate (apparent draw) + percentile CI on the AI–human diff.
+boot_ci <- boot_results |>
+  group_by(model_key, condition) |>
+  summarise(
+    # Percentile CIs from the resamples (id != "Apparent"). Compute these FIRST, while
+    # `ai_mae`/`diff` still refer to the full bootstrap columns — the point-estimate lines
+    # below reuse those names, and any reference after the reassignment would collapse to a
+    # scalar (the degenerate-CI bug).
+    ai_lo     = quantile(ai_mae[id != "Apparent"], 0.025),
+    ai_hi     = quantile(ai_mae[id != "Apparent"], 0.975),
+    diff_lo   = quantile(diff[id != "Apparent"], 0.025),
+    diff_hi   = quantile(diff[id != "Apparent"], 0.975),
+    p_gt_zero = mean(diff[id != "Apparent"] > 0),
+    # Point estimates from the apparent (full-sample) draw — defined last.
+    ai_mae    = mean(ai_mae[id == "Apparent"]),
+    diff      = mean(diff[id == "Apparent"]),
+    .groups   = "drop"
+  )
+
+# Human LOO reference line: one value per bootstrap draw (constant across cells).
+human_ref <- boot_results |>
+  group_by(id) |>
+  summarise(human_mae = first(human_mae), .groups = "drop") |>
+  summarise(
+    lo        = quantile(human_mae[id != "Apparent"], 0.025),
+    hi        = quantile(human_mae[id != "Apparent"], 0.975),
+    human_mae = mean(human_mae[id == "Apparent"])
+  )
+
+# `boots` holds 2001 resample splits, each embedding a copy of cyi_pool; it is only
+# needed to build boot_results above. Drop it before the chunk caches so the cache
+# doesn't try to serialize a >2 GB object. Only cyi_pool (needed downstream by the
+# reference rails) and the small summaries are kept.
+rm(boots)
+gc(verbose = FALSE)
+```
+
+---
+
+## 4b. Reference rails (persistence, SESOI) + paired-delta helper
+
+Two things every figure below reuses. **Persistence** = the 2018 panel mean carried to 2019
+and *rounded to an integer*, so it is an apples-to-apples "naive coder" against the
+integer-emitting AI (~98% of 2019 CYIs have a 2018 value; the rail is computed over those).
+**SESOI** = half the 2019 rounding floor (the irreducible integer-vs-fractional-mean error a
+perfect rater still absorbs); any delta whose CI sits inside ±SESOI is "not substantively
+meaningful" per the prereg.
+
+```{r reference-rails}
+#| cache: true
+#| cache.lazy: false
+
+# 2018 → 2019 copy-forward, over the same >=2-coder CYI pool used everywhere else.
+pm18 <- panel_means |>
+  filter(year == 2018) |>
+  select(country_text_id, indicator, mean_2018 = raw_mean)
+
+persist_cyi <- cyi_pool |>
+  left_join(
+    panel_means |> filter(year == params$year) |>
+      select(country_text_id, indicator, raw_mean),
+    by = c("country_text_id", "indicator")
+  ) |>
+  left_join(pm18, by = c("country_text_id", "indicator")) |>
+  mutate(persist_err = abs(round(mean_2018) - raw_mean))
+
+# Rounding floor and SESOI (half the floor), on the same pool.
+rounding_floor <- mean(abs(round(persist_cyi$raw_mean) - persist_cyi$raw_mean))
+sesoi <- rounding_floor / 2
+
+# Persistence rail: bootstrap MAE on the same CYI pool (its own resample; a reference line
+# only needs a point + CI, not matched draws with the per-cell bootstrap).
+set.seed(42)
+pb <- bootstraps(persist_cyi, times = params$n_boot, apparent = TRUE)
+pv <- map_dbl(pb$splits, \(s) mean(analysis(s)$persist_err, na.rm = TRUE))
+persist_ref <- tibble(
+  lo          = quantile(pv[pb$id != "Apparent"], 0.025),
+  hi          = quantile(pv[pb$id != "Apparent"], 0.975),
+  persist_mae = pv[pb$id == "Apparent"]
+)
+
+# Drop the resample rset before the chunk caches (same >2 GB serialization trap as `boots`).
+rm(pb)
+gc(verbose = FALSE)
+
+glue("rounding floor = {round(rounding_floor,3)} · SESOI (±) = {round(sesoi,3)} · ",
+     "persistence MAE = {round(persist_ref$persist_mae,3)} ",
+     "[{round(persist_ref$lo,3)}, {round(persist_ref$hi,3)}]")
+```
+
+```{r delta-helper}
+# `ft_diag`, `cell_series()` and `paired_delta()` now live in R/bootstrap_helpers.R
+# (sourced in the setup chunk) so the paper docs share the same pairing logic. Their
+# defaults read `boot_results` and `sesoi` from this environment, both defined above.
+```
+
+---
+
+## 5. Figure 1 — Synthetic coder performance (the MAE landscape)
+
+One panel, all seven cells on a common AI-MAE axis: the base condition ladder (Cb→Ev→An→Su)
+and the fine-tuned diagonal, against the **Naive model** (persistence copy-forward) and
+**human LOO** rails. Two dynamics read straight off it — the *centrifugal* base ladder (adding
+evidence and stripping identity pushes the base model rightward, away from consensus) and the
+*centripetal* fine-tuned cluster (training pulls the models onto the human LOO line).
+
+```{r}
+#| label: fig-landscape
+#| fig-width: 8
+#| fig-height: 4.8
+
+land <- bind_rows(
+  boot_ci |>
+    filter(model_key == "llama-70b",
+           condition %in% c("codebook", "evidence", "anonymized", "summarized")) |>
+    mutate(family = "Base",
+           row = recode(condition, codebook = "Codebook", evidence = "Raw Text",
+                        anonymized = "Anonymized", summarized = "Summarized")),
+  boot_ci |>
+    semi_join(ft_diag, by = c("model_key", "condition")) |>
+    mutate(family = "Fine-tuned",
+           row = recode(model_key,
+             "llama-70b-ft-raw"  = "FT · Raw Text",
+             "llama-70b-ft-anon" = "FT · Anonymized",
+             "llama-70b-ft-summ" = "FT · Summarized"))
+) |>
+  mutate(
+    family = factor(family, levels = c("Base", "Fine-tuned")),
+    # first level plots at the bottom: FT block below, base ladder above
+    row = factor(row, levels = c("FT · Summarized", "FT · Anonymized", "FT · Raw Text",
+                                 "Summarized", "Anonymized", "Raw Text", "Codebook"))
+  )
+
+ggplot(land, aes(ai_mae, row, color = family)) +
+  # ±SESOI of the human LOO level: the band within which a synthetic cell's error is not
+  # substantively distinguishable from the human coder's — same grey-band idiom SESOI uses in
+  # Figs 2/2b/3. Reference lines and bands are capped just above the top row (y = 7.55) so the
+  # two labels can sit in the clean strip above the plotting region (below the legend), with no
+  # line or shading crossing the text. No CI band around human LOO — the dashed line alone marks it.
+  annotate("rect", xmin = human_ref$human_mae - sesoi, xmax = human_ref$human_mae + sesoi,
+           ymin = -Inf, ymax = 7.3, fill = "grey85", alpha = 0.55) +
+  annotate("segment", x = persist_ref$persist_mae, xend = persist_ref$persist_mae,
+           y = -Inf, yend = 7.3, linetype = "dashed", color = "grey40") +
+  annotate("segment", x = human_ref$human_mae, xend = human_ref$human_mae,
+           y = -Inf, yend = 7.3, linetype = "longdash", color = "grey40") +
+  annotate("text", x = persist_ref$persist_mae, y = 6.8, label = "Naive model",
+           color = "grey40", size = 2.9, hjust = -0.07, vjust = 0.5) +
+  annotate("text", x = human_ref$human_mae, y = 7.5, label = "±SESOI of human LOO MAE",
+           color = "grey40", size = 2.9, hjust = 0.5, vjust = 0.5) +
+  # faint separator between the base block (top 4) and the FT block (bottom 3)
+  geom_hline(yintercept = 3.5, color = "grey85", linewidth = 0.4) +
+  geom_errorbar(aes(xmin = ai_lo, xmax = ai_hi), orientation = "y",
+                width = 0.20, linewidth = 0.7) +
+  geom_point(size = 2) +
+  scale_color_manual(values = family_pal, name = NULL) +
+  scale_y_discrete() +   # default (non-stretching) expansion; keeps the axis discrete
+  scale_x_continuous(expand = expansion(mult = c(0.02, 0.08), add = c(0.02, 0))) +   # small left room so the Naive line isn't flush against the edge
+  coord_cartesian(clip = "off") +
+  labs(x = "AI Mean Absolute Error", y = NULL,
+       title = "Figure 1 — Synthetic coder performance on V-Dem ratings",
+       subtitle = "2019 · mean absolute error relative to panel mean (lower = closer to consensus)") +
+  theme_minimal(base_size = 12) +
+  theme(legend.position = "top", legend.justification = "left",
+        panel.grid.major.y = element_blank(), plot.title.position = "plot",
+        plot.title = element_text(face = "bold"))
+```
+
+---
+
+## 6. Figure 2 — Base model: reading the evidence or reading the country
+
+The evidence-*centrifugal* dynamic, organized around the two anchors. **Top group** = each
+condition vs. the **Codebook** prior (does adding text / de-identification move the base model
+off its prior?). **Bottom group** = the de-identified conditions vs. full **Evidence** (does
+removing identity hurt with the text held fixed?). The story: adding text barely moves it
+(Ev−Cb inside SESOI); stripping *identity* is what pushes it out (An−Cb, Su−Cb, An−Ev beyond
+SESOI). B4 (Su−An) is dropped to the appendix.
+
+```{r}
+#| label: fig-base-deltas
+#| fig-width: 8
+#| fig-height: 4.0
+
+base_deltas <- bind_rows(
+  paired_delta("llama-70b", "evidence",   "llama-70b", "codebook", "B1 · Ev−Cb"),
+  paired_delta("llama-70b", "anonymized", "llama-70b", "codebook", "B2 · An−Cb"),
+  paired_delta("llama-70b", "summarized", "llama-70b", "codebook", "Su−Cb (descr.)"),
+  paired_delta("llama-70b", "anonymized", "llama-70b", "evidence", "B3 · An−Ev"),
+  paired_delta("llama-70b", "summarized", "llama-70b", "evidence", "Su−Ev (descr.)")
+) |>
+  mutate(label = factor(label, levels = rev(c(
+    "B1 · Ev−Cb", "B2 · An−Cb", "Su−Cb (descr.)", "B3 · An−Ev", "Su−Ev (descr.)"))))
+
+ggplot(base_deltas, aes(est, label)) +
+  annotate("rect", xmin = -sesoi, xmax = sesoi, ymin = -Inf, ymax = Inf,
+           fill = "grey85", alpha = 0.55) +
+  geom_vline(xintercept = 0, linetype = "dashed", color = "grey40") +
+  # separator between the "vs Codebook" group (top 3) and the "vs Evidence" group (bottom 2)
+  geom_hline(yintercept = 2.5, color = "grey85", linewidth = 0.4) +
+  geom_errorbar(aes(xmin = lo, xmax = hi), orientation = "y",
+                width = 0.15, linewidth = 0.7, color = "#0072B2") +
+  geom_point(size = 3, color = "#0072B2") +
+  scale_x_continuous(expand = expansion(mult = c(0.06, 0.06))) +
+  labs(x = "ΔMAE · right = higher error · grey band = ±SESOI", y = NULL,
+       title = "Figure 2 — Base model: reading the evidence or reading the country",
+       subtitle = glue("2019 · top: vs Codebook · bottom: vs Evidence · paired · SESOI ±{round(sesoi, 3)}")) +
+  theme_minimal(base_size = 12) +
+  theme(panel.grid.major.y = element_blank(), plot.title.position = "plot",
+        plot.title = element_text(face = "bold"))
+```
+
+### B-series readout
+
+```{r fig2-readout}
+base_deltas |>
+  transmute(
+    Contrast = label,
+    ΔMAE     = est,
+    `95% CI` = glue("[{round(lo, 3)}, {round(hi, 3)}]"),
+    `P(Δ>0)` = p_gt,
+    `Beyond SESOI?` = if_else(sesoi_out, "yes", "no")
+  ) |>
+  gt() |>
+  tab_header(
+    title    = "Base-model identification contrasts",
+    subtitle = glue("Paired CYI bootstrap · SESOI = ±{round(sesoi, 3)}")
+  ) |>
+  fmt_number(columns = c(ΔMAE, `P(Δ>0)`), decimals = 3)
+```
+
+---
+
+## 6b. Figure 2b — Everything against the base:Cb prior (SESOI ruler)
+
+A single ruler that collapses the Fig 2 / Fig 3-B idea: **base:Cb is the reference (0)** and
+every other thing — the base de-identified conditions, the fine-tuned diagonal, and the human
+coder — is its own paired ΔMAE from that pure-prior floor, read against ±SESOI. Reading top to
+bottom: the base conditions fan *right* as identity is stripped (An, Su past SESOI), the FT
+models sit near the prior, and the human coder marks where a real held-out rater lands relative
+to the same anchor.
+
+```{r}
+#| label: fig-vs-prior-all
+#| fig-width: 8
+#| fig-height: 4.6
+
+vs_cb_all <- bind_rows(
+  paired_delta("llama-70b", "evidence",   "llama-70b", "codebook", "Ev") |> mutate(kind = "Base"),
+  paired_delta("llama-70b", "anonymized", "llama-70b", "codebook", "An") |> mutate(kind = "Base"),
+  paired_delta("llama-70b", "summarized", "llama-70b", "codebook", "Su") |> mutate(kind = "Base"),
+  paired_delta("llama-70b-ft-raw",  "evidence-zeroshot",   "llama-70b", "codebook", "FT-raw")  |> mutate(kind = "Fine-tuned"),
+  paired_delta("llama-70b-ft-anon", "anonymized-zeroshot", "llama-70b", "codebook", "FT-anon") |> mutate(kind = "Fine-tuned"),
+  paired_delta("llama-70b-ft-summ", "summarized-zeroshot", "llama-70b", "codebook", "FT-summ") |> mutate(kind = "Fine-tuned")
+)
+
+# human LOO − base:Cb, paired per draw off boot_results (human_mae = the LOO for that draw).
+loo_draws <- boot_results |>
+  filter(model_key == "llama-70b", condition == "codebook") |>
+  transmute(id, delta = human_mae - ai_mae)
+loo_vs_cb <- tibble(
+  label = "human LOO", kind = "Human coder",
+  est   = loo_draws$delta[loo_draws$id == "Apparent"],
+  lo    = quantile(loo_draws$delta[loo_draws$id != "Apparent"], 0.025),
+  hi    = quantile(loo_draws$delta[loo_draws$id != "Apparent"], 0.975),
+  p_gt  = mean(loo_draws$delta[loo_draws$id != "Apparent"] > 0),
+  sesoi_out = abs(loo_draws$delta[loo_draws$id == "Apparent"]) > sesoi
+)
+
+vs_cb_all <- bind_rows(vs_cb_all, loo_vs_cb) |>
+  mutate(
+    kind  = factor(kind, levels = c("Base", "Fine-tuned", "Human coder")),
+    # first level plots at the bottom: human at the very bottom, FT block, then base ladder on top
+    label = factor(label, levels = rev(c("Ev", "An", "Su",
+                                         "FT-raw", "FT-anon", "FT-summ", "human LOO")))
+  )
+
+ggplot(vs_cb_all, aes(est, label, color = kind)) +
+  annotate("rect", xmin = -sesoi, xmax = sesoi, ymin = -Inf, ymax = Inf,
+           fill = "grey85", alpha = 0.55) +
+  geom_vline(xintercept = 0, linetype = "dashed", color = "grey40") +
+  # separators: base ladder (top 3) | FT block (middle 3) | human coder (bottom 1)
+  geom_hline(yintercept = 4.5, color = "grey85", linewidth = 0.4) +
+  geom_hline(yintercept = 1.5, color = "grey85", linewidth = 0.4) +
+  geom_errorbar(aes(xmin = lo, xmax = hi), orientation = "y", width = 0.18, linewidth = 0.7) +
+  geom_point(size = 3) +
+  scale_color_manual(values = c(family_pal, "Human coder" = "grey25"), name = NULL) +
+  scale_x_continuous(expand = expansion(mult = c(0.04, 0.06))) +
+  labs(x = "ΔMAE vs. base:Cb · right = more divergent than the pure prior · grey band = ±SESOI",
+       y = NULL,
+       title = "Figure 2b — Everything against the base:Cb prior",
+       subtitle = glue("2019 · base conditions, FT diagonal & human coder vs base:Cb · paired · SESOI ±{round(sesoi, 3)}")) +
+  theme_minimal(base_size = 12) +
+  theme(legend.position = "top", legend.justification = "left",
+        panel.grid.major.y = element_blank(), plot.title.position = "plot",
+        plot.title = element_text(face = "bold"))
+```
+
+```{r fig2b-readout}
+vs_cb_all |>
+  arrange(desc(as.integer(label))) |>
+  transmute(
+    Cell     = label,
+    Family   = kind,
+    ΔMAE     = est,
+    `95% CI` = glue("[{round(lo, 3)}, {round(hi, 3)}]"),
+    `P(Δ>0)` = p_gt,
+    `Beyond SESOI?` = if_else(sesoi_out, "yes", "no")
+  ) |>
+  gt() |>
+  tab_header(
+    title    = "Divergence from base:Cb",
+    subtitle = glue("Paired CYI bootstrap · SESOI = ±{round(sesoi, 3)}")
+  ) |>
+  fmt_number(columns = c(ΔMAE, `P(Δ>0)`), decimals = 3)
+```
+
+**Reading these as preliminary.** Both figures are descriptive, single-year (2019) estimates on
+a metric — static MAE against the panel mean — that rewards central tendency: the naive
+copy-forward sits closest of all, and the pool is dominated by country-years that barely move
+between waves, where no independent rater can beat a copy-forward. The question of whether the
+synthetic coders earn their keep on the country-years that actually *move* — where a persistence
+copier is structurally blind and independent reading should pay — is the one **R2** decides, with
+a pre-registered movement flag rather than an endogenous split. The 2019 movement-bin split that
+motivates this (exploratory only) is the |Δ| table in
+`notes/stage1-preliminary-observations.md` ("the reversal is a stable-cell artifact").
+
+---
+
+## 7. Figure 3 — Divergence from the reciting prior (base:Cb)
+
+Two candidates, both measuring how far each thing sits from the pure-prior floor (base:Cb = 0),
+paired within-draw, with the SESOI band. **3-A** puts the base de-identified conditions and the
+FT diagonal on one ruler: de-identifying the *base* model flings it past the prior (An, Su beyond
+SESOI), while the fine-tuned models stay close to it. **3-B** replaces the base conditions with
+the **human coder** as a benchmark point — the FT models bracket the human coder's own divergence
+from the prior (FT-raw ≈ human, FT-anon below, FT-summ above). *(The human point landing near the
+SESOI edge is a numerical coincidence — three unrelated quantities — not a result; do not narrate
+it.)*
+
+### Figure 3-A — base conditions and FT models vs. base:Cb
+
+```{r}
+#| label: fig-vs-prior
+#| fig-width: 8
+#| fig-height: 4.2
+
+vs_cb <- bind_rows(
+  paired_delta("llama-70b", "evidence",   "llama-70b", "codebook", "Ev")      |> mutate(kind = "Base"),
+  paired_delta("llama-70b", "anonymized", "llama-70b", "codebook", "An")      |> mutate(kind = "Base"),
+  paired_delta("llama-70b", "summarized", "llama-70b", "codebook", "Su")      |> mutate(kind = "Base"),
+  paired_delta("llama-70b-ft-raw",  "evidence-zeroshot",   "llama-70b", "codebook", "FT-raw")  |> mutate(kind = "Fine-tuned"),
+  paired_delta("llama-70b-ft-anon", "anonymized-zeroshot", "llama-70b", "codebook", "FT-anon") |> mutate(kind = "Fine-tuned"),
+  paired_delta("llama-70b-ft-summ", "summarized-zeroshot", "llama-70b", "codebook", "FT-summ") |> mutate(kind = "Fine-tuned")
+) |>
+  mutate(
+    kind  = factor(kind, levels = c("Base", "Fine-tuned")),
+    label = factor(label, levels = rev(c("Ev", "An", "Su", "FT-raw", "FT-anon", "FT-summ")))
+  )
+
+ggplot(vs_cb, aes(est, label, color = kind)) +
+  annotate("rect", xmin = -sesoi, xmax = sesoi, ymin = -Inf, ymax = Inf,
+           fill = "grey85", alpha = 0.55) +
+  geom_vline(xintercept = 0, linetype = "dashed", color = "grey40") +
+  geom_hline(yintercept = 3.5, color = "grey85", linewidth = 0.4) +
+  geom_errorbar(aes(xmin = lo, xmax = hi), orientation = "y", width = 0.18, linewidth = 0.7) +
+  geom_point(size = 3) +
+  scale_color_manual(values = family_pal, name = NULL) +
+  scale_x_continuous(expand = expansion(mult = c(0.04, 0.06))) +
+  labs(x = "ΔMAE vs. base:Cb · right = more divergent than the pure prior · grey band = ±SESOI",
+       y = NULL,
+       title = "Figure 3-A — Divergence from the reciting prior",
+       subtitle = glue("2019 · base de-id conditions (top) & FT diagonal (bottom) vs base:Cb · SESOI ±{round(sesoi, 3)}")) +
+  theme_minimal(base_size = 12) +
+  theme(legend.position = "top", legend.justification = "left",
+        panel.grid.major.y = element_blank(), plot.title.position = "plot",
+        plot.title = element_text(face = "bold"))
+```
+
+### Figure 3-B — FT models vs. the human coder, both anchored to base:Cb
+
+```{r}
+#| label: fig-vs-prior-human
+#| fig-width: 8
+#| fig-height: 3.6
+
+ft_vs_cb <- bind_rows(
+  paired_delta("llama-70b-ft-raw",  "evidence-zeroshot",   "llama-70b", "codebook", "FT-raw")  |> mutate(kind = "Fine-tuned"),
+  paired_delta("llama-70b-ft-anon", "anonymized-zeroshot", "llama-70b", "codebook", "FT-anon") |> mutate(kind = "Fine-tuned"),
+  paired_delta("llama-70b-ft-summ", "summarized-zeroshot", "llama-70b", "codebook", "FT-summ") |> mutate(kind = "Fine-tuned")
+)
+
+# human LOO − base:Cb, paired per draw off boot_results (human_mae = the LOO for that draw).
+loo_draws <- boot_results |>
+  filter(model_key == "llama-70b", condition == "codebook") |>
+  transmute(id, delta = human_mae - ai_mae)
+loo_vs_cb <- tibble(
+  label = "human LOO", kind = "Human coder",
+  est   = loo_draws$delta[loo_draws$id == "Apparent"],
+  lo    = quantile(loo_draws$delta[loo_draws$id != "Apparent"], 0.025),
+  hi    = quantile(loo_draws$delta[loo_draws$id != "Apparent"], 0.975),
+  p_gt  = mean(loo_draws$delta[loo_draws$id != "Apparent"] > 0),
+  sesoi_out = abs(loo_draws$delta[loo_draws$id == "Apparent"]) > sesoi
+)
+
+vs_cb2 <- bind_rows(ft_vs_cb, loo_vs_cb) |>
+  mutate(label = factor(label, levels = c("FT-anon", "FT-raw", "human LOO", "FT-summ")))
+
+ggplot(vs_cb2, aes(est, label, color = kind)) +
+  annotate("rect", xmin = -sesoi, xmax = sesoi, ymin = -Inf, ymax = Inf,
+           fill = "grey85", alpha = 0.55) +
+  geom_vline(xintercept = 0, linetype = "dashed", color = "grey40") +
+  geom_errorbar(aes(xmin = lo, xmax = hi), orientation = "y", width = 0.16, linewidth = 0.7) +
+  geom_point(size = 3.2) +
+  scale_color_manual(values = c("Fine-tuned" = "#E69F00", "Human coder" = "grey25"), name = NULL) +
+  scale_x_continuous(expand = expansion(mult = c(0.04, 0.06))) +
+  labs(x = "ΔMAE vs. base:Cb · right = more divergent than the pure prior · grey band = ±SESOI",
+       y = NULL,
+       title = "Figure 3-B — Fine-tuned models vs. the human coder",
+       subtitle = glue("2019 · distance from base:Cb · FT-raw ≈ human · FT-anon below · FT-summ above · SESOI ±{round(sesoi, 3)}")) +
+  theme_minimal(base_size = 12) +
+  theme(legend.position = "top", legend.justification = "left",
+        panel.grid.major.y = element_blank(), plot.title.position = "plot",
+        plot.title = element_text(face = "bold"))
+```
+
+---
+
+## 8. Appendix figures (moved out of the main text)
+
+Secondary tests kept for the appendix and discussed in the main-text prose: **F1**
+(weight- vs. prompt-calibration), the **selection-rule readout**, and the **A3 anchoring probe**
+(B4 · Su−An can be added from `paired_delta` if wanted). All read off the same `boot_ci` /
+`paired_delta` layer.
+
+### Appendix — F1: fine-tuning vs. few-shot (matched conditions)
+
+```{r}
+#| label: fig-f1
+#| fig-width: 8
+#| fig-height: 3.0
+
+f1 <- bind_rows(
+  paired_delta("llama-70b-ft-raw",  "evidence-zeroshot",   "llama-70b", "evidence",   "Raw Text"),
+  paired_delta("llama-70b-ft-anon", "anonymized-zeroshot", "llama-70b", "anonymized", "Anonymized"),
+  paired_delta("llama-70b-ft-summ", "summarized-zeroshot", "llama-70b", "summarized", "Summarized")
+) |>
+  mutate(label = factor(label, levels = rev(c("Raw Text", "Anonymized", "Summarized"))))
+
+ggplot(f1, aes(est, label)) +
+  annotate("rect", xmin = -sesoi, xmax = sesoi, ymin = -Inf, ymax = Inf,
+           fill = "grey85", alpha = 0.55) +
+  geom_vline(xintercept = 0, linetype = "dashed", color = "grey40") +
+  geom_errorbar(aes(xmin = lo, xmax = hi), orientation = "y",
+                width = 0.15, linewidth = 0.7, color = "#E69F00") +
+  geom_point(size = 3, color = "#E69F00") +
+  scale_x_continuous(expand = expansion(mult = c(0.08, 0.08))) +
+  labs(x = "ΔMAE (FT − base) · left = fine-tuning reduces error · grey band = ±SESOI", y = NULL,
+       title = "Appendix — F1: fine-tuning vs. few-shot (matched)",
+       subtitle = glue("2019 · registered F1 · SESOI ±{round(sesoi, 3)}")) +
+  theme_minimal(base_size = 12) +
+  theme(panel.grid.major.y = element_blank(), plot.title.position = "plot")
+```
+
+```{r f1-readout}
+f1 |>
+  transmute(Condition = label, `ΔMAE (FT − base)` = est,
+            `95% CI` = glue("[{round(lo, 3)}, {round(hi, 3)}]"),
+            `P(Δ>0)` = p_gt,
+            `Beyond SESOI?` = if_else(sesoi_out, "yes", "no")) |>
+  gt() |>
+  tab_header(title = "F1 — fine-tuning vs. few-shot, matched conditions",
+             subtitle = glue("Negative = fine-tuning reduces error · SESOI ±{round(sesoi, 3)}")) |>
+  fmt_number(columns = c(`ΔMAE (FT − base)`, `P(Δ>0)`), decimals = 3)
+```
+
+### Appendix — selection-rule readout
+
+```{r selection-readout}
+bind_rows(
+  tibble(model_key = "llama-70b", condition = "evidence", row = "Base : Ev"),
+  transmute(ft_diag, model_key, condition, row)
+) |>
+  inner_join(boot_ci, by = c("model_key", "condition")) |>
+  transmute(Cell = row, `AI MAE` = ai_mae,
+            `95% CI` = glue("[{round(ai_lo, 3)}, {round(ai_hi, 3)}]"),
+            `Δ vs human` = diff, `P(Δ>0)` = p_gt_zero) |>
+  arrange(`AI MAE`) |>
+  gt() |>
+  tab_header(title = "Diagonal selection readout",
+             subtitle = "Lowest AI MAE in its own condition = carried model (ties → base)") |>
+  fmt_number(columns = c(`AI MAE`, `Δ vs human`, `P(Δ>0)`), decimals = 3)
+```
+
+### Appendix — A3 anchoring probe (codebook only)
+
+All four models on the **codebook** condition only. A fine-tuned model that matches the base:Cb
+anchor with no evidence to read has baked a country→rating shortcut into its weights; higher
+codebook MAE = *less* reciting (the desirable direction). Dotted line = base:Cb anchor.
+
+```{r}
+#| label: fig-ft-anchor
+#| fig-width: 8
+#| fig-height: 3.6
+anchor <- boot_ci |>
+  filter(model_key == "llama-70b", condition == "codebook") |>
+  pull(ai_mae)
+
+fig_anchor <- boot_ci |>
+  filter(condition == "codebook") |>
+  mutate(model_label = recode(model_key, !!!model_labels),
+         family      = recode(model_key, !!!model_family))
+
+ggplot(fig_anchor, aes(ai_mae, fct_reorder(model_label, -ai_mae), color = family)) +
+  annotate("rect", xmin = human_ref$lo, xmax = human_ref$hi,
+           ymin = -Inf, ymax = Inf, fill = "grey70", alpha = 0.25) +
+  geom_vline(xintercept = human_ref$human_mae, linetype = "dashed", color = "grey40") +
+  geom_vline(xintercept = anchor, linetype = "dotted", color = "#0072B2") +
+  annotate("text", x = human_ref$human_mae, y = Inf, label = "human LOO",
+           color = "grey40", size = 3, hjust = -0.05, vjust = 1.5) +
+  geom_errorbar(aes(xmin = ai_lo, xmax = ai_hi), orientation = "y",
+                width = 0.18, linewidth = 0.7) +
+  geom_point(size = 3) +
+  scale_color_manual(values = family_pal, name = NULL) +
+  scale_x_continuous(expand = expansion(mult = c(0.02, 0.12))) +
+  coord_cartesian(clip = "off") +
+  labs(x = "AI MAE vs. panel mean, codebook only", y = NULL,
+       title = "Appendix — A3 anchoring probe (codebook only)",
+       subtitle = glue("2019 · dotted line = base:Cb anchor ({round(anchor, 3)})")) +
+  theme_minimal(base_size = 12) +
+  theme(legend.position = "top", legend.justification = "left",
+        panel.grid.major.y = element_blank(), plot.title.position = "plot")
+```
+
+---
+
+## 9. Movement-bin descriptive table (exploratory)
+
+The 2018→2019 |Δ| split that motivates making R2 central: on the same ≥2-coder CYI pool used
+everywhere else, split cells by how far the panel mean actually moved between waves, and read
+persistence, base:Cb, and base:Ev MAE within each bin. **Exploratory / hypothesis-generating
+only** — the bin edge is the realized change, so persistence's per-bin MAE is mechanical (it is
+just the bin's mean |Δ|). The confirmatory movement test is R2 on 2023 with the pre-fixed ERT
+flag; do not retrofit this as a confirmatory 2019 result. Serialized into the bundle so the
+paper's descriptive tables read it without recomputing.
+
+```{r movement-bins}
+# Continuous 2018→2019 move per CYI, restricted to cells with a 2018 predecessor.
+abs_delta_cyi <- persist_cyi |>
+  filter(!is.na(mean_2018)) |>
+  transmute(country_text_id, year, indicator,
+            persist_err,                         # integer-fair: |round(2018) − 2019|
+            abs_delta = abs(raw_mean - mean_2018))
+
+# Base model's per-CYI error on the two identity-present conditions.
+base_err_wide <- ai_metrics |>
+  filter(model_key == "llama-70b", condition %in% c("codebook", "evidence")) |>
+  select(country_text_id, year, indicator, condition, ai_error) |>
+  pivot_wider(names_from = condition, values_from = ai_error)
+
+movement_bins <- abs_delta_cyi |>
+  inner_join(base_err_wide, by = c("country_text_id", "year", "indicator")) |>
+  mutate(bin = cut(abs_delta, breaks = c(0, 0.25, 0.5, 1, 2, Inf), right = FALSE,
+                   labels = c("[0.00, 0.25)", "[0.25, 0.50)", "[0.50, 1.00)",
+                              "[1.00, 2.00)", "[2.00, +)"))) |>
+  group_by(bin) |>
+  summarise(
+    n            = n(),
+    n_ev         = sum(!is.na(evidence)),  # evidence covers fewer cells than codebook (needs a source doc)
+    persist_cont = mean(abs_delta),        # = bin mean |Δ| (matches the notes' persist column)
+    persist_round= mean(persist_err),      # integer-fair persistence vs the integer-emitting AI
+    # codebook covers the whole pool; evidence is averaged over its available cells (n_ev),
+    # so the two columns are each over their own coverage, matching the notes' framing.
+    base_cb_mae  = mean(codebook, na.rm = TRUE),
+    base_ev_mae  = mean(evidence, na.rm = TRUE),
+    .groups      = "drop"
+  )
+
+movement_bins |>
+  gt() |>
+  tab_header(title = "2018→2019 movement bins (≥2-coder pool)",
+             subtitle = "Exploratory. persist_cont = bin mean |Δ|; persist_round is integer-fair vs AI") |>
+  fmt_number(columns = c(persist_cont, persist_round, base_cb_mae, base_ev_mae), decimals = 3)
+```
+
+---
+
+## 10. Serialize the bundle for the paper documents
+
+Everything the paper deliverables need, written to one gitignored `.rds` (`*.rds` is ignored
+repo-wide). `paper/results-2019.qmd` and `paper/appendix-2019.qmd` load this and never rerun
+the bootstrap; the static vocabulary and `paired_delta()` come from `R/bootstrap_helpers.R`,
+which those docs source directly.
+
+```{r serialize-bundle}
+bundle_path <- file.path(derived_dir, "bootstrap_2019.rds")
+
+saveRDS(
+  list(
+    boot_ci        = boot_ci,         # per-cell AI MAE point + CIs
+    boot_results   = boot_results,    # per-draw per-cell — required by paired_delta()
+    human_ref      = human_ref,       # human LOO reference line + CI
+    persist_ref    = persist_ref,     # persistence (naive) reference line + CI
+    sesoi          = sesoi,           # smallest effect size of interest (± band)
+    rounding_floor = rounding_floor,  # integer-vs-fractional-mean floor
+    movement_bins  = movement_bins    # exploratory 2018→2019 |Δ| split
+  ),
+  bundle_path
+)
+
+glue("bundle written: {bundle_path} ({round(file.size(bundle_path)/1024)} KB)")
+```

@@ -1,0 +1,344 @@
+---
+title: "Appendix (2019) — formal preregistered tests"
+format:
+  html:
+    toc: true
+    toc-depth: 2
+    embed-resources: true
+    code-fold: true
+execute:
+  warning: false
+  message: false
+---
+
+This appendix discharges the preregistration formally. Every registered 2019 test is reported
+here with its paired ΔMAE, 95% bootstrap CI, significance, and a **verdict against the
+registered prediction** — so a reader can confirm we ran what we said we would and see exactly
+where and why the findings diverge. The main text (`paper/results-2019.qmd`) carries the
+reinterpreted narrative; peripheral contrasts appear only here. Everything reads the precomputed
+bundle from `analysis/06-bootstrap-metrics-2019.qmd`; no bootstrap is rerun.
+
+## Setup
+
+```{r setup}
+library(tidyverse)
+library(gt)
+library(glue)
+
+proj_root <- rprojroot::find_root(rprojroot::is_git_root)
+source(file.path(proj_root, "R", "bootstrap_helpers.R"))
+list2env(readRDS(file.path(proj_root, "data", "derived", "bootstrap_2019.rds")),
+         environment())
+
+glue("bundle loaded · SESOI ±{round(sesoi, 3)}")
+```
+
+### How to read these tables
+
+**Significance vs. substantive size are two different axes, both shown.**
+
+- **Significance** (stars on ΔMAE): `*` p<.05, `**` p<.01, `***` p<.001, two-sided bootstrap on
+  the paired ΔMAE (whether the difference is distinguishable from zero). Blank = not significant.
+- **Beyond SESOI?** (own column): whether the effect is large enough to matter, SESOI = half the
+  2019 rounding floor = `r round(sesoi, 3)`. A contrast can be **significant yet within ±SESOI**
+  (statistically real, substantively negligible) — that is the common case here.
+
+**Verdict against registration.** For a predicted *difference* (MAE(A) < or > MAE(B)):
+**Supported** if the CI clears zero *and* ±SESOI in the predicted direction; **Reversed** if it
+clears both the opposite way; **Null** if it includes zero or lies within ±SESOI. For a predicted
+*non-difference* (≈0 — the A2 evidence gap and the A4 DiD): **Supported (≈0)** if the CI lies
+entirely within ±SESOI (equivalence demonstrated); **Not equivalent** otherwise.
+
+**Base is few-shot; the fine-tuned models are zero-shot** (calibration lives in their weights).
+Registered FT-vs-base contrasts therefore mix the fine-tuning effect with the few-shot
+advantage; a prompt-matched companion (base zero-shot) is shown where it sharpens the reading.
+
+```{r helpers}
+# Two-sided bootstrap significance stars from P(delta > 0).
+sig_stars <- function(p_gt) {
+  p <- 2 * pmin(p_gt, 1 - p_gt)
+  case_when(p < 0.001 ~ "***", p < 0.01 ~ "**", p < 0.05 ~ "*", TRUE ~ "")
+}
+
+# Verdict against a registered prediction. `dir`: -1 = "MAE(A) < MAE(B)", +1 = "MAE(A) > MAE(B)",
+# 0 = equivalence ("≈ 0"). Directional dirs test for an effect beyond SESOI; dir = 0 tests for
+# absence of one (CI entirely inside the band).
+verdict_of <- function(lo, hi, dir, s = sesoi) {
+  if (dir == 0) return(if (lo > -s && hi < s) "Supported (≈0)" else "Not equivalent")
+  if (hi < -s)  return(if (dir < 0) "Supported" else "Reversed")
+  if (lo >  s)  return(if (dir < 0) "Reversed"  else "Supported")
+  "Null"
+}
+
+# One standard contrast row from a paired_delta() result (ΔMAE carries significance stars).
+reg_row <- function(pd, prediction, dir) {
+  pd |> transmute(
+    Contrast                = label,
+    `Registered prediction` = prediction,
+    ΔMAE                    = glue("{sprintf('%+.3f', est)}{sig_stars(p_gt)}"),
+    `95% CI`                = glue("[{round(lo, 3)}, {round(hi, 3)}]"),
+    `Beyond SESOI?`         = if_else(sesoi_out, "yes", "no"),
+    Verdict                 = verdict_of(lo, hi, dir)
+  )
+}
+
+# Level (point + CI) for one cell, as a formatted string.
+lvl <- function(mk, cond) {
+  boot_ci |> filter(model_key == mk, condition == cond) |>
+    transmute(mae = round(ai_mae, 3), ci = glue("[{round(ai_lo, 3)}, {round(ai_hi, 3)}]"))
+}
+```
+
+---
+
+## Orientation — the full 2019 grid
+
+Every cell's AI MAE (point estimate and 95% CI). The base model appears twice: **few-shot**
+(with the calibration block) and **zero-shot** (the ablation, calibration removed). Codebook has
+no calibration block either way, so the base zero-shot row leaves it blank. FT rows are
+zero-shot throughout.
+
+```{r grid}
+rows <- tribble(
+  ~Row,               ~model_key,          ~Codebook,  ~Evidence,           ~Anonymized,           ~Summarized,
+  "Base (few-shot)",  "llama-70b",         "codebook", "evidence",          "anonymized",          "summarized",
+  "Base (zero-shot)", "llama-70b",         NA,         "evidence-zeroshot", "anonymized-zeroshot", "summarized-zeroshot",
+  "FT-raw",           "llama-70b-ft-raw",  "codebook", "evidence-zeroshot", "anonymized-zeroshot", "summarized-zeroshot",
+  "FT-anon",          "llama-70b-ft-anon", "codebook", "evidence-zeroshot", "anonymized-zeroshot", "summarized-zeroshot",
+  "FT-summ",          "llama-70b-ft-summ", "codebook", "evidence-zeroshot", "anonymized-zeroshot", "summarized-zeroshot"
+)
+
+rows |>
+  pivot_longer(c(Codebook, Evidence, Anonymized, Summarized),
+               names_to = "col", values_to = "condition") |>
+  left_join(boot_ci, by = c("model_key", "condition")) |>
+  mutate(cell = if_else(is.na(condition), "—",
+                        glue("{round(ai_mae, 3)} [{round(ai_lo, 3)}, {round(ai_hi, 3)}]"))) |>
+  select(Row, col, cell) |>
+  pivot_wider(names_from = col, values_from = cell) |>
+  mutate(Row = factor(Row, levels = rows$Row)) |>
+  arrange(Row) |>
+  select(Row, Codebook, Evidence, Anonymized, Summarized) |>
+  gt() |>
+  tab_header(title = "The 2019 grid — AI MAE by model × condition",
+             subtitle = "Point estimate [95% CI] · base shown few-shot and zero-shot; FT are zero-shot")
+```
+
+---
+
+# Confirmatory tests
+
+## S1. Hypotheses B1–B4 — Base-model identification
+
+Four progressively de-identified prompt conditions test whether the base model reads the source
+text or leans on country-identity priors. All four predict an MAE *reduction* (negative ΔMAE).
+
+```{r table-s1}
+bind_rows(
+  reg_row(paired_delta("llama-70b", "evidence",   "llama-70b", "codebook",   "B1 · Ev−Cb"),
+          "MAE(Ev) < MAE(Cb)", -1),
+  reg_row(paired_delta("llama-70b", "anonymized", "llama-70b", "codebook",   "B2 · An−Cb"),
+          "MAE(An) < MAE(Cb)", -1),
+  reg_row(paired_delta("llama-70b", "anonymized", "llama-70b", "evidence",   "B3 · An−Ev"),
+          "MAE(An) < MAE(Ev)", -1),
+  reg_row(paired_delta("llama-70b", "summarized", "llama-70b", "anonymized", "B4 · Su−An"),
+          "MAE(Su) < MAE(An)", -1)
+) |>
+  gt() |>
+  tab_header(title = "Table S1 — Base-model identification contrasts (B1–B4)",
+             subtitle = glue("Paired CYI bootstrap · SESOI ±{round(sesoi, 3)} · stars = significance"))
+```
+
+## S2. Hypothesis F1 — Fine-tuning vs. few-shot (matched conditions)
+
+Each fine-tuned model against the base model on the same evidence type, predicting fine-tuning
+wins (negative ΔMAE). Table S2a is the registered comparison (base = standard few-shot run);
+Table S2b is the prompt-matched companion (base zero-shot) that isolates the fine-tuning effect
+from the few-shot confound.
+
+```{r table-s2}
+bind_rows(
+  reg_row(paired_delta("llama-70b-ft-raw",  "evidence-zeroshot",   "llama-70b", "evidence",   "F1 · Raw"),
+          "MAE(FT-Raw) < MAE(Base-Raw)", -1),
+  reg_row(paired_delta("llama-70b-ft-anon", "anonymized-zeroshot", "llama-70b", "anonymized", "F1 · Anon"),
+          "MAE(FT-Anon) < MAE(Base-Anon)", -1),
+  reg_row(paired_delta("llama-70b-ft-summ", "summarized-zeroshot", "llama-70b", "summarized", "F1 · Summ"),
+          "MAE(FT-Summ) < MAE(Base-Summ)", -1)
+) |>
+  gt() |>
+  tab_header(title = "Table S2a — F1: fine-tuning vs. few-shot (registered, matched)",
+             subtitle = glue("Negative = fine-tuning reduces error · SESOI ±{round(sesoi, 3)}"))
+
+bind_rows(
+  reg_row(paired_delta("llama-70b-ft-raw",  "evidence-zeroshot",   "llama-70b", "evidence-zeroshot",   "Raw"),
+          "(prompt-matched)", -1),
+  reg_row(paired_delta("llama-70b-ft-anon", "anonymized-zeroshot", "llama-70b", "anonymized-zeroshot", "Anon"),
+          "(prompt-matched)", -1),
+  reg_row(paired_delta("llama-70b-ft-summ", "summarized-zeroshot", "llama-70b", "summarized-zeroshot", "Summ"),
+          "(prompt-matched)", -1)
+) |>
+  select(-`Registered prediction`) |>
+  gt() |>
+  tab_header(title = "Table S2b — FT vs. base, prompt-matched (both zero-shot)",
+             subtitle = "Isolates the fine-tuning effect from the few-shot block")
+```
+
+## S3. Hypothesis F2 — Raw-evidence column ordering
+
+All three fine-tuned models read the **raw evidence** (the harder test — only FT-raw trained on
+this exact distribution). Registered ordering: MAE(FT-summ) < MAE(FT-anon) < MAE(FT-raw). Levels
+first (S3a), then the two adjacent paired contrasts that actually test the ordering (S3b).
+
+```{r table-s3}
+bind_rows(
+  transmute(lvl("llama-70b-ft-raw",  "evidence-zeroshot"), Cell = "FT-raw : Ev",  `AI MAE` = mae, `95% CI` = ci),
+  transmute(lvl("llama-70b-ft-anon", "evidence-zeroshot"), Cell = "FT-anon : Ev", `AI MAE` = mae, `95% CI` = ci),
+  transmute(lvl("llama-70b-ft-summ", "evidence-zeroshot"), Cell = "FT-summ : Ev", `AI MAE` = mae, `95% CI` = ci)
+) |>
+  gt() |> tab_header(title = "Table S3a — F2 levels: fine-tuned models on raw evidence",
+                     subtitle = "Registered ordering: FT-summ < FT-anon < FT-raw")
+
+bind_rows(
+  reg_row(paired_delta("llama-70b-ft-anon", "evidence-zeroshot", "llama-70b-ft-raw",  "evidence-zeroshot", "FT-anon − FT-raw"),
+          "MAE(FT-anon) < MAE(FT-raw)", -1),
+  reg_row(paired_delta("llama-70b-ft-summ", "evidence-zeroshot", "llama-70b-ft-anon", "evidence-zeroshot", "FT-summ − FT-anon"),
+          "MAE(FT-summ) < MAE(FT-anon)", -1)
+) |>
+  gt() |>
+  tab_header(title = "Table S3b — F2 adjacent contrasts (paired)",
+             subtitle = glue("Both steps predicted negative · SESOI ±{round(sesoi, 3)}"))
+```
+
+---
+
+# Exploratory tests
+
+## S4. Hypotheses A1–A2 — Few-shot ablation
+
+**A1** (S4a) asks whether zero-shot text alone (no calibration block) still beats codebook-only.
+**A2** (S4b) is the few-shot *gap* (few-shot − zero-shot) per condition; the registered
+prediction is a gradient — **≈0 for Evidence** (an equivalence claim), increasingly negative as
+de-identification strips the identity anchor.
+
+```{r table-s4}
+# A1 — zero-shot text vs codebook (predicted negative)
+bind_rows(
+  reg_row(paired_delta("llama-70b", "evidence-zeroshot",   "llama-70b", "codebook", "A1 · Ev-zs − Cb"),
+          "MAE(Ev-zs) < MAE(Cb)", -1),
+  reg_row(paired_delta("llama-70b", "anonymized-zeroshot", "llama-70b", "codebook", "A1 · An-zs − Cb"),
+          "MAE(An-zs) < MAE(Cb)", -1),
+  reg_row(paired_delta("llama-70b", "summarized-zeroshot", "llama-70b", "codebook", "A1 · Su-zs − Cb"),
+          "MAE(Su-zs) < MAE(Cb)", -1)
+) |>
+  gt() |> tab_header(title = "Table S4a — A1: zero-shot text vs. codebook-only",
+                     subtitle = glue("Predicted negative · SESOI ±{round(sesoi, 3)}"))
+
+# A2 — few-shot gap (few-shot − zero-shot). Evidence is an equivalence prediction (≈0);
+# Anonymized/Summarized predicted increasingly negative.
+bind_rows(
+  reg_row(paired_delta("llama-70b", "evidence",   "llama-70b", "evidence-zeroshot",   "A2 · Ev gap"),
+          "≈ 0 (equivalence)", 0),
+  reg_row(paired_delta("llama-70b", "anonymized", "llama-70b", "anonymized-zeroshot", "A2 · An gap"),
+          "increasingly < 0", -1),
+  reg_row(paired_delta("llama-70b", "summarized", "llama-70b", "summarized-zeroshot", "A2 · Su gap"),
+          "increasingly < 0", -1)
+) |>
+  gt() |>
+  tab_header(title = "Table S4b — A2: few-shot calibration gap (few-shot − zero-shot)",
+             subtitle = "Gradient: Ev ≈ 0 (equivalence), more negative for An/Su · read the pattern")
+```
+
+## S5. Hypothesis A3 — Fine-tuned codebook anchoring probe
+
+All four models on codebook only (no evidence to read). A model that matches the base:Cb anchor
+with no text has baked a country→rating shortcut into its weights. Registered ordering:
+MAE(FT-raw) < MAE(FT-anon) < MAE(FT-summ). Levels (S5a), then adjacent contrasts (S5b).
+
+```{r table-s5}
+bind_rows(
+  transmute(lvl("llama-70b",         "codebook"), Cell = "Base : Cb",    `AI MAE` = mae, `95% CI` = ci),
+  transmute(lvl("llama-70b-ft-raw",  "codebook"), Cell = "FT-raw : Cb",  `AI MAE` = mae, `95% CI` = ci),
+  transmute(lvl("llama-70b-ft-anon", "codebook"), Cell = "FT-anon : Cb", `AI MAE` = mae, `95% CI` = ci),
+  transmute(lvl("llama-70b-ft-summ", "codebook"), Cell = "FT-summ : Cb", `AI MAE` = mae, `95% CI` = ci)
+) |>
+  gt() |> tab_header(title = "Table S5a — A3 levels: codebook-only MAE by model",
+                     subtitle = "Registered ordering: FT-raw < FT-anon < FT-summ")
+
+bind_rows(
+  reg_row(paired_delta("llama-70b-ft-anon", "codebook", "llama-70b-ft-raw",  "codebook", "FT-anon − FT-raw"),
+          "MAE(FT-raw) < MAE(FT-anon)", +1),
+  reg_row(paired_delta("llama-70b-ft-summ", "codebook", "llama-70b-ft-anon", "codebook", "FT-summ − FT-anon"),
+          "MAE(FT-anon) < MAE(FT-summ)", +1)
+) |>
+  gt() |>
+  tab_header(title = "Table S5b — A3 adjacent contrasts (paired)",
+             subtitle = glue("Both steps predicted positive (later model worse) · SESOI ±{round(sesoi, 3)}"))
+```
+
+## S6. Hypothesis A4 — Training-side difference-in-differences
+
+Training-side analog of B4: does the summarize-vs-anonymize tradeoff at inference (B4) replicate
+in the fine-tuned weights? DiD = [FT-summ:Su − FT-anon:An] − [Base:Su − Base:An], paired at the
+CYI level. Registered as an equivalence test: the tradeoff replicates if the DiD CI falls within
+±SESOI.
+
+```{r table-s6}
+did <- reduce(
+  list(
+    cell_series("llama-70b-ft-summ", "summarized-zeroshot") |> rename(a = ai_mae),
+    cell_series("llama-70b-ft-anon", "anonymized-zeroshot") |> rename(b = ai_mae),
+    cell_series("llama-70b",         "summarized")          |> rename(c = ai_mae),
+    cell_series("llama-70b",         "anonymized")          |> rename(d = ai_mae)
+  ),
+  \(x, y) inner_join(x, y, by = "id")
+) |>
+  mutate(did = (a - b) - (c - d))
+
+did_est <- did$did[did$id == "Apparent"]
+did_boot <- did$did[did$id != "Apparent"]
+did_lo  <- quantile(did_boot, 0.025)
+did_hi  <- quantile(did_boot, 0.975)
+did_p   <- 2 * min(mean(did_boot > 0), mean(did_boot < 0))
+
+tibble(
+  Quantity = "DiD = [FT-summ:Su − FT-anon:An] − [Base:Su − Base:An]",
+  `Registered prediction` = "within ±SESOI (tradeoff replicates)",
+  DiD = glue("{sprintf('%+.3f', did_est)}{sig_stars(mean(did_boot > 0))}"),
+  `95% CI` = glue("[{round(did_lo, 3)}, {round(did_hi, 3)}]"),
+  Verdict = if_else(did_lo > -sesoi & did_hi < sesoi, "Supported (≈0)", "Not equivalent")
+) |>
+  gt() |>
+  tab_header(title = "Table S6 — A4: training-side difference-in-differences",
+             subtitle = glue("Equivalence test · SESOI ±{round(sesoi, 3)} · stars = significance"))
+```
+
+*Borderline verdict.* The DiD upper bound (≈ `r round(did_hi, 3)`) sits essentially on the
+SESOI edge (±`r round(sesoi, 3)`), so the "within band" verdict turns on the third decimal. Read
+it as *at the boundary of the equivalence band*, not as clean replication — the prose should not
+lean on A4 as a confirmed training-side replication of B4.
+
+## S7. Hypothesis A5 — Training-representation transfer to raw evidence
+
+Do FT-anon and FT-summ, which never trained on raw evidence, still beat the base model when
+reading raw evidence at deployment? Registered comparator is the base model on raw evidence.
+
+```{r table-s7}
+bind_rows(
+  reg_row(paired_delta("llama-70b-ft-anon", "evidence-zeroshot", "llama-70b", "evidence", "A5 · FT-anon − Base"),
+          "MAE(FT-anon:Ev) < MAE(Base:Ev)", -1),
+  reg_row(paired_delta("llama-70b-ft-summ", "evidence-zeroshot", "llama-70b", "evidence", "A5 · FT-summ − Base"),
+          "MAE(FT-summ:Ev) < MAE(Base:Ev)", -1)
+) |>
+  gt() |>
+  tab_header(title = "Table S7 — A5: de-identified FT transfer to raw evidence",
+             subtitle = glue("Predicted negative · SESOI ±{round(sesoi, 3)}"))
+```
+
+---
+
+## Out of scope here (2023/2024 holdout)
+
+The Part 3 robustness/mechanism tests (R1–R5), the confirmatory agreement and thin-panel
+augmentation tests (D1, D2), and the 2023 exploratory analyses (A6–A9) are all defined on
+2023/2024 data. They get a parallel table suite in the future `paper/appendix-2023.qmd` and are
+not computable from the 2019 bundle.
