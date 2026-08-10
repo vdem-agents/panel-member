@@ -229,6 +229,7 @@ def assemble_prompt(
     indicator: str,
     condition: str,
     iso: str | None = None,
+    source_iso: str | None = None,
 ) -> tuple[str, str]:
     """
     Assemble (system_text, user_text) for one LLM coding call.
@@ -239,11 +240,19 @@ def assemble_prompt(
         year:          Target year, e.g. 2020
         indicator:     V-Dem indicator code, e.g. "v2csreprss"
         condition:     "codebook" | "evidence" | "anonymized" | "finetuned-anon" | ...
-        iso:           ISO-3 code (required for anon/summ conditions), e.g. "NGA"
+        iso:           ISO-3 code (required for anon/summ conditions), e.g. "NGA".
+                       In name-swap mode this is the *named* identity (shown in the prompt).
+        source_iso:    Name-swap mode only. ISO-3 of the country whose de-identified text is
+                       loaded, distinct from `iso` (the named identity). When set, the
+                       anon/summ text is loaded by source_iso and the named country's name is
+                       revealed in the framing — overriding the usual "the focal country"
+                       blanking, because the injected name is the swap's treatment. Set
+                       source_iso == iso for the correct-name (name = source) arm.
 
     Returns:
         (system_text, user_text) ready for the API messages list
     """
+    name_swap = source_iso is not None
     _VALID = ("codebook", "evidence", "evidence-zeroshot", "finetuned-raw",
               "anonymized", "anonymized-zeroshot", "finetuned-anon",
               "summarized", "summarized-zeroshot", "finetuned-summ")
@@ -310,12 +319,14 @@ def assemble_prompt(
     elif condition in ("anonymized", "anonymized-zeroshot", "finetuned-anon"):
         if iso is None:
             raise ValueError(f"iso is required for condition='{condition}'")
-        anon_text = load_anonymized(iso, year, indicator)
+        # Name-swap: load the *source* country's text; the named identity (iso) is only shown.
+        text_iso = source_iso if name_swap else iso
+        anon_text = load_anonymized(text_iso, year, indicator)
         if anon_text is None:
             raise FileNotFoundError(
-                f"No anonymized text for {iso} {year} {indicator}. "
+                f"No anonymized text for {text_iso} {year} {indicator}. "
                 f"Run: python3 -m pipeline.anonymize_section "
-                f"--iso {iso} --slug {country_slug} --name '{country_name}' "
+                f"--iso {text_iso} --slug {country_slug} --name '{country_name}' "
                 f"--year {year} --indicators {indicator}"
             )
         state_ev = anon_text
@@ -323,7 +334,7 @@ def assemble_prompt(
         calibration_section = (
             _calibration_header(max_rating).format(
                 fewshot_block=_build_fewshot_block(
-                    indicator, variant="anon", exclude_iso=iso
+                    indicator, variant="anon", exclude_iso=text_iso
                 )
             )
             if condition == "anonymized"
@@ -333,12 +344,14 @@ def assemble_prompt(
     elif condition in ("summarized", "summarized-zeroshot", "finetuned-summ"):
         if iso is None:
             raise ValueError(f"iso is required for condition='{condition}'")
-        summ_text = load_summarized(iso, year, indicator)
+        # Name-swap: load the *source* country's text; the named identity (iso) is only shown.
+        text_iso = source_iso if name_swap else iso
+        summ_text = load_summarized(text_iso, year, indicator)
         if summ_text is None:
             raise FileNotFoundError(
-                f"No summarized text for {iso} {year} {indicator}. "
+                f"No summarized text for {text_iso} {year} {indicator}. "
                 f"Run: python3 -m pipeline.summarize_indicator "
-                f"--iso {iso} --slug {country_slug} "
+                f"--iso {text_iso} --slug {country_slug} "
                 f"--year {year} --indicators {indicator}"
             )
         state_ev = summ_text
@@ -346,7 +359,7 @@ def assemble_prompt(
         calibration_section = (
             _calibration_header(max_rating).format(
                 fewshot_block=_build_fewshot_block(
-                    indicator, variant="summ", exclude_iso=iso
+                    indicator, variant="summ", exclude_iso=text_iso
                 )
             )
             if condition == "summarized"
@@ -355,13 +368,16 @@ def assemble_prompt(
 
     # Anonymized and summarized conditions must not reveal the focal country or year —
     # the anonymizer strips both from the evidence text, so reinserting them here
-    # would defeat the identity-blind comparison.
+    # would defeat the identity-blind comparison. Name-swap mode is the deliberate
+    # exception: the injected name IS the treatment, so the named identity (country_name)
+    # and the year are shown in the framing even on de-identified substrate.
     _ANON_SUMM = frozenset({
         "anonymized", "anonymized-zeroshot", "finetuned-anon",
         "summarized", "summarized-zeroshot", "finetuned-summ",
     })
-    focal_country = "the focal country" if condition in _ANON_SUMM else country_name
-    focal_year    = "the focal year"    if condition in _ANON_SUMM else str(year)
+    hide_identity = condition in _ANON_SUMM and not name_swap
+    focal_country = "the focal country" if hide_identity else country_name
+    focal_year    = "the focal year"    if hide_identity else str(year)
 
     user_text = (
         user_raw
@@ -384,8 +400,10 @@ def assemble_prompt(
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Assemble and preview a coding prompt")
     parser.add_argument("--slug", required=True, help="e.g. nigeria")
-    parser.add_argument("--name", required=True, help="e.g. Nigeria")
-    parser.add_argument("--iso", help="ISO-3 code (required for anonymized condition)")
+    parser.add_argument("--name", required=True, help="e.g. Nigeria (the named identity)")
+    parser.add_argument("--iso", help="ISO-3 code (required for anonymized condition); named identity in swap mode")
+    parser.add_argument("--source-iso", dest="source_iso",
+                        help="Name-swap: ISO-3 whose text is loaded (distinct from --iso, the named identity)")
     parser.add_argument("--year", type=int, default=2020)
     parser.add_argument("--indicator", required=True)
     parser.add_argument(
@@ -400,7 +418,8 @@ if __name__ == "__main__":
     args = parser.parse_args()
 
     system, user = assemble_prompt(
-        args.slug, args.name, args.year, args.indicator, args.condition, iso=args.iso
+        args.slug, args.name, args.year, args.indicator, args.condition,
+        iso=args.iso, source_iso=args.source_iso,
     )
     print(f"=== SYSTEM ({len(system):,} chars) ===\n{system}")
     print(f"\n=== USER ({len(user):,} chars) ===\n{user[:args.chars]}")

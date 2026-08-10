@@ -49,6 +49,37 @@ ft_diag <- tibble::tibble(
   row       = c("FT-raw", "FT-anon", "FT-summ")
 )
 
+# ── Country-clustered bootstrap weights (shared draw step) ───────────────────
+# The single resampling primitive for the 2019 analysis bundle. Resamples
+# COUNTRIES with replacement — each drawn country carries its whole ~200-indicator
+# block — which is the honest independent unit: a country's indicators are
+# correlated, so the prereg's CYI resample treated correlated draws as independent
+# and produced anti-conservative (too-narrow) level CIs. See
+# notes/bootstrap-clustering-figures-check.qmd for the derivation.
+#
+# Returns a (countries) x (n_boot + 1) integer weight matrix. rownames are
+# country_text_id; column 1 ("Apparent") is the all-ones point-estimate draw and
+# the remaining columns are the resamples. Each document keeps its own aggregation
+# and just broadcasts a column's per-country weight onto its rows — e.g.
+#   w <- W[df$country_text_id, draw]      # broadcast by country
+# or join `tibble(country_text_id = rownames(W), w = W[, draw])`. A country drawn
+# k times gets weight k, i.e. counts k× — the multiplicity a bootstrap requires.
+country_boot_weights <- function(country_ids, n_boot, seed = 42) {
+  countries <- sort(unique(country_ids))
+  nc <- length(countries)
+  set.seed(seed)
+  W <- cbind(
+    rep(1L, nc),
+    replicate(n_boot, tabulate(sample.int(nc, nc, replace = TRUE), nc))
+  )
+  rownames(W) <- countries
+  colnames(W) <- c(
+    "Apparent",
+    paste0("Bootstrap", formatC(seq_len(n_boot), width = nchar(n_boot), flag = "0"))
+  )
+  W
+}
+
 # ── Paired within-draw delta between two grid cells ──────────────────────────
 # Read off the shared bootstrap resamples in `boot_results`. Pairing is preserved
 # (difference formed per draw, then quantiled), so these CIs are the honest test —

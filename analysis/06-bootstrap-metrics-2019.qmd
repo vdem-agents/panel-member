@@ -29,8 +29,9 @@ prototypes kept here as a lab notebook; the clean re-homed versions live in `pap
 
 Primary metric is **AI MAE against the panel mean**, read against the human leave-one-out
 (LOO) MAE — the typical error of a randomly held-out human coder against the rest of
-their panel. Bootstrap CIs use `r params$n_boot` resamples at the country-year-indicator
-(CYI) level.
+their panel. Bootstrap CIs use `r params$n_boot` **country-clustered** resamples — countries
+are drawn with replacement, each carrying its whole indicator block — because a country's
+indicators are correlated and resampling them independently understates uncertainty.
 
 ---
 
@@ -196,49 +197,45 @@ ai_metrics <- ai_raw |>
 
 ## 4. Bootstrap CIs (grid-wide, reused by every figure)
 
-Resample CYIs with replacement; for each draw compute AI MAE per cell and the human LOO
-MAE, plus their difference. The draw is carried into the aggregation as per-CYI **counts**
-(`w`) via an `inner_join`, so a CYI drawn *k* times is weighted *k* — the multiplicity a
-bootstrap requires. (A filtering `semi_join` here would answer only "was this CYI drawn?"
-and collapse every draw to a ~63% subsample.) This block is deliberately general — every
-figure reads its cells and CIs off `boot_ci` / `boot_results`.
+Resample **countries** with replacement; for each draw compute AI MAE per cell and the human
+LOO MAE, plus their difference. Countries are the independent unit — a country's ~200
+indicators are correlated, so resampling country-year-indicators (CYIs) independently, as the
+prereg specified, treats correlated draws as independent and yields anti-conservative
+(too-narrow) level intervals. A country drawn *k* times carries its whole indicator block *k*
+times — the per-country weight `w` (from the shared `country_boot_weights()` helper),
+broadcast to all of that country's rows via an `inner_join`, so the aggregation is otherwise
+unchanged. This block is deliberately general — every figure reads its cells and CIs off
+`boot_ci` / `boot_results`. See `notes/bootstrap-clustering-figures-check.qmd` for the derivation.
 
 ```{r bootstrap}
 #| cache: true
 #| cache.lazy: false
 
-set.seed(42)
-
-# One row per unique CYI (shared human floor), then resample CYIs.
+# One row per unique CYI (shared human floor); the country universe is resampled below.
 cyi_pool <- ai_metrics |>
   distinct(country_text_id, year, indicator, human_loo_mae)
 
-boots <- bootstraps(cyi_pool, times = params$n_boot, apparent = TRUE)
+# Shared country-clustered draw step: a (countries x n_boot+1) weight matrix, seed 42,
+# column "Apparent" = the all-ones point-estimate draw. The persistence rail (§4b) reuses
+# this same `W`, so the naive rail and the cell MAEs share one country universe.
+W <- country_boot_weights(cyi_pool$country_text_id, params$n_boot, seed = 42)
 
-boot_results <- boots |>
-  mutate(
-    result = map(splits, \(s) {
-      # Draw of CYIs with replacement -> collapse to per-CYI draw counts. The weight `w`
-      # carries the multiplicity a bootstrap needs
-      cyi_w <- analysis(s) |>
-        count(country_text_id, year, indicator, name = "w")
-      ai_metrics |>
-        inner_join(cyi_w, by = c("country_text_id", "year", "indicator")) |>
-        group_by(model_key, condition) |>
-        summarise(
-          ai_mae    = weighted.mean(ai_error, w),
-          human_mae = weighted.mean(human_loo_mae, w),
-          diff      = weighted.mean(ai_error, w) - weighted.mean(human_loo_mae, w),
-          .groups   = "drop"
-        )
-    })
-  ) |>
-  # Drop the `splits` list-column before unnesting: otherwise every unnested row
-  # carries a full copy of its resample-split object (each referencing the whole
-  # data), which blows serialization/caching past the 32 GB vector limit. Only
-  # id + the summarised stats are ever used downstream.
-  select(id, result) |>
-  unnest(result)
+boot_results <- map_dfr(colnames(W), \(draw) {
+  # Per-country weight for this draw, broadcast to every one of the country's CYIs. `w > 0`
+  # drops undrawn countries; a country drawn k times is weighted k (bootstrap multiplicity).
+  country_w <- tibble(country_text_id = rownames(W), w = W[, draw]) |>
+    filter(w > 0)
+  ai_metrics |>
+    inner_join(country_w, by = "country_text_id") |>
+    group_by(model_key, condition) |>
+    summarise(
+      ai_mae    = weighted.mean(ai_error, w),
+      human_mae = weighted.mean(human_loo_mae, w),
+      diff      = weighted.mean(ai_error, w) - weighted.mean(human_loo_mae, w),
+      .groups   = "drop"
+    ) |>
+    mutate(id = draw, .before = 1)
+})
 
 # Per-cell AI MAE point estimate (apparent draw) + percentile CI on the AI–human diff.
 boot_ci <- boot_results |>
@@ -268,13 +265,6 @@ human_ref <- boot_results |>
     hi        = quantile(human_mae[id != "Apparent"], 0.975),
     human_mae = mean(human_mae[id == "Apparent"])
   )
-
-# `boots` holds 2001 resample splits, each embedding a copy of cyi_pool; it is only
-# needed to build boot_results above. Drop it before the chunk caches so the cache
-# doesn't try to serialize a >2 GB object. Only cyi_pool (needed downstream by the
-# reference rails) and the small summaries are kept.
-rm(boots)
-gc(verbose = FALSE)
 ```
 
 ---
@@ -310,20 +300,19 @@ persist_cyi <- cyi_pool |>
 rounding_floor <- mean(abs(round(persist_cyi$raw_mean) - persist_cyi$raw_mean))
 sesoi <- rounding_floor / 2
 
-# Persistence rail: bootstrap MAE on the same CYI pool (its own resample; a reference line
-# only needs a point + CI, not matched draws with the per-cell bootstrap).
-set.seed(42)
-pb <- bootstraps(persist_cyi, times = params$n_boot, apparent = TRUE)
-pv <- map_dbl(pb$splits, \(s) mean(analysis(s)$persist_err, na.rm = TRUE))
+# Persistence rail: MAE on the same pool under the SAME country-clustered draws (reuse `W`),
+# so the naive rail and the cell MAEs share one country universe. Weight each CYI by its
+# country's draw count (broadcast by country_text_id); drop undrawn/NA rows per draw.
+pv <- vapply(colnames(W), \(draw) {
+  wt <- W[persist_cyi$country_text_id, draw]
+  ok <- wt > 0 & !is.na(persist_cyi$persist_err)
+  weighted.mean(persist_cyi$persist_err[ok], wt[ok])
+}, numeric(1))
 persist_ref <- tibble(
-  lo          = quantile(pv[pb$id != "Apparent"], 0.025),
-  hi          = quantile(pv[pb$id != "Apparent"], 0.975),
-  persist_mae = pv[pb$id == "Apparent"]
+  lo          = quantile(pv[names(pv) != "Apparent"], 0.025),
+  hi          = quantile(pv[names(pv) != "Apparent"], 0.975),
+  persist_mae = pv[["Apparent"]]
 )
-
-# Drop the resample rset before the chunk caches (same >2 GB serialization trap as `boots`).
-rm(pb)
-gc(verbose = FALSE)
 
 glue("rounding floor = {round(rounding_floor,3)} · SESOI (±) = {round(sesoi,3)} · ",
      "persistence MAE = {round(persist_ref$persist_mae,3)} ",
@@ -565,6 +554,15 @@ copier is structurally blind and independent reading should pay — is the one *
 a pre-registered movement flag rather than an endogenous split. The 2019 movement-bin split that
 motivates this (exploratory only) is the |Δ| table in
 `notes/stage1-preliminary-observations.md` ("the reversal is a stable-cell artifact").
+
+**The resampling unit.** CIs throughout are from a **country-clustered** bootstrap: countries
+are resampled with replacement, each carrying its whole ~200-indicator block. This is the honest
+independent unit — a country's indicators are correlated, so the prereg's independent CYI resample
+treated them as more independent than they are and produced anti-conservative (too-narrow) level
+intervals. The switch leaves point estimates and cell ordering untouched; every SESOI verdict
+across Figures 1–3 is preserved, with only two non-registered adjacent-pair distinctions (An vs.
+Su, Su vs. FT-summ) losing statistical resolution. The full CYI-vs-clustered comparison is worked
+through in `notes/bootstrap-clustering-figures-check.qmd`.
 
 ---
 

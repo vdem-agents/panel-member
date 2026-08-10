@@ -146,7 +146,7 @@ bind_rows(
 ) |>
   gt() |>
   tab_header(title = "Table S1 — Base-model identification contrasts (B1–B4)",
-             subtitle = glue("Paired CYI bootstrap · SESOI ±{round(sesoi, 3)} · stars = significance"))
+             subtitle = glue("Paired country-clustered bootstrap · SESOI ±{round(sesoi, 3)} · stars = significance"))
 ```
 
 ## S2. Hypothesis F1 — Fine-tuning vs. few-shot (matched conditions)
@@ -278,9 +278,9 @@ bind_rows(
 ## S6. Hypothesis A4 — Training-side difference-in-differences
 
 Training-side analog of B4: does the summarize-vs-anonymize tradeoff at inference (B4) replicate
-in the fine-tuned weights? DiD = [FT-summ:Su − FT-anon:An] − [Base:Su − Base:An], paired at the
-CYI level. Registered as an equivalence test: the tradeoff replicates if the DiD CI falls within
-±SESOI.
+in the fine-tuned weights? DiD = [FT-summ:Su − FT-anon:An] − [Base:Su − Base:An], differenced
+within each bootstrap draw. Registered as an equivalence test: the tradeoff replicates if the DiD
+CI falls within ±SESOI.
 
 ```{r table-s6}
 did <- reduce(

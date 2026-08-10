@@ -1,0 +1,1024 @@
+---
+title: "2019 regime-transition split (R2) — compute & formal tests"
+format:
+  html:
+    toc: true
+    toc-depth: 2
+    embed-resources: true
+    code-fold: true
+    fig-width: 8
+    fig-height: 5
+execute:
+  warning: false
+  message: false
+params:
+  n_boot: 2000
+  year: 2019
+---
+
+Formal **R2 regime-transition** analysis (hypothesis R2 in
+`preregistration/preregistration-draft.qmd`; strategy: `notes/alternative-test-strategy.md`;
+measurement design: `preregistration/mechanism-test-design.md`). R2 asks whether the **evidence
+gain** — the paired MAE change from the codebook condition to a text condition — is *more
+negative* (evidence helps more) on country-years undergoing a regime transition than on stable
+ones. The registered mechanism: the model's frozen country prior is stale exactly where the
+country is moving, so the text describing current conditions carries more marginal information
+there.
+
+**This document is 2019 only, and this is a within-year detection test, not a staleness test.**
+With a one-year gap after the 2016–2018 fine-tuning window (and a base model whose pretraining
+runs through Dec 2023), no prior has had time to go *stale* for 2019. What a 2019 transition CYI
+still tests is local: in a transition year the panel mean has moved off the country's baseline,
+and the question is whether the model reads the text to catch that this year is anomalous for the
+country rather than defaulting to its reputation prior. The multi-year design (accumulated
+transitions in the 2023 pool — lag vs. holdout) is deferred and noted at the end; **do not build
+2023 machinery here.**
+
+Three movement instruments, a ladder of the same test (see `notes/stage1-preliminary-observations.md`):
+
+- **Endogenous within-CYI |Δ| (background only).** Bin CYIs by |Δ| of *the scored indicator's own*
+  2018→2019 panel mean. Circular — the bin edge is the realized change in the very quantity MAE is
+  scored against — so it is reported as background, not a test. This reproduces the Python table in
+  the stage-1 note in R.
+- **ERT episode flag (registered binary treatment).** V-Dem Episodes of Regime Transformation
+  (v15): a country-year is transition-adjacent if it sits in a democratization or autocratization
+  episode. External to the scored indicator, so non-circular.
+- **|Δv2x_polyarchy| (continuous moderator).** Year-over-year change in the *aggregate*
+  polyarchy index — one level removed from the scored indicator, for statistical resolution.
+
+The R2-style quantity is the **difference-in-differences**: is the evidence gain (base Δ(Ev−Cb),
+Δ(An−Cb), Δ(Su−Cb), and each FT model's diagonal − own codebook) more negative in transition CYIs
+than in stable CYIs? R2 is registered on 2023; on 2019 these are exploratory, additional analyses
+in the same spirit, run on both the base conditions and the FT diagonal.
+
+**Country-clustered resampling.** The ERT flag is assigned at the country-year level, so all ~205
+indicators of a transition country share it; resampling CYIs independently would treat them as
+independent and *understate* uncertainty on the split — most severely for the movement instruments,
+whose entire signal is between-country. This document therefore resamples **countries** throughout
+— the §5 registered/DiD engine, the Figure 2 ribbon, the Table 5 level slopes, and the §7 horse
+race alike — consistent with the country-clustered switch now used in `06`/`07`/`08`. The registered
+confirmatory R2 lives on 2023 (a separate document); these 2019 analyses are exploratory, where
+country clustering is the honest default.
+
+## 1. Setup
+
+```{r setup}
+library(tidyverse)
+library(rsample)
+library(gt)
+library(glue)
+
+if (!exists("params")) params <- list(n_boot = 2000, year = 2019)
+
+find_panel_member_root <- function() {
+  up <- tryCatch(rprojroot::find_root(rprojroot::is_git_root), error = function(e) NA_character_)
+  if (!is.na(up)) return(up)
+  down <- file.path(getwd(), "panel-member")
+  if (dir.exists(file.path(down, ".git"))) return(down)
+  stop("Could not locate the panel-member project root from working dir: ", getwd())
+}
+proj_root   <- find_panel_member_root()
+source(file.path(proj_root, "R", "bootstrap_helpers.R"))
+data_dir    <- file.path(proj_root, "data", "processed")
+runs_dir    <- file.path(proj_root, "data", "output", "runs")
+derived_dir <- file.path(proj_root, "data", "derived")
+
+# SESOI is fixed by the main analysis; carry it over so every document bands on the identical
+# value. The R2 quantities (evidence gains, DiDs) are on the rating-point axis, so ±SESOI is a
+# valid "substantively negligible" band here.
+sesoi <- readRDS(file.path(derived_dir, "bootstrap_2019.rds"))$sesoi
+```
+
+## 2. Data loading
+
+Three sources: the JSONL runs, the panel means (also carries the 2018 predecessor for
+persistence), and the ERT v15 country-year file (episode flags + `v2x_polyarchy` for both the
+binary and continuous instruments). No coder-level ratings — the registered R2 is a panel-mean
+MAE test, so this runs on the full confirmatory pool (no coder floor), like `08`.
+
+```{r load-data}
+#| cache: true
+#| cache.lazy: false
+needed_cols <- c("country", "year", "indicator", "condition", "model_key", "rating")
+read_run <- function(f) {
+  con <- file(f, "r"); on.exit(close(con))
+  jsonlite::stream_in(con, verbose = FALSE) |> as_tibble() |> select(all_of(needed_cols))
+}
+ai_raw <- list.files(runs_dir, pattern = "\\.jsonl$", full.names = TRUE) |>
+  map(read_run) |> bind_rows() |> mutate(model_key = str_remove(model_key, "-local$"))
+
+panel_means <- read_csv(file.path(data_dir, "panel_means.csv"), show_col_types = FALSE)
+
+# ERT v15 (symlink → shared/vdem-data/ert_v15.csv). The leading unnamed row-index column reads
+# in as `...1`; drop it. Keep only what the two instruments need.
+ert <- read_csv(file.path(data_dir, "ert.csv"), show_col_types = FALSE) |>
+  select(country_text_id, year, v2x_polyarchy,
+         dem_ep, aut_ep, dem_ep_start_year, aut_ep_start_year)
+```
+
+## 3. Metric construction
+
+### The transition instruments (country-year level)
+
+```{r instruments}
+# Binary ERT flag for the evaluation year: in a democratization OR autocratization episode.
+# `onset` (episode start year) is the sharper variant reported alongside as robustness.
+ert_flag <- ert |>
+  filter(year == params$year) |>
+  transmute(country_text_id,
+            in_ep = (dem_ep == 1) | (aut_ep == 1),
+            onset = (dem_ep == 1 & year == dem_ep_start_year) |
+                    (aut_ep == 1 & year == aut_ep_start_year)) |>
+  mutate(across(c(in_ep, onset), \(x) replace_na(x, FALSE)))
+
+# Continuous moderator: |Δ v2x_polyarchy| from the prior year to the evaluation year, taken from
+# the ERT file itself (one value per country-year, shared across that country's indicators).
+dpoly <- ert |>
+  filter(year %in% c(params$year - 1L, params$year)) |>
+  select(country_text_id, year, v2x_polyarchy) |>
+  pivot_wider(names_from = year, values_from = v2x_polyarchy,
+              names_prefix = "p") |>
+  transmute(country_text_id,
+            dpoly = abs(.data[[paste0("p", params$year)]] -
+                        .data[[paste0("p", params$year - 1L)]]))
+```
+
+### Base-model per-CYI errors (wide) + persistence
+
+```{r base-errors}
+# The seven Figure-1 cells — base ladder (few-shot Cb/Ev/An/Su) + the FT diagonal (each FT
+# variant on the input it was built for, zero-shot) — plus each FT model's own codebook baseline
+# (ft_*_cb), needed to form the FT evidence gains (diagonal − own codebook) that parallel the
+# base Ev/An/Su − Cb gains. Short labels double as column names.
+cell_map <- tibble::tribble(
+  ~lab,          ~model_key,           ~condition,
+  "cb",          "llama-70b",          "codebook",
+  "ev",          "llama-70b",          "evidence",
+  "an",          "llama-70b",          "anonymized",
+  "su",          "llama-70b",          "summarized",
+  "ft_raw",      "llama-70b-ft-raw",   "evidence-zeroshot",
+  "ft_anon",     "llama-70b-ft-anon",  "anonymized-zeroshot",
+  "ft_summ",     "llama-70b-ft-summ",  "summarized-zeroshot",
+  "ft_raw_cb",   "llama-70b-ft-raw",   "codebook",
+  "ft_anon_cb",  "llama-70b-ft-anon",  "codebook",
+  "ft_summ_cb",  "llama-70b-ft-summ",  "codebook")
+
+pm_year <- panel_means |> filter(year == params$year) |>
+  select(country_text_id, indicator, raw_mean)
+
+# 2018 predecessor mean → integer-fair persistence (round the carry-forward, since the AI emits
+# integers), same construction as 06 §9 / the stage-1 note.
+pm_prev <- panel_means |> filter(year == params$year - 1L) |>
+  select(country_text_id, indicator, mean_prev = raw_mean)
+
+# Per-CYI absolute error for all seven cells (full confirmatory pool, no coder floor).
+cell_wide <- ai_raw |>
+  filter(year == params$year) |>
+  rename(country_text_id = country) |>
+  inner_join(cell_map, by = c("model_key", "condition")) |>
+  inner_join(pm_year, by = c("country_text_id", "indicator")) |>
+  mutate(err = abs(rating - raw_mean)) |>
+  select(country_text_id, indicator, lab, err) |>
+  pivot_wider(names_from = lab, values_from = err)
+
+# Human leave-one-out MAE per CYI (≥2-coder cells; NA for singletons) — the held-out-coder
+# reference row for Table 2, same LOO construction as 06.
+human_ratings <- read_csv(file.path(data_dir, "human_ratings.csv"), show_col_types = FALSE)
+human_loo <- human_ratings |>
+  filter(year == params$year) |>
+  group_by(country_text_id, indicator) |>
+  filter(n() >= 2) |>
+  summarise(hloo = mean(abs(rating - (sum(rating) - rating) / (n() - 1))), .groups = "drop")
+
+# One row per CYI: the seven cell errors, the base evidence-gain deltas, the transition flags,
+# the continuous moderator, and integer-fair persistence error.
+cyi <- cell_wide |>
+  left_join(pm_year, by = c("country_text_id", "indicator")) |>
+  left_join(pm_prev, by = c("country_text_id", "indicator")) |>
+  left_join(human_loo, by = c("country_text_id", "indicator")) |>
+  left_join(ert_flag, by = "country_text_id") |>
+  left_join(dpoly,    by = "country_text_id") |>
+  mutate(
+    d_ev = ev - cb, d_an = an - cb, d_su = su - cb,   # base evidence gains (paired, per CYI)
+    # FT evidence gains: each FT model's diagonal condition minus its own codebook baseline.
+    d_ftraw = ft_raw - ft_raw_cb, d_ftanon = ft_anon - ft_anon_cb, d_ftsumm = ft_summ - ft_summ_cb,
+    persist_err = abs(round(mean_prev) - raw_mean),
+    abs_delta   = abs(raw_mean - mean_prev),          # endogenous within-CYI move (background)
+    in_ep = replace_na(in_ep, FALSE),
+    onset = replace_na(onset, FALSE)
+  ) |>
+  mutate(.rowid = row_number())   # stable resample index (tibbles drop rownames)
+
+glue("pool: {nrow(cyi)} CYIs · in-episode {sum(cyi$in_ep)} ({round(100*mean(cyi$in_ep),1)}%) · ",
+     "onset {sum(cyi$onset)} · with 2018 predecessor {sum(!is.na(cyi$mean_prev))} · ",
+     "with dpoly {sum(!is.na(cyi$dpoly))}")
+```
+
+## 4. Table 1 — Background: endogenous within-CYI |Δ| bins
+
+*Reproduces the stage-1 note's movement table in R.* Bin CYIs by how far **the scored
+indicator's own** panel mean moved 2018→2019, and read persistence and base MAE within each bin.
+**Background only, not a test:** the bin edge is the realized change in the quantity MAE scores
+against, so persistence's per-bin MAE is mechanical (≈ the bin's mean |Δ|). This is exactly the
+circularity the ERT and |Δpolyarchy| instruments below avoid.
+
+```{r tbl-endogenous}
+endog <- cyi |>
+  filter(!is.na(mean_prev)) |>
+  mutate(bin = cut(abs_delta, breaks = c(0, 0.25, 0.5, 1, 2, Inf), right = FALSE,
+                   labels = c("[0.00, 0.25)", "[0.25, 0.50)", "[0.50, 1.00)",
+                              "[1.00, 2.00)", "[2.00, +)"))) |>
+  group_by(bin) |>
+  summarise(
+    n       = n(),
+    persist = mean(abs_delta),                       # = bin mean |Δ| (mechanical)
+    across(c(cb, ev, an, su, ft_raw, ft_anon, ft_summ), \(x) mean(x, na.rm = TRUE)),
+    .groups = "drop"
+  )
+
+endog |>
+  gt() |>
+  fmt_number(columns = c(persist, cb, ev, an, su, ft_raw, ft_anon, ft_summ), decimals = 3) |>
+  cols_label(cb = "Base:Cb", ev = "Base:Ev", an = "Base:An", su = "Base:Su",
+             ft_raw = "FT-raw", ft_anon = "FT-anon", ft_summ = "FT-summ") |>
+  tab_header(title = "Table 1 — Endogenous within-CYI |Δ| bins, all cells (background, not a test)",
+             subtitle = "MAE per cell within each movement bin · persist = bin mean |Δ| (mechanical)")
+```
+
+## 5. Bootstrap engine (transition instruments)
+
+Seed-42 country-clustered resample (via the shared `country_boot_weights()` helper), like
+`06`/`07`/`08`. Per draw the engine
+returns the evidence gains (transition vs stable) under the ERT flag — for the **base** conditions
+(Ev/An/Su − Cb) and the **FT diagonal** (each FT model's diagonal − own codebook), both the
+in-episode primary and the onset-year cut — the weighted-OLS slope of each gain on |Δpolyarchy|,
+and the MAE **level of all seven cells** (plus persistence and the human LOO reference) split by
+stable / in-episode / onset. The difference-in-differences (transition − stable) is formed from
+these in §6.
+
+```{r bootstrap}
+#| cache: true
+#| cache.lazy: false
+
+# Precompute per-CYI vectors (indexed by pool row) so each draw is a handful of weighted sums.
+d_ev <- cyi$d_ev; d_an <- cyi$d_an; d_su <- cyi$d_su
+d_ftraw <- cyi$d_ftraw; d_ftanon <- cyi$d_ftanon; d_ftsumm <- cyi$d_ftsumm
+in_ep <- cyi$in_ep; onset <- cyi$onset
+dpoly_v <- cyi$dpoly; persist_v <- cyi$persist_err; hloo_v <- cyi$hloo
+# The seven cell error vectors, for the MAE-level tables (Table 2) split by transition/onset.
+cellmat <- list(cb = cyi$cb, ev = cyi$ev, an = cyi$an, su = cyi$su,
+                ft_raw = cyi$ft_raw, ft_anon = cyi$ft_anon, ft_summ = cyi$ft_summ)
+
+# weighted group means of `val` over `grp` (logical: TRUE = transition), on the non-NA mask
+gmean <- function(val, grp, w) {
+  m  <- !is.na(val)
+  wt <- w[m]; v <- val[m]; g <- grp[m]
+  num <- tapply(wt * v, g, sum); den <- tapply(wt, g, sum)
+  st  <- num / den
+  c(tr = unname(st["TRUE"]), st = unname(st["FALSE"]))
+}
+# weighted OLS slope of y on x (closed form), non-NA on both
+wslope <- function(y, x, w) {
+  m <- !is.na(y) & !is.na(x)
+  wt <- w[m]; yy <- y[m]; xx <- x[m]; W <- sum(wt)
+  mx <- sum(wt * xx) / W; my <- sum(wt * yy) / W
+  sum(wt * (xx - mx) * (yy - my)) / sum(wt * (xx - mx)^2)
+}
+
+compute_draw <- function(w) {
+  g_ev <- gmean(d_ev, in_ep, w); g_an <- gmean(d_an, in_ep, w); g_su <- gmean(d_su, in_ep, w)
+  o_ev <- gmean(d_ev, onset, w); o_an <- gmean(d_an, onset, w); o_su <- gmean(d_su, onset, w)
+  g_fr <- gmean(d_ftraw, in_ep, w); g_fa <- gmean(d_ftanon, in_ep, w); g_fs <- gmean(d_ftsumm, in_ep, w)
+  o_fr <- gmean(d_ftraw, onset, w); o_fa <- gmean(d_ftanon, onset, w); o_fs <- gmean(d_ftsumm, onset, w)
+  l_ps <- gmean(persist_v, in_ep, w); o_ps <- gmean(persist_v, onset, w)
+  l_hl <- gmean(hloo_v, in_ep, w);    o_hl <- gmean(hloo_v, onset, w)
+  # MAE level per cell, split by in-episode (tr/st) and onset (tr = onset MAE). L_<cell>_<grp>.
+  lev <- do.call(c, lapply(names(cellmat), function(nm) {
+    gi <- gmean(cellmat[[nm]], in_ep, w); go <- gmean(cellmat[[nm]], onset, w)
+    setNames(c(gi[["tr"]], gi[["st"]], go[["tr"]]), paste0("L_", nm, c("_tr", "_st", "_on")))
+  }))
+  # `[[ ]]` strips the "tr"/"st" names so c(...) keeps the outer names verbatim.
+  c(ev_tr = g_ev[["tr"]], ev_st = g_ev[["st"]], an_tr = g_an[["tr"]], an_st = g_an[["st"]],
+    su_tr = g_su[["tr"]], su_st = g_su[["st"]],
+    ev_tr_on = o_ev[["tr"]], ev_st_on = o_ev[["st"]], an_tr_on = o_an[["tr"]], an_st_on = o_an[["st"]],
+    su_tr_on = o_su[["tr"]], su_st_on = o_su[["st"]],
+    fr_tr = g_fr[["tr"]], fr_st = g_fr[["st"]], fa_tr = g_fa[["tr"]], fa_st = g_fa[["st"]],
+    fs_tr = g_fs[["tr"]], fs_st = g_fs[["st"]],
+    fr_tr_on = o_fr[["tr"]], fr_st_on = o_fr[["st"]], fa_tr_on = o_fa[["tr"]], fa_st_on = o_fa[["st"]],
+    fs_tr_on = o_fs[["tr"]], fs_st_on = o_fs[["st"]],
+    ps_tr = l_ps[["tr"]], ps_st = l_ps[["st"]], ps_on = o_ps[["tr"]],
+    hl_tr = l_hl[["tr"]], hl_st = l_hl[["st"]], hl_on = o_hl[["tr"]],
+    lev,
+    slope_ev = wslope(d_ev, dpoly_v, w),
+    slope_an = wslope(d_an, dpoly_v, w),
+    slope_su = wslope(d_su, dpoly_v, w),
+    slope_ftraw = wslope(d_ftraw, dpoly_v, w),
+    slope_ftanon = wslope(d_ftanon, dpoly_v, w),
+    slope_ftsumm = wslope(d_ftsumm, dpoly_v, w))
+}
+
+# Country-clustered draw step (shared helper), same seed/scheme as 06/07/08. Broadcast each draw's
+# per-country weight to that country's CYIs; cyi is ordered by `.rowid` (= row_number), so indexing
+# W's rows by country yields a weight vector aligned to the pool rows compute_draw() expects.
+W <- country_boot_weights(cyi$country_text_id, params$n_boot, seed = 42)
+draws <- map(colnames(W), function(draw) {
+  w <- unname(W[, draw][cyi$country_text_id])
+  compute_draw(w)
+})
+app <- which(colnames(W) == "Apparent")   # apparent (full-sample) draw = point estimate
+M   <- do.call(rbind, draws)
+```
+
+## 6. Aggregate to point estimates + 95% CIs
+
+```{r aggregate}
+boot_rows <- setdiff(seq_len(nrow(M)), app)
+ci <- function(col) {
+  v <- M[, col]
+  # unname() the quantiles — otherwise the "2.5%"/"97.5%" tags mangle the lo/hi names
+  # and downstream lookups by name return NA. na.rm because under country resampling a draw can
+  # contain zero onset countries (only 8 exist) → NaN onset means; those draws drop from the CI.
+  c(est = unname(v[app]), lo = unname(quantile(v[boot_rows], 0.025, na.rm = TRUE)),
+    hi = unname(quantile(v[boot_rows], 0.975, na.rm = TRUE)), p_gt = mean(v[boot_rows] > 0, na.rm = TRUE))
+}
+# Difference-in-differences formed per draw (transition − stable), then quantiled — paired, so the
+# CI is on the DiD itself, not the overlap of two group bars. na.rm as in ci() (onset draws).
+did <- function(tr_col, st_col, label) {
+  d <- M[, tr_col] - M[, st_col]
+  tibble(Contrast = label, tr = M[app, tr_col], st = M[app, st_col],
+         DiD = d[app], lo = quantile(d[boot_rows], 0.025, na.rm = TRUE),
+         hi = quantile(d[boot_rows], 0.975, na.rm = TRUE),
+         p_gt = mean(d[boot_rows] > 0, na.rm = TRUE),
+         sesoi_out = abs(d[app]) > sesoi)
+}
+```
+
+### Table 2 — ERT split, MAE levels (external-flag analog of Table 1)
+
+The non-circular version of Table 1: split by the ERT episode flag instead of the endogenous
+|Δ|. `n` and coverage are fixed; MAE levels carry bootstrap CIs.
+
+```{r tbl-levels}
+n_tr <- sum(cyi$in_ep); n_st <- sum(!cyi$in_ep); n_on <- sum(cyi$onset)
+cifmt <- function(x) glue("[{round(x['lo'], 3)}, {round(x['hi'], 3)}]")
+lvl <- function(prefix, label) {
+  a <- ci(paste0(prefix, "_st")); b <- ci(paste0(prefix, "_tr")); d <- ci(paste0(prefix, "_on"))
+  tibble(Quantity = label,
+         Stable = a["est"],       `Stable CI` = cifmt(a),
+         `In-episode` = b["est"], `In-ep CI` = cifmt(b),
+         Onset = d["est"],        `Onset CI` = cifmt(d))
+}
+bind_rows(
+  lvl("ps", "persistence (integer-fair)"),
+  lvl("hl", "human LOO (held-out coder)"),
+  lvl("L_cb", "Base:Cb"), lvl("L_ev", "Base:Ev"), lvl("L_an", "Base:An"), lvl("L_su", "Base:Su"),
+  lvl("L_ft_raw", "FT-raw"), lvl("L_ft_anon", "FT-anon"), lvl("L_ft_summ", "FT-summ")
+) |>
+  gt() |>
+  fmt_number(columns = c(Stable, `In-episode`, Onset), decimals = 3) |>
+  tab_header(
+    title = "Table 2 — ERT episode split: MAE levels, all cells",
+    subtitle = glue("2019 · stable n={n_st}, in-episode n={n_tr}, onset n={n_on} (onset ⊂ in-episode) · ",
+                    "country-clustered bootstrap — onset spans only 8 countries, so its CI is wide/indicative"))
+```
+
+### Figure 1 — MAE landscape by transition subgroup
+
+Table 2 as a picture, in the Figure-1 idiom (`06`): the seven cells on a common AI-MAE axis
+against the **human LOO** rail, faceted by subgroup so each panel carries its own rail and ±SESOI
+band. Reading left panel → right panel, the human LOO line and the whole cell cluster slide
+*right* together — coders themselves sit farther from consensus in transition years (disagreement
+during change) — while FT-raw stays pinned to the human line throughout. Most cells fall *within*
+±SESOI of the human line: on error *magnitude* they are not substantively distinguishable from a
+held-out coder (only base Anonymized/Summarized clear the band). The separation between cells
+lives in error *shape* and *direction*, which is what the horse-race tables (§7) measure — this
+figure is the level-view background. (Onset spans only 8 countries, so its error bars are wide
+under the country-clustered bootstrap — read them as indicative.)
+
+```{r}
+#| label: fig-landscape-subgroups
+#| fig-width: 9.5
+#| fig-height: 4.6
+cells_tbl <- tibble(
+  pref   = c("L_cb", "L_ev", "L_an", "L_su", "L_ft_raw", "L_ft_anon", "L_ft_summ"),
+  row    = c("Codebook", "Raw Text", "Anonymized", "Summarized",
+             "FT · Raw Text", "FT · Anonymized", "FT · Summarized"),
+  family = c("Base", "Base", "Base", "Base", "Fine-tuned", "Fine-tuned", "Fine-tuned"))
+getci <- function(col) { z <- ci(col); tibble(est = z["est"], lo = z["lo"], hi = z["hi"]) }
+
+sub_lv <- c("Stable", "In-episode", "Onset")
+land <- tidyr::crossing(cells_tbl, suf = c("st", "tr", "on")) |>
+  mutate(cidf = map(paste0(pref, "_", suf), getci)) |> unnest(cidf) |>
+  mutate(sub = factor(recode(suf, st = "Stable", tr = "In-episode", on = "Onset"), levels = sub_lv),
+         row = factor(row, levels = c("FT · Summarized", "FT · Anonymized", "FT · Raw Text",
+                                      "Summarized", "Anonymized", "Raw Text", "Codebook")),
+         family = factor(family, levels = c("Base", "Fine-tuned")))
+
+refs <- tibble(sub = factor(sub_lv, levels = sub_lv),
+               human   = c(ci("hl_st")["est"], ci("hl_tr")["est"], ci("hl_on")["est"]),
+               persist = c(ci("ps_st")["est"], ci("ps_tr")["est"], ci("ps_on")["est"]))
+
+ggplot(land, aes(est, row, color = family)) +
+  geom_rect(data = refs, inherit.aes = FALSE, ymin = -Inf, ymax = Inf,
+            aes(xmin = human - sesoi, xmax = human + sesoi), fill = "grey85", alpha = 0.55) +
+  geom_vline(data = refs, aes(xintercept = human), linetype = "longdash", color = "grey40") +
+  geom_hline(yintercept = 3.5, color = "grey85", linewidth = 0.4) +   # base | FT separator
+  geom_errorbar(aes(xmin = lo, xmax = hi), orientation = "y", width = 0.22, linewidth = 0.6) +
+  geom_point(size = 2) +
+  facet_wrap(~ sub, nrow = 1) +
+  scale_color_manual(values = family_pal, name = NULL) +
+  labs(x = "AI Mean Absolute Error", y = NULL,
+       title = "Figure 1 — Coder performance by regime-transition subgroup",
+       subtitle = glue("2019 · MAE vs panel mean · long-dash = human LOO · ",
+                       "grey band = ±SESOI ({round(sesoi,3)}) around human LOO")) +
+  theme_minimal(base_size = 11) +
+  theme(legend.position = "top", legend.justification = "left",
+        panel.grid.major.y = element_blank(), plot.title.position = "plot",
+        plot.title = element_text(face = "bold"))
+```
+
+### Table 3 — Evidence-gain difference-in-differences (2019, exploratory)
+
+An exploratory 2019 analysis in the spirit of R2, which is registered on 2023; on 2019 it is an
+additional, hypothesis-generating companion. For each model's **evidence gain** — the base
+Ev/An/Su − Cb, and each FT model's diagonal condition minus its **own** codebook baseline — the
+mean paired Δ in transition vs. stable CYIs, and the **DiD = transition − stable**. In R2's logic a
+negative DiD means evidence helps more where the country is moving. In-episode is the primary cut;
+onset-year is the sharper one.
+
+```{r tbl-did}
+did_tbl <- bind_rows(
+  did("ev_tr", "ev_st", "Base Ev−Cb · in-episode"),
+  did("an_tr", "an_st", "Base An−Cb · in-episode"),
+  did("su_tr", "su_st", "Base Su−Cb · in-episode"),
+  did("fr_tr", "fr_st", "FT-raw · in-episode"),
+  did("fa_tr", "fa_st", "FT-anon · in-episode"),
+  did("fs_tr", "fs_st", "FT-summ · in-episode"),
+  did("ev_tr_on", "ev_st_on", "Base Ev−Cb · onset-year"),
+  did("an_tr_on", "an_st_on", "Base An−Cb · onset-year"),
+  did("su_tr_on", "su_st_on", "Base Su−Cb · onset-year"),
+  did("fr_tr_on", "fr_st_on", "FT-raw · onset-year"),
+  did("fa_tr_on", "fa_st_on", "FT-anon · onset-year"),
+  did("fs_tr_on", "fs_st_on", "FT-summ · onset-year")
+)
+
+did_tbl |>
+  transmute(Contrast,
+            `Δ transition` = tr, `Δ stable` = st, DiD,
+            `95% CI (DiD)` = glue("[{round(lo,3)}, {round(hi,3)}]"),
+            `P(DiD>0)` = p_gt,
+            `Beyond SESOI?` = if_else(sesoi_out, "yes", "no")) |>
+  gt() |>
+  fmt_number(columns = c(`Δ transition`, `Δ stable`, DiD, `P(DiD>0)`), decimals = 3) |>
+  tab_header(
+    title = "Table 3 — Evidence-gain difference-in-differences, base + FT (2019, exploratory)",
+    subtitle = glue("In the spirit of R2 (registered on 2023) · DiD<0 = evidence helps more in ",
+                    "transition CYIs · SESOI ±{round(sesoi,3)}"))
+```
+
+**Reading the DiD in the reversed regime.** Because $d = \text{MAE(condition)} - \text{MAE(codebook)}$
+is *positive* on 2019 — evidence raises error over the bare prior, the identification reversal — a
+negative DiD does **not** mean evidence helps; it means the penalty is *smaller* in transition than
+in stable. Base Ev−Cb's −0.018 decomposes cleanly against Table 2: codebook error rises +0.035
+(stable → in-episode) while evidence rises only +0.017, so the Ev−Cb gap narrows from 0.075 to
+0.057. Mechanistically this is R2's stale-prior logic — the naked prior (codebook) degrades faster
+where the country moves, so reading evidence is comparatively less costly there — but it is not the
+"evidence grounds the rating" result the hypothesis imagined: evidence still raises error
+everywhere, the effect is sub-SESOI, and it is confined to the identity-present Ev condition (An−Cb
+and Su−Cb are null). The large *shared* component — everyone's error rises in transition, human LOO
+most of all (+0.070) — is what the DiD differences away; that common rise, not the small residual,
+is the headline of Figure 1. Most DiD rows do not clear zero: the binary split is underpowered,
+and the continuous moderator below — though higher-resolution — is no more decisive once the
+bootstrap resamples countries, because its slope is carried by only the handful of country-years
+that actually moved.
+
+### Table 4 — Continuous moderator: evidence gain vs |Δpolyarchy| (2019, exploratory)
+
+The higher-resolution companion to Table 3, on the same 2019 exploratory footing. Weighted-OLS
+slope of each per-CYI evidence gain (base and FT) on |Δv2x_polyarchy|. A **negative** slope means
+the evidence gain grows more negative (evidence helps more) as the country's aggregate movement
+increases — the continuous analog of a negative DiD. Slope is on ΔMAE per unit polyarchy change
+(dimensionless axis change), so no SESOI band applies.
+
+```{r tbl-slope}
+bind_rows(
+  as_tibble_row(ci("slope_ev")) |> mutate(Gain = "Base Ev−Cb"),
+  as_tibble_row(ci("slope_an")) |> mutate(Gain = "Base An−Cb"),
+  as_tibble_row(ci("slope_su")) |> mutate(Gain = "Base Su−Cb"),
+  as_tibble_row(ci("slope_ftraw"))  |> mutate(Gain = "FT-raw"),
+  as_tibble_row(ci("slope_ftanon")) |> mutate(Gain = "FT-anon"),
+  as_tibble_row(ci("slope_ftsumm")) |> mutate(Gain = "FT-summ")
+) |>
+  transmute(Gain, Slope = est, `95% CI` = glue("[{round(lo,3)}, {round(hi,3)}]"),
+            `P(slope>0)` = p_gt) |>
+  gt() |>
+  fmt_number(columns = c(Slope, `P(slope>0)`), decimals = 3) |>
+  tab_header(
+    title = "Table 4 — Evidence gain vs |Δpolyarchy|, base + FT (2019, exploratory)",
+    subtitle = "slope<0 = evidence helps more as aggregate movement grows")
+```
+
+**Reading the slope, and why it does not survive clustering.** The continuous moderator regresses
+the per-CYI gain $d$ on movement magnitude rather than collapsing it to a bin, so each country-year
+enters weighted by how far it actually moved. Read as *point estimates*, the pattern is the one R2
+predicts: a negative slope means the positive evidence penalty *erodes* as the country moves more,
+and Base Ev−Cb's −0.563 slope reaches $d = 0$ near |Δpolyarchy| ≈ 0.14 and turns negative beyond it
+(Figure 2) — on the few country-years that moved most, reading evidence stops raising error and
+begins to lower it, the R2-predicted payoff realized only at the tail of movement. **But the slopes
+do not survive honest uncertainty.** Because the moderator is constant within country, the slope is
+identified entirely by the ~dozen country-years that actually moved, so the country-clustered
+bootstrap widens these intervals ~3–4× and **Base Ev, Base Su, and FT-summ all cross zero** (only
+FT-anon still, barely, excludes it; FT-raw is flat either way, its calibration baked into the
+weights). The point estimates keep their old order — base conditions slope down, Ev steepest,
+FT-summ positive — but in 2019 the instrument cannot resolve any of them from zero. Two further
+cautions reinforce this: the footprint is tiny even at the point estimate (≈ −0.01 at the 3rd
+quartile of movement), and 2019 has no genuinely stale prior for movement to act on (§intro). These
+remain exploratory 2019 companions; the movement payoff is properly a 2023 question.
+
+### Figure 2 — Evidence penalty vs. movement (the slope as a shape)
+
+`07`'s "slope as a shape" idiom applied to the moderator: the per-CYI evidence gain against
+|Δpolyarchy|, with a dashed zero line. Above the line, evidence raises error (the penalty); below
+it, evidence lowers error. Points are 20 equal-count movement bins (dense near zero, where almost
+every country sits); the coloured lines are the weighted fits with a country-year bootstrap ribbon,
+extended across the movement range so the **Base Ev−Cb** line's descent *through zero* is visible
+(the high-movement region is sparse, so the ribbon widens there). **FT-summ** is drawn as the
+contrast — its penalty rises with movement — and the other four gains are greyed.
+
+```{r}
+#| label: fig-polyarchy-crossing
+#| cache: true
+#| cache.lazy: false
+#| fig-width: 8
+#| fig-height: 4.8
+xv <- cyi$dpoly
+gains <- list("Base Ev" = cyi$d_ev, "Base An" = cyi$d_an, "Base Su" = cyi$d_su,
+              "FT-raw" = cyi$d_ftraw, "FT-anon" = cyi$d_ftanon, "FT-summ" = cyi$d_ftsumm)
+
+# weighted OLS intercept + slope of a gain on movement
+wfit <- function(y, w) {
+  m <- !is.na(y) & !is.na(xv); wt <- w[m]; yy <- y[m]; xx <- xv[m]
+  W <- sum(wt); mx <- sum(wt * xx) / W; my <- sum(wt * yy) / W
+  b <- sum(wt * (xx - mx) * (yy - my)) / sum(wt * (xx - mx)^2)
+  c(a = my - b * mx, b = b)
+}
+
+# axis: reach a bit past the Base Ev zero-crossing so it is visible
+f_ev  <- wfit(gains[["Base Ev"]], rep(1, length(xv)))
+cross <- as.numeric(-f_ev["a"] / f_ev["b"])
+xmax  <- min(max(xv, na.rm = TRUE), cross * 1.4)
+xg    <- seq(0, xmax, length.out = 80)
+
+line_df <- bind_rows(lapply(names(gains), function(nm) {
+  f <- wfit(gains[[nm]], rep(1, length(xv))); tibble(cell = nm, x = xg, yhat = f[["a"]] + f[["b"]] * xg)
+}))
+
+hl <- c("Base Ev", "FT-summ")
+
+# 20 equal-count movement bins for the empirical points (highlighted cells). ntile() rather than
+# quantile-cut because |Δpolyarchy| is heavily tied near zero, which collapses quantile breaks.
+nbn <- 20L
+binf <- dplyr::ntile(xv, nbn)
+xbin <- tapply(xv, binf, mean, na.rm = TRUE)
+bin_df <- bind_rows(lapply(hl, function(nm) {
+  tibble(cell = nm, x = as.numeric(xbin),
+         ybar = as.numeric(tapply(gains[[nm]], binf, mean, na.rm = TRUE)))
+})) |> filter(x <= xmax)
+
+# country-clustered bootstrap ribbon for the highlighted fitted lines (the moderator is
+# country-level, so resample whole countries and broadcast each draw's weight to the country's CYIs)
+Wf <- country_boot_weights(cyi$country_text_id, 1000L, seed = 42)
+ribbon <- bind_rows(lapply(hl, function(nm) {
+  P <- vapply(colnames(Wf)[-1], function(draw) {
+    w <- unname(Wf[, draw][cyi$country_text_id]); f <- wfit(gains[[nm]], w); f[["a"]] + f[["b"]] * xg
+  }, numeric(length(xg)))
+  tibble(cell = nm, x = xg, lo = apply(P, 1, quantile, 0.025, na.rm = TRUE),
+         hi = apply(P, 1, quantile, 0.975, na.rm = TRUE))
+}))
+
+pal2 <- c("Base Ev" = "#0072B2", "FT-summ" = "#E69F00")
+ggplot() +
+  geom_hline(yintercept = 0, linetype = "dashed", color = "grey40") +
+  geom_line(data = filter(line_df, !cell %in% hl), aes(x, yhat, group = cell),
+            color = "grey80", linewidth = 0.5) +
+  geom_ribbon(data = ribbon, aes(x, ymin = lo, ymax = hi, fill = cell), alpha = 0.18) +
+  geom_line(data = filter(line_df, cell %in% hl), aes(x, yhat, color = cell), linewidth = 1.1) +
+  geom_point(data = bin_df, aes(x, ybar, color = cell), size = 1.5, alpha = 0.65) +
+  scale_color_manual(values = pal2, name = NULL, aesthetics = c("color", "fill")) +
+  coord_cartesian(xlim = c(0, xmax)) +
+  labs(x = "|Δ v2x_polyarchy|  (2018→2019 movement)",
+       y = "evidence gain  d = MAE(condition) − MAE(codebook)",
+       title = "Figure 2 — Evidence penalty vs. movement: the slope as a shape",
+       subtitle = glue("above 0 = evidence raises error · below 0 = evidence lowers error · ",
+                       "points = 20 equal-count bins · grey = other gains · high-movement tail is sparse")) +
+  theme_minimal(base_size = 11) +
+  theme(legend.position = "top", legend.justification = "left",
+        panel.grid.minor = element_blank(), plot.title.position = "plot",
+        plot.title = element_text(face = "bold"))
+```
+
+### Table 5 — Level slopes: how fast each predictor degrades with movement
+
+The gain slope in Table 4 is a *difference* of two level slopes — slope(Ev−Cb) = slope(MAE_Ev) −
+slope(MAE_Cb) — so it has no direct human analog (a coder has no codebook-vs-evidence contrast).
+But the two *pieces* do: the **level slope** of a cell's MAE on |Δpolyarchy| — how fast its error
+grows as the country moves — and the human LOO MAE has exactly that same level slope. So the
+**human LOO slope is the natural baseline** here, the continuous version of "human error rose most
+in the transition bin." Each predictor is read against it: a slope above the human line degrades
+*faster* than a held-out coder as the country moves, below it *slower*.
+
+The engine is a self-contained country-clustered bootstrap, like the rest of this document; it
+reuses the cached `cyi`, so it does not touch the registered or horse-race bootstraps.
+
+```{r level-slopes}
+#| cache: true
+#| cache.lazy: false
+lvl_vars <- list(
+  "human LOO"   = cyi$hloo,      "persistence" = cyi$persist_err,
+  "Base:Cb" = cyi$cb, "Base:Ev" = cyi$ev, "Base:An" = cyi$an, "Base:Su" = cyi$su,
+  "FT-raw"  = cyi$ft_raw, "FT-anon" = cyi$ft_anon, "FT-summ" = cyi$ft_summ)
+xpoly <- cyi$dpoly
+cci   <- match(cyi$country_text_id, sort(unique(cyi$country_text_id))); n_cc <- max(cci)
+
+wsl <- function(y, w) {                      # weighted slope of y on xpoly
+  m <- !is.na(y) & !is.na(xpoly); wt <- w[m]; yy <- y[m]; xx <- xpoly[m]
+  W <- sum(wt); mx <- sum(wt * xx) / W; my <- sum(wt * yy) / W
+  sum(wt * (xx - mx) * (yy - my)) / sum(wt * (xx - mx)^2)
+}
+set.seed(42); Bc <- 1000L
+lvl_est  <- sapply(lvl_vars, \(y) wsl(y, rep(1, nrow(cyi))))
+lvl_boot <- sapply(seq_len(Bc), function(b) {
+  w <- tabulate(sample.int(n_cc, n_cc, replace = TRUE), n_cc)[cci]
+  sapply(lvl_vars, \(y) wsl(y, w))
+})
+lvl_slopes <- tibble(
+  var = names(lvl_vars), est = lvl_est,
+  lo = apply(lvl_boot, 1, quantile, 0.025), hi = apply(lvl_boot, 1, quantile, 0.975)) |>
+  mutate(family = case_when(var == "human LOO" ~ "Human", var == "persistence" ~ "Naive",
+                            str_starts(var, "FT") ~ "Fine-tuned", TRUE ~ "Base"))
+human_slope <- lvl_slopes$est[lvl_slopes$var == "human LOO"]
+
+lvl_slopes |>
+  transmute(Predictor = var, `Level slope` = est,
+            `95% CI` = glue("[{round(lo, 3)}, {round(hi, 3)}]"),
+            `vs. human` = case_when(var == "human LOO" ~ "—",
+                                    est > human_slope ~ "steeper (degrades faster)",
+                                    TRUE ~ "flatter (more robust)")) |>
+  gt() |>
+  fmt_number(`Level slope`, decimals = 3) |>
+  tab_header(title = "Table 5 — Level slopes: MAE growth with movement",
+             subtitle = glue("weighted slope of each predictor's MAE on |Δpolyarchy| · country-clustered · ",
+                             "human LOO baseline = {round(human_slope, 3)}"))
+```
+
+The reading: **persistence (+0.45) and Codebook (+0.43) degrade faster than a human coder (+0.33)** —
+the past-leaning predictors (naive copy-forward, frozen prior) go stale faster than a person does.
+**Base:Ev (−0.14) is the one movement-robust cell** — flatter than the human, its error essentially
+unmoved by regime change (this is the numerator of the negative Ev−Cb gain slope). **FT-raw (+0.36)
+sits right on the human line** — another sense in which it degrades like a held-out coder. *Caveat:*
+these level slopes are noisy — almost every CI crosses zero (human LOO included), because the slope
+is carried by the handful of high-movement countries and the clustered bootstrap is honest about
+that. Differencing Ev − Cb (Table 4) cancels the shared "everyone degrades under movement"
+component, so the gain *level* is sharper than either raw level slope — but it does **not** rescue
+the gain *slope* on |Δpolyarchy|, which is still a between-country quantity carried by the same few
+movers and, under clustering, widens and mostly crosses zero just like the levels here.
+
+### Figure 3 — Degradation with movement, against the human baseline
+
+**This is Table 5 as a picture** (and the continuous analog of Figure 1): each predictor's level
+slope (how fast its error grows with movement) as a point with its country-clustered 95% CI,
+ordered slowest → fastest, with the **human LOO slope drawn as the reference line**. Points to the right of the line degrade faster
+than a coder; to the left, slower. The wide intervals are shown deliberately — they are the honest
+uncertainty, and the figure should be read for the *ordering* (naive/prior fastest, evidence
+slowest, FT-raw ≈ human), not for precise magnitudes.
+
+```{r}
+#| label: fig-level-slopes
+#| fig-width: 8
+#| fig-height: 4.4
+ord <- lvl_slopes |> arrange(est) |> pull(var)
+lvl_slopes |>
+  mutate(var = factor(var, levels = ord),
+         family = factor(family, levels = c("Naive", "Base", "Fine-tuned", "Human"))) |>
+  ggplot(aes(est, var, color = family)) +
+  geom_vline(xintercept = 0, linetype = "dotted", color = "grey65") +
+  geom_vline(xintercept = human_slope, linetype = "longdash", color = "grey30") +
+  geom_errorbar(aes(xmin = lo, xmax = hi), orientation = "y", width = 0.28, linewidth = 0.6) +
+  geom_point(size = 2.4) +
+  scale_color_manual(values = c("Naive" = "grey55", "Base" = "#0072B2",
+                                "Fine-tuned" = "#E69F00", "Human" = "grey25"), name = NULL) +
+  labs(x = "level slope: ΔMAE per unit |Δpolyarchy|  (right = degrades faster with movement)",
+       y = NULL,
+       title = "Figure 3 (Table 5 as a picture) — How fast each predictor degrades with movement",
+       subtitle = glue("2019 · slope of MAE on |Δpolyarchy| · long-dash = human LOO baseline ",
+                       "({round(human_slope, 3)}) · wide CIs (sparse movers, country-clustered)")) +
+  theme_minimal(base_size = 11) +
+  theme(legend.position = "top", legend.justification = "left",
+        panel.grid.major.y = element_blank(), plot.title.position = "plot",
+        plot.title = element_text(face = "bold"))
+```
+
+## 7. Human-likeness horse race (exploratory)
+
+The tables above ask R2's oracle-shaped question (does evidence lower MAE where the country
+moves). This section asks the **debater** question the reframe cares about: conditional on
+transition, **which model behaves most like a held-out human coder?** Two human-referenced
+diagnostics from `07`/`08`, recomputed within transition subgroups:
+
+- **W1 to human** (`07`): earth-mover distance between a cell's error distribution `|AI − mean|`
+  and the human per-coder LOO error distribution. Smaller = more human-shaped. The adjudicator.
+- **Signed shift** (`08`): mean `AI − mean` (direction kept). Humans are pinned at ~0, so any
+  departure is directional bias. Split by episode direction (democratization vs. autocratization),
+  since a direction-specific lag — if present — would self-cancel when pooled.
+
+**Country-clustered bootstrap.** The ERT flag is a country-level treatment and the subgroups are
+small in *countries* (dem 18, aut 41), so the effective *n* is countries, not CYIs. This section
+resamples **countries** with replacement (seed 42), as everywhere in this document — essential here
+because the subgroups are so small in countries. Reference is the human LOO distribution / zero; onset subgroups are carried in
+the bundle as descriptive only (too few countries for a CI).
+
+### Data: human LOO errors + seven-cell AI errors (≥2-coder pool)
+
+```{r horse-data}
+#| cache: true
+#| cache.lazy: false
+human_ratings <- read_csv(file.path(data_dir, "human_ratings.csv"), show_col_types = FALSE)
+
+# Per-coder leave-one-out error, restricted to ≥2-coder CYIs (the human floor). These CYIs are
+# the eligible pool for the whole horse race, so AI and human distributions live on the same cells.
+he <- human_ratings |>
+  filter(year == params$year) |>
+  group_by(country_text_id, indicator) |>
+  filter(n() >= 2) |>
+  mutate(e = abs(rating - (sum(rating) - rating) / (n() - 1))) |>
+  ungroup() |>
+  select(country_text_id, indicator, e)
+elig <- distinct(he, country_text_id, indicator)
+
+# Full episode/direction flags at the country level (2019).
+ert_sub <- ert |>
+  filter(year == params$year) |>
+  transmute(country_text_id,
+            dem = replace_na(dem_ep == 1, FALSE), aut = replace_na(aut_ep == 1, FALSE),
+            onset_dem = replace_na(dem_ep == 1 & year == dem_ep_start_year, FALSE),
+            onset_aut = replace_na(aut_ep == 1 & year == aut_ep_start_year, FALSE)) |>
+  mutate(in_ep = dem | aut, onset = onset_dem | onset_aut)
+
+fig_cells <- c("llama-70b|codebook", "llama-70b|evidence", "llama-70b|anonymized",
+               "llama-70b|summarized", "llama-70b-ft-raw|evidence-zeroshot",
+               "llama-70b-ft-anon|anonymized-zeroshot", "llama-70b-ft-summ|summarized-zeroshot")
+cell_lbl <- c("Base:Cb", "Base:Ev", "Base:An", "Base:Su", "FT-raw", "FT-anon", "FT-summ")
+
+pm_y <- panel_means |> filter(year == params$year) |> select(country_text_id, indicator, raw_mean)
+ai7 <- ai_raw |>
+  filter(year == params$year) |>
+  rename(country_text_id = country) |>
+  mutate(cell = paste(model_key, condition, sep = "|")) |>
+  filter(cell %in% fig_cells) |>
+  inner_join(pm_y, by = c("country_text_id", "indicator")) |>
+  semi_join(elig, by = c("country_text_id", "indicator")) |>
+  mutate(a = abs(rating - raw_mean), s = rating - raw_mean,
+         cell = factor(cell, levels = fig_cells)) |>
+  left_join(ert_sub, by = "country_text_id") |>
+  mutate(across(c(dem, aut, in_ep, onset, onset_dem, onset_aut), \(x) replace_na(x, FALSE)))
+he <- he |> semi_join(elig, by = c("country_text_id", "indicator")) |>
+  left_join(ert_sub, by = "country_text_id") |>
+  mutate(across(c(dem, aut, in_ep, onset, onset_dem, onset_aut), \(x) replace_na(x, FALSE)))
+
+# Shared country index (the resample unit).
+countries <- sort(unique(c(ai7$country_text_id, he$country_text_id)))
+ai7$ci <- match(ai7$country_text_id, countries); he$ci <- match(he$country_text_id, countries)
+n_ctry <- length(countries)
+glue("horse-race pool: AI {nrow(ai7)} rows · human {nrow(he)} rows · {n_ctry} countries")
+```
+
+### Bootstrap engine (W1 + signed shift, by subgroup)
+
+```{r horse-bootstrap}
+#| cache: true
+#| cache.lazy: false
+# W1 on a fixed grid (0.01 rating points; coarser than 07's 0.002 to keep the clustered bootstrap
+# affordable — the cell *ordering*, which is what the horse race reads, is grid-insensitive).
+hstep <- 0.01; hnb <- as.integer(ceiling(4 / hstep))
+ai7$bin <- pmin(pmax(as.integer(round(ai7$a / hstep)), 1L), hnb)
+he$bin  <- pmin(pmax(as.integer(round(he$e  / hstep)), 1L), hnb)
+cell_i  <- as.integer(ai7$cell)
+scat <- function(tab, len) { v <- numeric(len); v[as.integer(rownames(tab))] <- tab; v }
+
+# Subgroup row masks (AI side and human side).
+subs <- list(
+  stable = list(a = !ai7$in_ep, h = !he$in_ep), in_ep = list(a = ai7$in_ep, h = he$in_ep),
+  in_dem = list(a = ai7$dem,    h = he$dem),    in_aut = list(a = ai7$aut,  h = he$aut),
+  onset  = list(a = ai7$onset,  h = he$onset),
+  on_dem = list(a = ai7$onset_dem, h = he$onset_dem), on_aut = list(a = ai7$onset_aut, h = he$onset_aut))
+
+w1_sub <- function(wc, ma, mh) {
+  wa <- wc[ai7$ci[ma]]; wh <- wc[he$ci[mh]]
+  H  <- cumsum(scat(rowsum(wh, he$bin[mh], reorder = FALSE), hnb)); H <- H / H[hnb]
+  g  <- (cell_i[ma] - 1L) * hnb + ai7$bin[ma]
+  AH <- matrix(scat(rowsum(wa, g, reorder = FALSE), hnb * 7L), nrow = hnb)
+  apply(AH, 2, function(col) { A <- cumsum(col); sum(abs(A / A[hnb] - H)) * hstep })
+}
+sh_sub <- function(wc, ma) {
+  wa <- wc[ai7$ci[ma]]
+  scat(rowsum(wa * ai7$s[ma], cell_i[ma], reorder = FALSE), 7L) /
+    scat(rowsum(wa, cell_i[ma], reorder = FALSE), 7L)
+}
+compute_h <- function(wc) {
+  w1 <- do.call(c, lapply(names(subs), \(s)
+    setNames(w1_sub(wc, subs[[s]]$a, subs[[s]]$h), paste("W1", s, cell_lbl, sep = "|"))))
+  sh <- do.call(c, lapply(c("stable", "in_dem", "in_aut", "on_dem", "on_aut"), \(s)
+    setNames(sh_sub(wc, subs[[s]]$a), paste("SH", s, cell_lbl, sep = "|"))))
+  c(w1, sh)
+}
+
+set.seed(42)
+hdraws <- vector("list", params$n_boot + 1L)
+hdraws[[1]] <- compute_h(rep(1, n_ctry))                       # apparent (all weights 1)
+for (b in seq_len(params$n_boot)) {
+  hdraws[[b + 1L]] <- compute_h(tabulate(sample.int(n_ctry, n_ctry, replace = TRUE), nbins = n_ctry))
+}
+Mh <- do.call(rbind, hdraws); apph <- 1L; hbr <- seq.int(2L, params$n_boot + 1L)
+```
+
+### Aggregate + tables
+
+```{r horse-agg}
+h_agg <- tibble(key = colnames(Mh), est = Mh[apph, ],
+                lo = apply(Mh[hbr, ], 2, quantile, 0.025, na.rm = TRUE),
+                hi = apply(Mh[hbr, ], 2, quantile, 0.975, na.rm = TRUE)) |>
+  separate(key, c("stat", "sub", "cell"), sep = "\\|") |>
+  mutate(cell = factor(cell, levels = cell_lbl))
+
+cellfmt <- function(est, lo, hi) glue("{sprintf('%.3f', est)} [{sprintf('%.3f', lo)}, {sprintf('%.3f', hi)}]")
+```
+
+**W1 to the human error distribution — closest to human wins.** All seven cells; the powered
+subgroups (dem 18 / aut 41 countries; dem CIs are wide).
+
+```{r tbl-w1}
+h_agg |>
+  filter(stat == "W1", sub %in% c("stable", "in_ep", "in_dem", "in_aut", "onset")) |>
+  mutate(val = cellfmt(est, lo, hi),
+         sub = factor(sub, levels = c("stable", "in_ep", "in_dem", "in_aut", "onset"),
+                      labels = c("Stable", "In-episode", "In-ep · dem", "In-ep · aut", "Onset"))) |>
+  select(cell, sub, val) |> pivot_wider(names_from = sub, values_from = val) |>
+  arrange(cell) |> rename(Cell = cell) |>
+  gt() |>
+  tab_header(title = "Table 6 — W1 to human LOO error distribution (country-clustered)",
+             subtitle = "smaller = more human-shaped · FT-raw / FT-summ closest throughout · onset = 8 countries (descriptive)")
+```
+
+Table 6 as a picture: each panel is a transition subgroup, cells sorted most-human-shaped (top) to
+least (bottom). Read left = closer to a real coder (0 = identical error distribution). The two FT
+diagonal cells hug the left edge in *every* subgroup — the "FT-raw is the most human-shaped cell"
+result survives conditioning on transition — while the bare Codebook prior stays farthest right.
+CIs widen sharply left → right (Stable is well-powered; the dem/aut splits and Onset have few
+countries), so read the *ordering*, not the small-subgroup gaps.
+
+```{r}
+#| label: fig-w1-subgroups
+#| fig-width: 11
+#| fig-height: 4.2
+sub_lv6  <- c("stable", "in_ep", "in_dem", "in_aut", "onset")
+sub_lab6 <- c(stable = "Stable", in_ep = "In-episode", in_dem = "In-ep · dem",
+              in_aut = "In-ep · aut", onset = "Onset (8 ctry, descriptive)")
+w1_fig <- h_agg |> filter(stat == "W1", sub %in% sub_lv6) |>
+  mutate(sub = factor(sub_lab6[sub], levels = sub_lab6[sub_lv6]),
+         family = factor(if_else(str_starts(as.character(cell), "FT"), "Fine-tuned", "Base"),
+                         levels = c("Base", "Fine-tuned")))
+# order cells by their in-episode W1 (most human-shaped at top)
+ord6 <- w1_fig |> filter(sub == sub_lab6[["in_ep"]]) |> arrange(desc(est)) |> pull(cell) |> as.character()
+w1_fig <- w1_fig |> mutate(cell = factor(as.character(cell), levels = ord6))
+
+ggplot(w1_fig, aes(est, cell, color = family)) +
+  geom_vline(xintercept = 0, linetype = "dotted", color = "grey55") +
+  geom_errorbar(aes(xmin = lo, xmax = hi), orientation = "y", width = 0.25, linewidth = 0.6) +
+  geom_point(size = 2.2) +
+  facet_wrap(~ sub, nrow = 1) +
+  scale_color_manual(values = family_pal, name = NULL) +
+  labs(x = "W1 to human LOO error distribution  (0 = identical to a coder · left = more human-shaped)",
+       y = NULL,
+       title = "Figure 4 (Table 6 as a picture) — how human-shaped each cell is, by transition subgroup",
+       subtitle = "country-clustered 95% CI · smaller = closer to a held-out human coder · FT-raw/FT-summ hug the left throughout") +
+  theme_minimal(base_size = 11) +
+  theme(legend.position = "top", legend.justification = "left",
+        panel.grid.major.y = element_blank(), plot.title.position = "plot",
+        plot.title = element_text(face = "bold"))
+```
+
+**Signed shift — directional bias, split by episode direction.** Human reference ≈ 0; a uniform
+negative value is the harshness/level-shift effect (`08`), not a transition-specific lag.
+
+```{r tbl-shift}
+h_agg |>
+  filter(stat == "SH", sub %in% c("in_dem", "in_aut", "stable", "on_dem", "on_aut")) |>
+  mutate(val = cellfmt(est, lo, hi),
+         sub = factor(sub, levels = c("in_dem", "in_aut", "stable", "on_dem", "on_aut"),
+                      labels = c("In-ep · dem", "In-ep · aut", "Stable",
+                                 "Onset · dem", "Onset · aut"))) |>
+  select(cell, sub, val) |> pivot_wider(names_from = sub, values_from = val) |>
+  arrange(cell) |> rename(Cell = cell) |>
+  gt() |>
+  tab_header(title = "Table 7 — Signed shift (AI − panel mean), by episode direction",
+             subtitle = "≈0 = directionally human · FT-raw nearest zero throughout · negative = harsher than panel · onset descriptive (dem = 2 countries, aut = 6)")
+```
+
+Table 7 as a picture: signed shift per cell, faceted by episode direction, against the human/oracle
+target (dashed 0) and the ±SESOI band. Read distance from 0 = directional bias; negative = harsher
+than the panel. FT-raw sits nearest zero throughout, and — the load-bearing point — **no cell flips
+sign between the dem and aut panels**: a genuine direction-specific stale-prior lag would push
+democratizers and autocratizers *opposite* ways, but here every cell leans the same direction in
+both, so this is a uniform harshness/level-shift (`08`), not a transition lag. (FT-anon is the lone
+positive/generous cell; onset panels are 2–6 countries, descriptive only.)
+
+```{r}
+#| label: fig-shift-subgroups
+#| fig-width: 11
+#| fig-height: 4.2
+sub_lv7  <- c("stable", "in_dem", "in_aut", "on_dem", "on_aut")
+sub_lab7 <- c(stable = "Stable", in_dem = "In-ep · dem", in_aut = "In-ep · aut",
+              on_dem = "Onset · dem (2 ctry)", on_aut = "Onset · aut (6 ctry)")
+sh_fig <- h_agg |> filter(stat == "SH", sub %in% sub_lv7) |>
+  mutate(sub = factor(sub_lab7[sub], levels = sub_lab7[sub_lv7]),
+         family = factor(if_else(str_starts(as.character(cell), "FT"), "Fine-tuned", "Base"),
+                         levels = c("Base", "Fine-tuned")))
+# order cells by |stable shift| — nearest human-zero at top
+ord7 <- sh_fig |> filter(sub == sub_lab7[["stable"]]) |> arrange(desc(abs(est))) |> pull(cell) |> as.character()
+sh_fig <- sh_fig |> mutate(cell = factor(as.character(cell), levels = ord7))
+
+ggplot(sh_fig, aes(est, cell, color = family)) +
+  annotate("rect", xmin = -sesoi, xmax = sesoi, ymin = -Inf, ymax = Inf, fill = "grey85", alpha = 0.55) +
+  geom_vline(xintercept = 0, linetype = "dashed", color = "grey40") +
+  geom_errorbar(aes(xmin = lo, xmax = hi), orientation = "y", width = 0.25, linewidth = 0.6) +
+  geom_point(size = 2.2) +
+  facet_wrap(~ sub, nrow = 1) +
+  scale_color_manual(values = family_pal, name = NULL) +
+  labs(x = "signed shift (AI − panel mean)  ·  0 = human/oracle target  ·  negative = harsher than panel",
+       y = NULL,
+       title = "Figure 5 (Table 7 as a picture) — directional bias by episode direction",
+       subtitle = glue("dashed 0 = human target · grey band = ±SESOI ({round(sesoi,3)}) · ",
+                       "dem & aut lean the same way = uniform harshness, not a direction-specific lag")) +
+  theme_minimal(base_size = 11) +
+  theme(legend.position = "top", legend.justification = "left",
+        panel.grid.major.y = element_blank(), plot.title.position = "plot",
+        plot.title = element_text(face = "bold"))
+```
+
+## 8. Reading (prototype)
+
+Working readout; the paper narrative and the visualizations we discussed go in later sections of
+this same document. Three things to read across the tables:
+
+- **Table 1 vs Table 2** — the same "does evidence help where the country moved" question, first
+  with the circular within-CYI |Δ| (background) and then with the external ERT flag. If the ERT
+  split reproduces the direction of the endogenous split without the mechanical persistence
+  column, the effect is not an artifact of binning on the target.
+- **Table 3 (DiD)** — the exploratory 2019 companion to R2, now across base and FT: a negative DiD
+  means evidence helps more in transition CYIs. R2 itself is registered on 2023, so these 2019
+  values are hypothesis-generating; a null here says nothing about the 2023 result.
+- **Table 4 (slope)** — the higher-resolution version of the same, base and FT; agreement in sign
+  with Table 3 (theoretically-meaningful binary + continuous moderator) is the cross-check.
+- **Table 5 / Figure 3 (level slopes)** — the level decomposition against the human LOO baseline:
+  the past-leaning predictors (persistence, codebook) degrade faster than a coder under movement,
+  evidence is uniquely flat, and FT-raw ≈ the human rate. Noisy (wide CIs) — read the ordering, not
+  the magnitudes.
+- **Tables 6–7 (horse race)** — the debater diagnostic. Table 6: FT-raw and FT-summ carry the
+  smallest W1 to the human error distribution in every subgroup, so the "FT-raw is the most
+  human-shaped cell" result survives conditioning on transition — the diagnostic value that further
+  supports carrying FT-raw forward as the human-behavior emulator. Table 7: the signed shift is a
+  uniform harshness/level-shift (`08`), *not* a direction-specific stale-prior lag (democratizers
+  and autocratizers both run negative, not opposite); its use here is confirming FT-raw sits nearest
+  human-zero directionally throughout, consistent with the W1 verdict.
+
+## 9. Serialize the bundle
+
+```{r serialize}
+saveRDS(
+  list(endog = endog,                 # Table 1 (background)
+       did_tbl = did_tbl,             # Table 3 (DiD, base + FT)
+       lvl_slopes = lvl_slopes, human_slope = human_slope,   # Table 5 / Figure 3 (level slopes)
+       M = M, app = app,              # registered per-draw matrix (country-clustered) + apparent index
+       # Horse race (§7): tidy point+CI table (all subgroups incl. onset descriptive), the raw
+       # per-draw country-clustered matrix for later figures, and the cell vocabulary.
+       h_agg = h_agg, Mh = Mh, apph = apph, cell_lbl = cell_lbl,
+       n_tr = n_tr, n_st = n_st, sesoi = sesoi, n_boot = params$n_boot),
+  file.path(derived_dir, "regimetrans_2019.rds")
+)
+glue("regimetrans_2019.rds written · B = {params$n_boot} · SESOI ±{round(sesoi,3)} · ",
+     "transition n = {n_tr}, stable n = {n_st}")
+```
+
+---
+
+## Note — 2023 design, deferred
+
+Out of scope for this 2019 document; recorded here to revisit. R2's actual mechanism (a *stale*
+frozen prior) only bites once real time has passed, so the substantive R2 lives in the 2023 pool.
+Open question: whether to treat post-2018 transitions as a single accumulated holdout subset
+(preferred if the year span is sufficient) rather than a **lag analysis** (evidence gain / human-
+likeness as a function of years-since-transition). Also unresolved for 2023: the base carried
+model's pretraining runs through Dec 2023, so its prior is not truly stale even there — the clean
+temporal probe is R3's 2024 post-cutoff year, and the FT models (fine-tuned on ≤2018 signal) are
+where the staleness contrast is sharpest. Fix the binary flag and the |Δpolyarchy| threshold
+before running the 2023 tests, per the prereg.

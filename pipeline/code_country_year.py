@@ -90,12 +90,14 @@ def code_country_year(
     condition: str,
     model_key: str,
     raw_mean: float | None = None,
+    source_iso: str | None = None,
 ) -> dict:
     """
     Code one country-year on one indicator and return the output record.
 
     Args:
-        iso:          ISO-3 country code, e.g. "NGA"
+        iso:          ISO-3 country code, e.g. "NGA". In name-swap mode this is the
+                      *named* identity shown in the prompt.
         slug:         Processed-text file slug, e.g. "nigeria"
         country_name: Display name in prompt, e.g. "Nigeria"
         year:         Target year, e.g. 2020
@@ -104,6 +106,12 @@ def code_country_year(
         model_key:    Key in LLM_CONFIGS, e.g. "llama-70b"
         raw_mean:     Panel mean rating for this country-year-indicator (from panel_means.csv).
                       When provided, signed_dev and abs_dev are computed and added to the record.
+                      In name-swap mode, pass the *source* country's mean (signed_dev/abs_dev
+                      are then measured against the source; doc 10 joins the named mean itself).
+        source_iso:   Name-swap mode only. ISO-3 of the country whose de-identified text is
+                      loaded (distinct from `iso`, the named identity). When set, the record
+                      carries `source` and `named` fields. source_iso == iso is the
+                      correct-name (name = source) arm.
 
     Returns:
         Dict matching the JSONL output schema.
@@ -120,7 +128,7 @@ def code_country_year(
         raise EnvironmentError(f"API key not set. Export {cfg['api_key_env']}.")
 
     system_text, user_text = assemble_prompt(
-        slug, country_name, year, indicator, condition, iso=iso
+        slug, country_name, year, indicator, condition, iso=iso, source_iso=source_iso
     )
 
     config = _load_config()
@@ -152,7 +160,7 @@ def code_country_year(
     signed_dev = round(rating - raw_mean, 4) if raw_mean is not None else None
     abs_dev    = round(abs(rating - raw_mean), 4) if raw_mean is not None else None
 
-    return {
+    record = {
         "country": iso,
         "year": year,
         "indicator": indicator,
@@ -174,6 +182,14 @@ def code_country_year(
         "tokens": tokens,
         "raw_response": raw,
     }
+
+    # Name-swap mode: record both identities. `country` (== named) stays for tooling
+    # that keys on it; `source`/`named` drive the doc 10 double-join on panel means.
+    if source_iso is not None:
+        record["source"] = source_iso
+        record["named"] = iso
+
+    return record
 
 
 if __name__ == "__main__":
