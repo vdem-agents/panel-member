@@ -1,0 +1,592 @@
+---
+title: "2019 distributional-match — compute & prototype figures"
+format:
+  html:
+    toc: true
+    toc-depth: 2
+    embed-resources: true
+    code-fold: true
+    fig-width: 8
+    fig-height: 5
+execute:
+  warning: false
+  message: false
+params:
+  n_boot: 2000
+  year: 2019
+  min_coders: 2
+---
+
+Exploratory **distributional-match** analysis (spec:
+`notes/exploratory-distributional-match-spec.md`; strategy:
+`notes/alternative-test-strategy.md`). This asks the debater question — is a synthetic coder's
+error behaviour distributed like a real coder's? — on the *same* distance-from-consensus axis as
+the panel-mean MAE, but keeping the whole distribution instead of collapsing it to a scalar.
+
+This document owns the expensive bootstrap and serializes its results (§7) to
+`data/derived/distmatch_2019.rds`. It reuses `06`'s exact eligible pool and seed-42
+country-clustered resampling (via the shared `country_boot_weights()` helper), so its CIs are
+consistent with the main figures; the one thing it keeps that `06` discards is the **per-coder**
+error `e_ic`, which the human reference distribution needs.
+
+Three tests, all on the 2019 pool restricted to CYIs with ≥ `r params$min_coders` coders:
+
+- **Test 1 (marginal):** Wasserstein-1 (earth-mover) distance between the AI error distribution
+  `{a_c}` and the human self-reference distribution `{e_ic}`. Small W1 = marginally human-shaped.
+- **Test 2 (conditional, load-bearing):** within quintiles of case difficulty `h_c` (the
+  within-cell human LOO MAE), compare the AI error curve to the human error curve. Overlapping =
+  errs where humans err; AI curve too flat / crossing = "right number, wrong cells".
+- **Test 3 (slope):** weighted OLS slope of `a_c` on `h_c`. Humans have slope 1 by construction;
+  AI slope < 1 = flatter than a human (leaning on a prior rather than reacting to difficulty).
+
+The `n−1`/`n` asymmetry is left in the AI's favour and disclosed (spec §2): human `e_ic` uses the
+reduced LOO mean, AI `a_c` the full-panel mean.
+
+## 1. Setup
+
+```{r setup}
+library(tidyverse)
+library(rsample)
+library(gt)
+library(glue)
+
+if (!exists("params")) params <- list(n_boot = 2000, year = 2019, min_coders = 2)
+
+find_panel_member_root <- function() {
+  up <- tryCatch(rprojroot::find_root(rprojroot::is_git_root), error = function(e) NA_character_)
+  if (!is.na(up)) return(up)
+  down <- file.path(getwd(), "panel-member")
+  if (dir.exists(file.path(down, ".git"))) return(down)
+  stop("Could not locate the panel-member project root from working dir: ", getwd())
+}
+proj_root   <- find_panel_member_root()
+source(file.path(proj_root, "R", "bootstrap_helpers.R"))
+data_dir    <- file.path(proj_root, "data", "processed")
+runs_dir    <- file.path(proj_root, "data", "output", "runs")
+derived_dir <- file.path(proj_root, "data", "derived")
+
+# SESOI is fixed by the main analysis; carry it over rather than recompute, so both
+# documents band on the identical value.
+sesoi <- readRDS(file.path(derived_dir, "bootstrap_2019.rds"))$sesoi
+```
+
+## 2. Data loading
+
+Same three sources as `06`: the JSONL runs, the panel means, and the individual coder ratings.
+
+```{r load-data}
+#| cache: true
+#| cache.lazy: false
+needed_cols <- c("country", "year", "indicator", "condition", "model_key", "rating")
+read_run <- function(f) {
+  con <- file(f, "r"); on.exit(close(con))
+  jsonlite::stream_in(con, verbose = FALSE) |> as_tibble() |> select(all_of(needed_cols))
+}
+ai_raw <- list.files(runs_dir, pattern = "\\.jsonl$", full.names = TRUE) |>
+  map(read_run) |> bind_rows() |> mutate(model_key = str_remove(model_key, "-local$"))
+
+panel_means   <- read_csv(file.path(data_dir, "panel_means.csv"),   show_col_types = FALSE)
+human_ratings <- read_csv(file.path(data_dir, "human_ratings.csv"), show_col_types = FALSE)
+```
+
+## 3. Metric construction
+
+### Human errors: per-coder `e_ic` and per-cell difficulty `h_c`
+
+```{r human}
+#| cache: true
+human_e <- human_ratings |>
+  filter(year == params$year) |>
+  group_by(country_text_id, year, indicator) |>
+  filter(n() >= params$min_coders) |>
+  mutate(loo_mean = (sum(rating) - rating) / (n() - 1),
+         e        = abs(rating - loo_mean)) |>
+  ungroup() |>
+  select(country_text_id, year, indicator, coder_id, e)
+
+human_h <- human_e |>
+  group_by(country_text_id, year, indicator) |>
+  summarise(h = mean(e), .groups = "drop")     # h_c = within-cell human LOO MAE (difficulty)
+```
+
+### AI errors `a_c`, restricted to CYIs carrying a human floor
+
+```{r ai}
+ai_metrics <- ai_raw |>
+  filter(year == params$year) |>
+  rename(country_text_id = country) |>
+  inner_join(select(panel_means, country_text_id, year, indicator, raw_mean),
+             by = c("country_text_id", "year", "indicator")) |>
+  inner_join(human_h, by = c("country_text_id", "year", "indicator")) |>
+  mutate(a = abs(rating - raw_mean), cell = paste(model_key, condition, sep = "|"))
+
+# The 7 Figure-1 cells: base ladder (few-shot) + fine-tuned diagonal.
+fig_cells <- c("llama-70b|codebook", "llama-70b|evidence", "llama-70b|anonymized",
+               "llama-70b|summarized", "llama-70b-ft-raw|evidence-zeroshot",
+               "llama-70b-ft-anon|anonymized-zeroshot", "llama-70b-ft-summ|summarized-zeroshot")
+cell_lbl <- c("Base:Cb", "Base:Ev", "Base:An", "Base:Su", "FT-raw:Ev", "FT-anon:An", "FT-summ:Su")
+
+ai7 <- ai_metrics |> filter(cell %in% fig_cells) |>
+  mutate(cell = factor(cell, levels = fig_cells))
+```
+
+### Shared CYI index + fixed difficulty quintiles
+
+The resample pool is `06`'s: one row per eligible CYI. Difficulty quintiles are fixed once on
+that pool (spec §5), not recomputed per draw.
+
+```{r index}
+cyi_pool <- ai_metrics |> distinct(country_text_id, year, indicator, h) |>
+  mutate(cyi = row_number(), k = paste(country_text_id, indicator))
+
+qb <- quantile(cyi_pool$h, probs = seq(0, 1, 0.2), na.rm = TRUE); qb[1] <- -Inf; qb[6] <- Inf
+cyi_pool$stratum <- cut(cyi_pool$h, qb, labels = FALSE)
+
+# Attach the CYI index (and its fixed stratum) to AI rows and human-coder rows.
+ai7$cyi     <- cyi_pool$cyi[match(paste(ai7$country_text_id, ai7$indicator), cyi_pool$k)]
+ai7$stratum <- cyi_pool$stratum[match(ai7$cyi, cyi_pool$cyi)]
+
+he <- human_e |> mutate(k = paste(country_text_id, indicator)) |> filter(k %in% cyi_pool$k)
+he$cyi     <- cyi_pool$cyi[match(he$k, cyi_pool$k)]
+he$stratum <- cyi_pool$stratum[match(he$cyi, cyi_pool$cyi)]
+```
+
+## 4. Bootstrap engine (Tests 1–3)
+
+Grid-based weighted W1 (the pooled-support sort is replaced by a fixed 0.002-point grid, so each
+draw is a couple of `rowsum`s and cumulative sums). Per draw the engine returns: W1 per cell
+(Test 1), the weighted AI error mean per cell × difficulty stratum and the human error mean per
+stratum (Test 2), and the weighted `a_c ~ h_c` slope per cell (Test 3).
+
+```{r bootstrap}
+#| cache: true
+#| cache.lazy: false
+ncell <- length(fig_cells); nstr <- 5L; n_cyi <- nrow(cyi_pool)
+ai_cell_i <- as.integer(ai7$cell)
+
+step <- 0.002
+nb   <- as.integer(ceiling(max(c(ai7$a, he$e)) / step))
+bin_ai <- pmin(pmax(as.integer(round(ai7$a / step)), 1L), nb)
+bin_he <- pmin(pmax(as.integer(round(he$e  / step)), 1L), nb)
+he_bin_idx <- as.integer(bin_he)
+
+# scatter a rowsum() result (labelled by group id) into a fixed-length/allocated vector
+scatter <- function(tab, len) { v <- numeric(len); v[as.integer(rownames(tab))] <- tab; v }
+
+compute_draw <- function(w_by_cyi) {
+  w_ai <- w_by_cyi[ai7$cyi]; w_he <- w_by_cyi[he$cyi]
+
+  # Test 1 — human CDF once, AI CDF per cell, W1 = sum|A-H|*step
+  H <- cumsum(scatter(rowsum(w_he, he_bin_idx, reorder = FALSE), nb)); H <- H / H[nb]
+  ai_hist <- matrix(scatter(rowsum(w_ai, (ai_cell_i - 1L) * nb + bin_ai, reorder = FALSE),
+                            nb * ncell), nrow = nb)
+  W1 <- apply(ai_hist, 2, function(col) { A <- cumsum(col); sum(abs(A / A[nb] - H)) * step })
+
+  # Test 2 — weighted AI error mean per cell x stratum; human error mean per stratum
+  g <- (ai_cell_i - 1L) * nstr + ai7$stratum
+  ai_strat <- scatter(rowsum(w_ai * ai7$a, g, reorder = FALSE), ncell * nstr) /
+              scatter(rowsum(w_ai,          g, reorder = FALSE), ncell * nstr)
+  he_strat <- scatter(rowsum(w_he * he$e, he$stratum, reorder = FALSE), nstr) /
+              scatter(rowsum(w_he,        he$stratum, reorder = FALSE), nstr)
+
+  # Test 3 — weighted OLS slope of a on h per cell (closed form)
+  sw   <- scatter(rowsum(w_ai,            ai_cell_i, reorder = FALSE), ncell)
+  swh  <- scatter(rowsum(w_ai * ai7$h,    ai_cell_i, reorder = FALSE), ncell)
+  swa  <- scatter(rowsum(w_ai * ai7$a,    ai_cell_i, reorder = FALSE), ncell)
+  swhh <- scatter(rowsum(w_ai * ai7$h^2,  ai_cell_i, reorder = FALSE), ncell)
+  swha <- scatter(rowsum(w_ai * ai7$h*ai7$a, ai_cell_i, reorder = FALSE), ncell)
+  slope <- (swha - swh * swa / sw) / (swhh - swh * swh / sw)
+
+  list(W1 = W1, ai_strat = ai_strat, he_strat = he_strat, slope = slope)
+}
+
+# Country-clustered draw step (shared helper), same seed/scheme as 06. Each column of W is a
+# draw of the ~178 countries; broadcast a country's weight to all of its CYIs to get the per-CYI
+# weight vector compute_draw() expects (a country drawn k times weights its whole indicator block
+# k). cyi_pool is ordered by `cyi` (= row_number), so indexing W's rows by country yields a vector
+# aligned to cyi 1..n_cyi.
+W <- country_boot_weights(cyi_pool$country_text_id, params$n_boot, seed = 42)
+draws <- map(colnames(W), function(draw) {
+  w_by_cyi <- unname(W[, draw][cyi_pool$country_text_id])
+  compute_draw(w_by_cyi)
+})
+draw_id <- colnames(W)                    # draw labels (col 1 = "Apparent")
+app     <- which(draw_id == "Apparent")   # apparent (full-sample) draw = the point estimate
+```
+
+## 5. Aggregate to point estimates + 95% CIs
+
+```{r aggregate}
+# helper: stack a per-draw vector field into a [draw x k] matrix, CI from non-apparent draws
+mat_of <- function(field) do.call(rbind, map(draws, field))
+ci_tbl <- function(field, labels) {
+  M <- mat_of(field); boot_rows <- setdiff(seq_len(nrow(M)), app)
+  tibble(item = labels,
+         est = M[app, ], lo = apply(M[boot_rows, , drop = FALSE], 2, quantile, 0.025),
+         hi  = apply(M[boot_rows, , drop = FALSE], 2, quantile, 0.975))
+}
+
+# Per-draw matrices [draw x k], kept so the paper doc can form paired cell-vs-cell deltas
+# (the analog of 06's `boot_results`), not just read marginal CIs. `draw_id` (= colnames(W),
+# set in the bootstrap chunk) marks the apparent (full-sample) row exactly as `06` uses
+# id == "Apparent".
+strata_names <- paste(rep(cell_lbl, each = nstr), 1:nstr, sep = "|")
+W1_draws     <- mat_of("W1");       colnames(W1_draws)     <- cell_lbl
+slope_draws  <- mat_of("slope");    colnames(slope_draws)  <- cell_lbl
+strata_draws <- mat_of("ai_strat"); colnames(strata_draws) <- strata_names
+he_draws     <- mat_of("he_strat"); colnames(he_draws)     <- as.character(1:nstr)
+
+dm_w1    <- ci_tbl("W1", cell_lbl) |> rename(cell = item)
+dm_slope <- ci_tbl("slope", cell_lbl) |> rename(cell = item)
+
+dm_strata <- ci_tbl("ai_strat", paste(rep(cell_lbl, each = nstr), 1:nstr, sep = "|")) |>
+  separate(item, c("cell", "stratum"), sep = "\\|", convert = TRUE) |>
+  mutate(cell = factor(cell, levels = cell_lbl))
+he_strata <- ci_tbl("he_strat", as.character(1:nstr)) |>
+  transmute(stratum = as.integer(item), est, lo, hi)
+
+# marginal context (the scalar D1 rung): AI MAE and human LOO per cell on the apparent pool
+dm_marginal <- ai7 |> group_by(cell) |> summarise(ai_mae = mean(a), .groups = "drop") |>
+  mutate(cell = cell_lbl[as.integer(cell)], human_loo = mean(he$e))
+```
+
+### Test 1 — marginal W1
+
+**In plain terms:** does the synthetic coder make the same *overall mix* of errors as a human —
+the same balance of many small misses and a few big ones — no matter *which* cases it gets wrong?
+This is the loosest bar: it looks only at the shape of the error distribution as a whole, not at
+where the errors land. The Wasserstein-1 (W1) distance is the single number for "how far the AI's
+error distribution sits from a real coder's": 0 = identical, larger = less human-shaped. Because
+it is on the same rating-point scale as MAE, the study's SESOI carries over as a "negligible" band.
+
+```{r tbl-w1}
+dm_w1 |>
+  transmute(Cell = cell, W1 = est, `95% CI` = glue("[{round(lo,4)}, {round(hi,4)}]")) |>
+  gt() |> fmt_number(W1, decimals = 4) |>
+  tab_header(title = "Test 1 — marginal Wasserstein-1 (AI vs human error distribution)",
+             subtitle = "rating points · smaller = more marginally human-shaped")
+```
+
+The same table as a coefficient plot: each cell's W1 point estimate with its 95%
+country-clustered CI, so the widened intervals and the cell separation read at a glance. Left =
+more human-shaped (0 = identical to the human error distribution); the grey band is `[0, SESOI]`.
+
+```{r}
+#| label: fig-w1-coef
+#| fig-height: 3.4
+w1_coef <- dm_w1 |>
+  mutate(family = factor(if_else(str_starts(cell, "FT"), "Fine-tuned", "Base"),
+                         levels = c("Base", "Fine-tuned")),
+         cell   = factor(cell, levels = rev(cell_lbl)))
+
+ggplot(w1_coef, aes(est, cell, color = family)) +
+  annotate("rect", xmin = 0, xmax = sesoi, ymin = -Inf, ymax = Inf,
+           fill = "grey85", alpha = 0.55) +
+  geom_vline(xintercept = 0, linetype = "dashed", color = "grey40") +
+  geom_errorbar(aes(xmin = lo, xmax = hi), orientation = "y", width = 0.2, linewidth = 0.7) +
+  geom_point(size = 2.6) +
+  scale_color_manual(values = family_pal, name = NULL) +
+  scale_x_continuous(expand = expansion(mult = c(0.02, 0.06))) +
+  labs(x = "Wasserstein-1 (rating points) · 0 = identical to the human error distribution",
+       y = NULL,
+       title = "Test 1 (coefficient plot) — marginal W1 with 95% country-clustered CIs",
+       subtitle = glue("2019 · left = more human-shaped · grey band = [0, SESOI {round(sesoi, 3)}]")) +
+  theme_minimal(base_size = 11) +
+  theme(legend.position = "top", legend.justification = "left",
+        panel.grid.major.y = element_blank(), plot.title.position = "plot",
+        plot.title = element_text(face = "bold"))
+```
+
+The W1 in each cell is a number; the companion figure is the same number as a picture. The AI
+error density (blue) and the human LOO error density (grey) are overlaid — both are densities, so
+they are comparable despite the human pool being ~8× larger — and the **exposed grey cap between
+them is the W1**, the mass you would have to shovel to turn one distribution into the other.
+Because both errors are non-negative, the density is bounded at 0. (The smooth curve trades away
+the exact-zero spike and the off-by-one bump at error ≈ 1 that the discrete data carry — a
+histogram of the same errors shows those literally.)
+
+```{r fig-w1-density}
+#| fig-height: 5.0
+# ai7$cell carries the long "model|condition" keys; relabel to the short Base:Cb … names.
+ai_dens <- ai7 |> mutate(cell = factor(cell_lbl[as.integer(cell)], levels = cell_lbl))
+w1_ann  <- dm_w1 |> transmute(cell = factor(cell, levels = cell_lbl),
+                              lab = sprintf("W1 = %.3f", est))
+
+ggplot() +
+  # human LOO reference (no `cell` column, so it repeats inside every facet)
+  geom_density(data = he, aes(x = e, fill = "Human LOO"),
+               color = "black", alpha = 0.4, linewidth = 0.35, bounds = c(0, Inf)) +
+  geom_density(data = ai_dens, aes(x = a, fill = "AI"),
+               color = "black", alpha = 0.4, linewidth = 0.35, bounds = c(0, Inf)) +
+  geom_text(data = w1_ann, aes(x = Inf, y = Inf, label = lab),
+            hjust = 1.12, vjust = 1.6, size = 3, color = "grey30") +
+  facet_wrap(~ cell, nrow = 2) +
+  scale_fill_manual(values = c("AI" = "#0072B2", "Human LOO" = "grey65"), name = NULL) +
+  coord_cartesian(xlim = c(0, 3)) +
+  labs(x = "absolute error from panel mean (rating points)", y = "density",
+       title = "Test 1 (companion) — AI vs human error densities",
+       subtitle = "bounded at 0 · blue = AI, grey = human LOO · exposed grey cap = W1 (sand to move)") +
+  theme_minimal(base_size = 11) +
+  theme(legend.position = "top", panel.grid.minor = element_blank())
+```
+
+#### How low is a low W1?
+
+W1 has no universal threshold: it is unbounded and carries units (rating points here), so "low"
+is meaningful only against the scale of the data and a benchmark. Three anchors, weakest to
+strongest:
+
+1. **The rating scale.** Errors live on a 0–4 axis, and the error distributions themselves have
+   mean/spread ≈ 0.7. FT-raw:Ev's W1 (0.008) is ~1% of that; even the largest, Base:Cb (0.103),
+   is only ~1/7 of a rating point.
+2. **SESOI (±`r round(sesoi, 3)`).** W1 is on the same rating-point axis as MAE, so the study's
+   SESOI carries over as a "substantively negligible" band, and **every cell's W1 falls inside
+   it**. That is exactly why the density panels above look so alike: the marginal distributions
+   genuinely differ, but by less than the rounding floor. The cells separate from *each other*
+   (0.008 vs 0.103) far more than any of them departs from the human shape in absolute terms.
+3. **Empirical floors** — computed on the same 2019 pool.
+
+```{r w1-floors}
+#| cache: true
+set.seed(42)
+.step <- 0.002; .nb <- as.integer(ceiling(max(c(ai7$a, he$e)) / .step))
+.binof <- function(x) pmin(pmax(as.integer(round(x / .step)), 1L), .nb)
+.cdf   <- function(x) { h <- cumsum(tabulate(.binof(x), .nb)); h / h[.nb] }
+.w1    <- function(x, Ref) sum(abs(.cdf(x) - Ref)) * .step
+.Href  <- .cdf(he$e)   # full human-pool CDF
+
+# Sampling-noise floor: split each cell's AI errors in half, W1 between halves.
+floor_ss <- median(sapply(split(ai7$a, ai7$cell), function(a)
+  median(replicate(100, { i <- sample(c(TRUE, FALSE), length(a), TRUE); .w1(a[i], .cdf(a[!i])) }))))
+
+# Human held-out-coder reference: one random real coder per cell vs the full pool.
+idx_by_cell <- split(seq_len(nrow(he)), he$cyi)
+floor_hu_draws <- replicate(200, {
+  pick <- vapply(idx_by_cell, function(ix) if (length(ix) == 1) ix else ix[sample.int(length(ix), 1)], integer(1))
+  .w1(he$e[pick], .Href)
+})
+floor_hu    <- median(floor_hu_draws)
+floor_hu_ci <- quantile(floor_hu_draws, c(0.025, 0.975))
+```
+
+- **Sampling-noise floor ≈ `r round(floor_ss, 3)`.** Split one cell's AI errors in half and the
+  two halves already differ by this much, purely from finite sample size — the smallest W1
+  distinguishable from zero at this *n*. **FT-raw:Ev (0.008) sits at this floor**: its marginal
+  error distribution is statistically indistinguishable from the human pool.
+- **Human held-out-coder reference ≈ `r round(floor_hu, 3)` [`r round(floor_hu_ci[1], 3)`, `r round(floor_hu_ci[2], 3)`].**
+  Replace the AI with one real held-out human coder per cell and compare to the panel: a genuine
+  human "synthetic coder" lands here. On the well-covered cells the AI actually rates, this is only
+  a touch above the sampling floor — a held-out human is itself already near-indistinguishable from
+  the pool — and the small gap is the residual *n*−1 leave-one-out penalty a real coder pays but
+  the full-*n*-scored AI does not (the asymmetry the spec keeps in the AI's favour). **Only
+  FT-raw:Ev (0.008) meets this bar** (inside its CI); every other cell — including the MAE-winner
+  Base:Ev (0.036) and the other two FT diagonal cells (0.035, 0.040) — sits measurably *above* it,
+  i.e. distinguishably less human-shaped than a real held-out coder, though all remain within
+  ±SESOI in absolute terms.
+
+### Test 2 — conditional error curves
+
+**In plain terms:** does the synthetic coder make its errors on the *same cases a human finds
+hard*? We sort cases into five difficulty groups (easiest → hardest, where "difficulty" is how
+much the real coders disagreed) and compare the AI's average error to the human's within each
+group. Sitting on the human line = the AI errs where humans err; a curve that is too flat = the
+right total amount of error but spread across the wrong cases. This is the load-bearing test: a
+model can look human-shaped *overall* (Test 1) yet still miss on the wrong cases here.
+
+```{r fig-strata}
+#| fig-height: 4.6
+# The human LOO curve is a reference: it carries no `cell` column, so ggplot draws it
+# inside every AI facet (rather than in a phantom panel of its own).
+ggplot(mapping = aes(stratum, est)) +
+  geom_ribbon(data = he_strata, aes(ymin = lo, ymax = hi),
+              fill = "grey80", color = NA, alpha = 0.5) +
+  geom_line(data = he_strata, aes(color = "Human LOO"), linewidth = 0.9) +
+  geom_pointrange(data = dm_strata, aes(ymin = lo, ymax = hi, color = "AI"), size = 0.3) +
+  facet_wrap(~ cell, nrow = 2) +
+  scale_color_manual(values = c("AI" = "#0072B2", "Human LOO" = "grey30"), name = NULL) +
+  labs(x = "difficulty stratum (quintile of h_c · 1 = easiest → 5 = hardest)", y = "mean error",
+       title = "Test 2 — AI error curve vs human LOO curve, by case difficulty",
+       subtitle = "grey = human LOO MAE reference (same in every panel) · on the grey line = human-shaped; too flat = wrong cells") +
+  theme_minimal(base_size = 11) + theme(legend.position = "top")
+```
+
+### Test 3 — difficulty-tracking slope (human reference = 1)
+
+**In plain terms:** this is Test 2 boiled down to a single number. Plot the AI's error against
+case difficulty and read the slope. A real coder's line has slope 1 by construction — their error
+rises one-for-one with difficulty, because difficulty *is* the human error. A slope below 1 means
+the AI is *flatter* than a coder: it over-errs on easy cases and under-errs on hard ones, the
+tell-tale sign of leaning on a prior instead of reading each case. Closer to 1 = more human-like.
+
+```{r tbl-slope}
+dm_slope |>
+  transmute(Cell = cell, Slope = est, `95% CI` = glue("[{round(lo,3)}, {round(hi,3)}]")) |>
+  gt() |> fmt_number(Slope, decimals = 3) |>
+  tab_header(title = "Test 3 — weighted slope of AI error on case difficulty h_c",
+             subtitle = "human self-reference slope = 1 by construction · <1 = flatter than a coder")
+```
+
+The same table as a coefficient plot: each cell's slope with its 95% country-clustered CI,
+against the human self-reference (dashed line at 1). Right = tracks case difficulty more like a
+real coder; every cell sits below 1 (flatter than a human), FT-raw:Ev closest.
+
+```{r}
+#| label: fig-slope-coef
+#| fig-height: 3.4
+slope_coef <- dm_slope |>
+  mutate(family = factor(if_else(str_starts(cell, "FT"), "Fine-tuned", "Base"),
+                         levels = c("Base", "Fine-tuned")),
+         cell   = factor(cell, levels = rev(cell_lbl)))
+
+ggplot(slope_coef, aes(est, cell, color = family)) +
+  geom_vline(xintercept = 1, linetype = "longdash", color = "grey40") +
+  annotate("text", x = 1, y = Inf, label = "human = 1",
+           color = "grey40", size = 3, hjust = 1.1, vjust = 1.4) +
+  geom_errorbar(aes(xmin = lo, xmax = hi), orientation = "y", width = 0.2, linewidth = 0.7) +
+  geom_point(size = 2.6) +
+  scale_color_manual(values = family_pal, name = NULL) +
+  scale_x_continuous(expand = expansion(mult = c(0.04, 0.10))) +
+  coord_cartesian(clip = "off") +
+  labs(x = "slope of AI error on case difficulty h_c",
+       y = NULL,
+       title = "Test 3 (coefficient plot) — difficulty-tracking slope with 95% country-clustered CIs",
+       subtitle = "2019 · dashed = human self-reference (slope 1) · right = tracks difficulty more like a coder") +
+  theme_minimal(base_size = 11) +
+  theme(legend.position = "top", legend.justification = "left",
+        panel.grid.major.y = element_blank(), plot.title.position = "plot",
+        plot.title = element_text(face = "bold"))
+```
+
+#### The slope as a curve (highlight view)
+
+The slope table above is one number per cell; this is the same relationship drawn out. Bin `h_c`
+into 20 equal-count bins and plot mean AI error against the *actual* `h_c` (the bin's mean):
+**each cell's line is its Test 3 regression, and the line's steepness *is* its slope.** The human
+LOO curve is the **y = x diagonal** (slope 1) by construction — `h_c` is the human error — so a
+line flatter than the diagonal is a slope < 1. Human LOO and FT-raw:Ev are highlighted with 95%
+CI bands (its own lightweight 2000-draw country-clustered bootstrap, seed 42); the other cells are greyed for
+context. FT-raw rises closest to the diagonal (slope 0.74) but still crosses it near `h_c ≈ 0.7`
+— over-erring on easy cells, under-erring on hard — the flat-slope signature as a shape.
+
+```{r bootstrap-fine}
+#| cache: true
+#| cache.lazy: false
+NF <- 20L
+qbf <- quantile(cyi_pool$h, seq(0, 1, length.out = NF + 1)); qbf[1] <- -Inf; qbf[NF + 1] <- Inf
+cyi_pool$binf <- cut(cyi_pool$h, qbf, labels = FALSE)
+xbin <- as.numeric(tapply(cyi_pool$h, cyi_pool$binf, mean))   # x = mean h_c per bin (fixed)
+ai7$binf <- cyi_pool$binf[match(ai7$cyi, cyi_pool$cyi)]
+he$binf  <- cyi_pool$binf[match(he$cyi,  cyi_pool$cyi)]
+
+nc <- length(fig_cells); n_cyi <- nrow(cyi_pool); ai_ci <- as.integer(ai7$cell)
+scf <- function(tab, len) { v <- rep(NA_real_, len); v[as.integer(rownames(tab))] <- tab; v }
+draw_fine <- function(w) {
+  wa <- w[ai7$cyi]; wh <- w[he$cyi]
+  g   <- (ai_ci - 1L) * NF + ai7$binf
+  aim <- scf(rowsum(wa * ai7$a, g, reorder = FALSE), nc * NF) /
+         scf(rowsum(wa,          g, reorder = FALSE), nc * NF)
+  hem <- scf(rowsum(wh * he$e, he$binf, reorder = FALSE), NF) /
+         scf(rowsum(wh,         he$binf, reorder = FALSE), NF)
+  c(aim, hem)
+}
+# Same country-clustered draws as §4 (rebuilt here, seed 42, so this chunk stays self-contained
+# for caching), broadcast per-country to CYIs.
+Wf <- country_boot_weights(cyi_pool$country_text_id, params$n_boot, seed = 42)
+Mf <- do.call(rbind, map(colnames(Wf), function(draw) {
+  w <- unname(Wf[, draw][cyi_pool$country_text_id]); draw_fine(w)
+}))
+apf <- which(colnames(Wf) == "Apparent"); rf <- setdiff(seq_len(nrow(Mf)), apf)
+estf <- Mf[apf, ]
+lof  <- apply(Mf[rf, ], 2, quantile, 0.025, na.rm = TRUE)
+hif  <- apply(Mf[rf, ], 2, quantile, 0.975, na.rm = TRUE)
+
+dm_fine <- tibble(cell = factor(rep(cell_lbl, each = NF), levels = cell_lbl),
+                  bin = rep(1:NF, nc), x = xbin[rep(1:NF, nc)],
+                  est = estf[1:(nc * NF)], lo = lof[1:(nc * NF)], hi = hif[1:(nc * NF)])
+he_fine <- tibble(bin = 1:NF, x = xbin,
+                  est = estf[nc * NF + 1:NF], lo = lof[nc * NF + 1:NF], hi = hif[nc * NF + 1:NF])
+rm(Wf, Mf)
+```
+
+```{r fig-test2-curve}
+#| fig-height: 5.0
+hl <- "FT-raw:Ev"
+ggplot() +
+  geom_line(data = filter(dm_fine, cell != hl), aes(x, est, group = cell),
+            color = "grey78", linewidth = 0.5) +
+  geom_ribbon(data = he_fine, aes(x, ymin = lo, ymax = hi), fill = "grey40", alpha = 0.25) +
+  geom_line(data = he_fine, aes(x, est, color = "Human LOO"), linewidth = 1.1) +
+  geom_ribbon(data = filter(dm_fine, cell == hl), aes(x, ymin = lo, ymax = hi),
+              fill = "#0072B2", alpha = 0.25) +
+  geom_line(data = filter(dm_fine, cell == hl), aes(x, est, color = "FT-raw:Ev"), linewidth = 1.1) +
+  scale_color_manual(values = c("Human LOO" = "grey20", "FT-raw:Ev" = "#0072B2"), name = NULL) +
+  coord_cartesian(xlim = c(0, 1.6)) +
+  labs(x = expression("case difficulty  " * h[c] * "  (within-cell human LOO MAE)"),
+       y = "mean AI error",
+       title = "Test 3 (visual) — AI error vs case difficulty: the slope as a shape",
+       subtitle = "grey = other cells · human LOO (y = x, slope 1) and FT-raw highlighted · 95% CI bands") +
+  theme_minimal(base_size = 11) +
+  theme(legend.position = "top", panel.grid.minor = element_blank())
+```
+
+### Confirmation — paired cell-vs-cell deltas (Tests 1 & 3)
+
+Marginal CIs already separate the cells, but the honest comparison is a **paired** within-draw
+delta, so the CI is on the difference itself rather than the overlap of two bars. The headline
+claim is that the human-shaped cell (FT-raw:Ev) is distinguishable from the MAE-minimizing
+carried cell (Base:Ev) — smaller W1 and steeper difficulty slope. These are exploratory,
+reported with CIs, not pass/fail tests. (W1 is on the same rating-point axis as MAE, so ±SESOI =
+`r round(sesoi, 3)` is a reasonable size reference; slope is dimensionless, so SESOI does not
+apply there.)
+
+```{r paired-deltas}
+# Paired within-draw delta between two columns of a per-draw matrix.
+dm_delta <- function(M, a, b, label, id = draw_id) {
+  d <- M[, a] - M[, b]; boot <- d[id != "Apparent"]
+  tibble(Contrast = label, est = d[id == "Apparent"],
+         lo = quantile(boot, 0.025), hi = quantile(boot, 0.975), p_gt = mean(boot > 0))
+}
+
+bind_rows(
+  dm_delta(W1_draws,    "FT-raw:Ev", "Base:Ev",   "W1: FT-raw − Base:Ev"),
+  dm_delta(W1_draws,    "FT-raw:Ev", "FT-summ:Su", "W1: FT-raw − FT-summ"),
+  dm_delta(W1_draws,    "FT-raw:Ev", "FT-anon:An", "W1: FT-raw − FT-anon"),
+  dm_delta(W1_draws,    "Base:Cb",   "Base:Ev",   "W1: Base:Cb − Base:Ev"),
+  dm_delta(slope_draws, "FT-raw:Ev", "Base:Ev",   "slope: FT-raw − Base:Ev")
+) |>
+  transmute(Contrast, Δ = est, `95% CI` = glue("[{round(lo, 3)}, {round(hi, 3)}]"),
+            `P(Δ>0)` = p_gt,
+            `CI excl. 0` = if_else(lo > 0 | hi < 0, "yes", "no")) |>
+  gt() |>
+  tab_header(title = "Paired distributional-match deltas (within-draw)",
+             subtitle = "W1 Δ<0 = first cell more human-shaped · slope Δ>0 = first cell tracks difficulty more") |>
+  fmt_number(columns = c(Δ, `P(Δ>0)`), decimals = 3)
+```
+
+## 6. Reading (prototype)
+
+The paper-facing narrative lives in the exploratory deliverable; this is the working readout.
+Smaller W1 and a slope nearer 1 both mean "more like a held-out human coder." The Test 2 panels
+are the adjudicator: a cell can match the human *mean* (Test 1 marginal, ≈ the D1 scalar) yet sit
+off the human *curve* across difficulty.
+
+## 7. Serialize the bundle
+
+```{r serialize}
+saveRDS(
+  list(# aggregated point + CI tables (read directly by the figures)
+       dm_w1 = dm_w1, dm_slope = dm_slope, dm_strata = dm_strata, he_strata = he_strata,
+       dm_marginal = dm_marginal,
+       # fine-binned conditional-error curves (error vs h_c) + human reference, for the highlight view
+       dm_fine = dm_fine, he_fine = he_fine,
+       # per-draw matrices [draw x cell] — the analog of 06's boot_results, kept so the
+       # paper doc can form paired cell-vs-cell deltas (see dm_delta / §5b).
+       W1_draws = W1_draws, slope_draws = slope_draws,
+       strata_draws = strata_draws, he_draws = he_draws, draw_id = draw_id,
+       # metadata
+       cell_lbl = cell_lbl, strata_names = strata_names, qb = qb, sesoi = sesoi,
+       n_boot = params$n_boot, grid_step = step),
+  file.path(derived_dir, "distmatch_2019.rds")
+)
+glue("distmatch_2019.rds written · B = {params$n_boot} · SESOI ±{round(sesoi, 3)}")
+```

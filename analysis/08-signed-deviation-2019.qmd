@@ -1,0 +1,479 @@
+---
+title: "2019 signed deviation by regime type — compute & prototype figures"
+format:
+  html:
+    toc: true
+    toc-depth: 2
+    embed-resources: true
+    code-fold: true
+    fig-width: 8
+    fig-height: 5
+execute:
+  warning: false
+  message: false
+params:
+  n_boot: 2000
+  year: 2019
+---
+
+Exploratory **signed-deviation** analysis (strategy: `notes/alternative-test-strategy.md`;
+diagnostic definition: `preregistration/evaluation-metrics.md` §"Compression diagnostic").
+
+This is the one axis in the debater toolkit that is *not* built on the distance-from-consensus
+quantity `06` (MAE) and `07` (distributional-match) share. Both of those take `|AI − mean|` and
+throw the direction away. This document drops the absolute value and keeps only the direction:
+`s_c = AI_rating − panel_mean`, averaged within regime bins. It asks the orthogonal question —
+**which way is each cell biased, and does that bias track regime type?**
+
+The reason this earns its own axis: signed deviation is the only place where a human coder and a
+consensus oracle agree on the target. Individual human ratings are balanced around their own panel
+mean, so a real coder's signed deviation is ≈ 0 by construction; an oracle that hugs the mean is
+also ≈ 0. On MAE those two goals *conflict* (a human is human *because* it sits ~0.71 out; hugging
+zero is the oracle, not the coder), which is what makes the MAE reversal ambiguous. On signed
+deviation they coincide at zero, so **any systematic departure from zero is unambiguously a
+directional bias and cannot be reinterpreted as human-likeness.** That is why the strategy note
+calls it "the specific bias detector."
+
+**Directional bias can run either way**, and the diagnostic is agnostic between them:
+
+- **Compression** toward the middle of the scale — rates autocracies *too generously* (positive at
+  the autocratic end) and democracies *too harshly* (negative at the democratic end). This is the
+  known human rater tendency (central-tendency bias), and the reading the prereg's diagnostic
+  description uses as its illustration.
+- **Exaggeration** toward the poles — rates autocracies *below* the panel and democracies *above*
+  it, spreading the regime gradient wider than the human consensus does. Because the human panel
+  mean is the reference, an exaggerating AI is the mirror image of a human panel that compresses
+  relative to the AI.
+
+We measure both as the **exaggeration gap** = (most-democratic bin) − (most-autocratic bin). A
+*positive* gap is exaggeration; a *negative* gap is compression. It is the paired-delta-able
+scalar summary, the way `07`'s W1 and slope are.
+
+**The one non-trivial reference: the rounding floor.** The AI emits integer ratings while panel
+means are fractional, so even a perfect integer-constrained rater has a signed deviation of
+`round(panel_mean) − panel_mean`. That mechanical residual is exactly the *signed* version of the
+rounding floor behind SESOI (its absolute version is `mean|round(mean) − mean| ≈ 0.223`). It is not
+a constant that can be subtracted as a scalar — it has its own by-quintile shape — so each cell's
+exaggeration gap is also reported **net of it** in the summary table. (In 2019 that floor turns out
+nearly flat at ≈ +0.045 with a gap of ≈ 0.02, so it explains almost none of what the AI does; the
+net-of-rounding column keeps it honest, but it is too flat to be worth drawing on the figures.)
+
+**No human reference band** (unlike `07`). On *this* statistic the human coders are pinned to
+exactly zero — not approximately — within every quintile on every draw: each coder's deviation is
+measured against their own panel's mean, and within any cell those deviations sum to zero by
+construction (LOO only rescales by `n/(n−1)`, still summing to zero). So there is no non-trivial
+human curve to draw; the AI's departure from the zero line *is* the AI-vs-human contrast. Seeing
+human compression on its own footing would require an external anchor (V-Dem's IRT score), a
+different analysis deferred out of this document. So this document loads only the runs and the panel
+means; it never touches the coder-level ratings.
+
+This document owns its bootstrap and serializes results (§6) to
+`data/derived/signeddev_2019.rds`. It reuses `06`/`07`'s exact seed-42 country-clustered resampling
+(via the shared `country_boot_weights()` helper), so its CIs are consistent with the main figures. It runs on the **full confirmatory pool** MAE is scored on
+(no coder floor — signed deviation is MAE with the sign kept, so it lives on the identical
+population; this differs from `07`'s ≥2-coder pool only by the sub-1% of single-coder cells).
+
+## 1. Setup
+
+```{r setup}
+library(tidyverse)
+library(rsample)
+library(gt)
+library(glue)
+
+if (!exists("params")) params <- list(n_boot = 2000, year = 2019)
+
+find_panel_member_root <- function() {
+  up <- tryCatch(rprojroot::find_root(rprojroot::is_git_root), error = function(e) NA_character_)
+  if (!is.na(up)) return(up)
+  down <- file.path(getwd(), "panel-member")
+  if (dir.exists(file.path(down, ".git"))) return(down)
+  stop("Could not locate the panel-member project root from working dir: ", getwd())
+}
+proj_root   <- find_panel_member_root()
+source(file.path(proj_root, "R", "bootstrap_helpers.R"))
+data_dir    <- file.path(proj_root, "data", "processed")
+runs_dir    <- file.path(proj_root, "data", "output", "runs")
+derived_dir <- file.path(proj_root, "data", "derived")
+
+# SESOI is fixed by the main analysis; carry it over rather than recompute, so every
+# document bands on the identical value. Signed deviation is on the rating-point axis,
+# so ±SESOI is a valid "substantively negligible" band here (unlike 07's dimensionless slope).
+sesoi <- readRDS(file.path(derived_dir, "bootstrap_2019.rds"))$sesoi
+```
+
+## 2. Data loading
+
+Only two sources — the JSONL runs and the panel means (which already carry both regime cuts,
+`theta_quintile` and `v2x_regime`). No coder-level ratings are needed.
+
+```{r load-data}
+#| cache: true
+#| cache.lazy: false
+needed_cols <- c("country", "year", "indicator", "condition", "model_key", "rating")
+read_run <- function(f) {
+  con <- file(f, "r"); on.exit(close(con))
+  jsonlite::stream_in(con, verbose = FALSE) |> as_tibble() |> select(all_of(needed_cols))
+}
+ai_raw <- list.files(runs_dir, pattern = "\\.jsonl$", full.names = TRUE) |>
+  map(read_run) |> bind_rows() |> mutate(model_key = str_remove(model_key, "-local$"))
+
+panel_means <- read_csv(file.path(data_dir, "panel_means.csv"), show_col_types = FALSE)
+```
+
+## 3. Metric construction
+
+Signed deviation `s_c = AI_rating − panel_mean`, joined to the two regime cuts. The pool is every
+CYI in the year with a panel mean and a model output — the same population MAE is scored on.
+
+```{r metrics}
+ai_metrics <- ai_raw |>
+  filter(year == params$year) |>
+  rename(country_text_id = country) |>
+  inner_join(select(panel_means, country_text_id, year, indicator,
+                    raw_mean, theta_quintile, v2x_regime),
+             by = c("country_text_id", "year", "indicator")) |>
+  mutate(s    = rating - raw_mean,               # SIGNED — direction kept
+         cell = paste(model_key, condition, sep = "|"),
+         qi   = ifelse(theta_quintile >= 1, as.integer(theta_quintile), NA_integer_),
+         ri   = ifelse(!is.na(v2x_regime), as.integer(v2x_regime) + 1L, NA_integer_))  # 0..3 -> 1..4
+
+# The 7 Figure-1 cells: base ladder (few-shot) + fine-tuned diagonal (same as 06/07).
+fig_cells <- c("llama-70b|codebook", "llama-70b|evidence", "llama-70b|anonymized",
+               "llama-70b|summarized", "llama-70b-ft-raw|evidence-zeroshot",
+               "llama-70b-ft-anon|anonymized-zeroshot", "llama-70b-ft-summ|summarized-zeroshot")
+cell_lbl <- c("Base:Cb", "Base:Ev", "Base:An", "Base:Su", "FT-raw:Ev", "FT-anon:An", "FT-summ:Su")
+
+ai7 <- ai_metrics |> filter(cell %in% fig_cells) |>
+  mutate(cell = factor(cell, levels = fig_cells))
+```
+
+### Shared CYI index + rounding floor
+
+One row per country-year-indicator (CYI) is the analysis unit; the bootstrap resamples whole
+**countries** (carrying each country's CYIs), exactly as in `06`/`07`. Each CYI also carries `sr`,
+the signed deviation a perfect integer-constrained rater would produce by
+rounding the panel mean — the mechanical rounding floor, kept signed.
+
+```{r index}
+cyi_pool <- ai_metrics |>
+  distinct(country_text_id, year, indicator, raw_mean, theta_quintile, v2x_regime) |>
+  mutate(cyi = row_number(), k = paste(country_text_id, indicator),
+         qi  = ifelse(theta_quintile >= 1, as.integer(theta_quintile), NA_integer_),
+         ri  = ifelse(!is.na(v2x_regime), as.integer(v2x_regime) + 1L, NA_integer_),
+         sr  = floor(raw_mean + 0.5) - raw_mean)   # nearest-integer residual, signed
+ai7$cyi <- cyi_pool$cyi[match(paste(ai7$country_text_id, ai7$indicator), cyi_pool$k)]
+```
+
+## 4. Bootstrap engine
+
+Country-clustered resample (seed 42), reusing `07`'s `scatter`/`rowsum` weighting.
+Per draw the engine returns the weighted mean signed deviation per cell × democracy quintile (7×5)
+and per cell × regime (7×4); the rounding-floor curve on the same bins; each cell's **exaggeration
+gap** (most-democratic minus most-autocratic bin) under both cuts, plus the rounding-floor's own
+gap; and each cell's pooled (marginal) signed deviation.
+
+```{r bootstrap}
+#| cache: true
+#| cache.lazy: false
+ncell <- length(fig_cells); nq <- 5L; nr <- 4L; n_cyi <- nrow(cyi_pool)
+
+# AI aggregation frames (rows dropped only if a regime cut is missing; nothing drops in 2019).
+q  <- ai7 |> filter(!is.na(qi))
+r  <- ai7 |> filter(!is.na(ri))
+cyi_q <- q$cyi; s_q <- q$s; cell_q <- as.integer(q$cell); g_q <- (cell_q - 1L) * nq + q$qi
+cyi_r <- r$cyi; s_r <- r$s; cell_r <- as.integer(r$cell); g_r <- (cell_r - 1L) * nr + r$ri
+
+# Rounding-floor frames (one value per CYI, cell-independent).
+poolq <- which(!is.na(cyi_pool$qi)); srq <- cyi_pool$sr[poolq]; qiq <- cyi_pool$qi[poolq]
+poolr <- which(!is.na(cyi_pool$ri)); srr <- cyi_pool$sr[poolr]; rir <- cyi_pool$ri[poolr]
+
+scatter <- function(tab, len) { v <- numeric(len); v[as.integer(rownames(tab))] <- tab; v }
+wmean   <- function(w, x, g, len)
+  scatter(rowsum(w * x, g, reorder = FALSE), len) / scatter(rowsum(w, g, reorder = FALSE), len)
+
+lo_idx <- ((1:ncell) - 1L)                       # first bin of each cell block
+compute_draw <- function(w) {
+  qm <- wmean(w[cyi_q], s_q, g_q, ncell * nq)     # per cell x quintile
+  rm <- wmean(w[cyi_r], s_r, g_r, ncell * nr)     # per cell x regime
+  ov <- wmean(w[cyi_q], s_q, cell_q, ncell)       # pooled per cell (quintile-eligible rows)
+  rn_q <- wmean(w[poolq], srq, qiq, nq)           # rounding floor by quintile
+  rn_r <- wmean(w[poolr], srr, rir, nr)           # rounding floor by regime
+  list(qm = qm, rm = rm, ov = ov, rn_q = rn_q, rn_r = rn_r,
+       eg_q     = qm[lo_idx * nq + nq] - qm[lo_idx * nq + 1L],   # Q5 − Q1 (AI)
+       eg_r     = rm[lo_idx * nr + nr] - rm[lo_idx * nr + 1L],   # libdem − closed autoc (AI)
+       rn_gap_q = rn_q[nq] - rn_q[1L],                           # rounding-floor gap
+       rn_gap_r = rn_r[nr] - rn_r[1L])
+}
+
+# Country-clustered draw step (shared helper), same seed/scheme as 06/07. Broadcast each draw's
+# per-country weight to that country's CYIs; cyi_pool is ordered by `cyi` (= row_number), so
+# indexing W's rows by country yields a weight vector aligned to cyi 1..n_cyi.
+W <- country_boot_weights(cyi_pool$country_text_id, params$n_boot, seed = 42)
+draws <- map(colnames(W), function(draw) {
+  w_by_cyi <- unname(W[, draw][cyi_pool$country_text_id])
+  compute_draw(w_by_cyi)
+})
+draw_id <- colnames(W)                  # draw labels (col 1 = "Apparent")
+app     <- which(draw_id == "Apparent") # apparent (full-sample) draw = the point estimate
+```
+
+## 5. Aggregate to point estimates + 95% CIs
+
+```{r aggregate}
+mat_of <- function(field) do.call(rbind, map(draws, field))
+ci_tbl <- function(field, labels) {
+  M <- mat_of(field); boot_rows <- setdiff(seq_len(nrow(M)), app)
+  tibble(item = labels,
+         est = M[app, ], lo = apply(M[boot_rows, , drop = FALSE], 2, quantile, 0.025),
+         hi  = apply(M[boot_rows, , drop = FALSE], 2, quantile, 0.975))
+}
+
+eg_q_draws  <- mat_of("eg_q"); colnames(eg_q_draws) <- cell_lbl
+eg_r_draws  <- mat_of("eg_r"); colnames(eg_r_draws) <- cell_lbl
+rn_gap_q_v  <- mat_of("rn_gap_q")[, 1]           # rounding-floor gap per draw (quintile)
+rn_gap_r_v  <- mat_of("rn_gap_r")[, 1]
+
+q_names <- paste(rep(cell_lbl, each = nq), 1:nq, sep = "|")
+r_names <- paste(rep(cell_lbl, each = nr), 0:3, sep = "|")
+
+dm_q <- ci_tbl("qm", q_names) |>
+  separate(item, c("cell", "quintile"), sep = "\\|", convert = TRUE) |>
+  mutate(cell = factor(cell, levels = cell_lbl))
+dm_r <- ci_tbl("rm", r_names) |>
+  separate(item, c("cell", "regime"), sep = "\\|", convert = TRUE) |>
+  mutate(cell = factor(cell, levels = cell_lbl))
+dm_rn_q <- ci_tbl("rn_q", as.character(1:nq)) |> transmute(quintile = as.integer(item), est, lo, hi)
+dm_rn_r <- ci_tbl("rn_r", as.character(0:3))  |> transmute(regime   = as.integer(item), est, lo, hi)
+dm_eg_q <- ci_tbl("eg_q", cell_lbl) |> rename(cell = item)
+dm_eg_r <- ci_tbl("eg_r", cell_lbl) |> rename(cell = item)
+dm_ov   <- ci_tbl("ov",   cell_lbl) |> rename(cell = item)
+
+# Net-of-rounding exaggeration gap: AI gap minus the rounding-floor gap, paired within draw.
+net_gap <- function(M, ref_v) {
+  boot <- setdiff(seq_len(nrow(M)), app); netM <- sweep(M, 1, ref_v, "-")
+  tibble(cell = colnames(M), est = netM[app, ],
+         lo = apply(netM[boot, , drop = FALSE], 2, quantile, 0.025),
+         hi = apply(netM[boot, , drop = FALSE], 2, quantile, 0.975))
+}
+dm_net_q <- net_gap(eg_q_draws, rn_gap_q_v)
+rn_gap_q_pt <- rn_gap_q_v[app]                   # rounding-floor gap point estimate (quintile)
+```
+
+### Exaggeration gap, net-of-rounding gap, and pooled shift, per cell
+
+The **pooled** signed deviation is the net level shift (can sit near zero even under a strong tilt,
+because a positive democratic end and a negative autocratic end cancel); the **exaggeration gap**
+(Q5 − Q1) is the tilt pooling hides; the **net-of-rounding gap** subtracts the mechanical rounding
+floor (its own gap is only `r round(rn_gap_q_pt, 3)`, so the two barely differ — the tilt is
+learned, not an integer-rounding artifact).
+
+```{r tbl-summary}
+dm_ov |> transmute(Cell = cell, `Pooled shift` = est,
+                   `pooled 95% CI` = glue("[{round(lo,3)}, {round(hi,3)}]")) |>
+  left_join(dm_eg_q |> transmute(Cell = cell, `Exaggeration gap` = est,
+                                 `gap 95% CI` = glue("[{round(lo,3)}, {round(hi,3)}]")),
+            by = "Cell") |>
+  left_join(dm_net_q |> transmute(Cell = cell, `Net of rounding` = est,
+                                  `net 95% CI` = glue("[{round(lo,3)}, {round(hi,3)}]")),
+            by = "Cell") |>
+  gt() |>
+  fmt_number(columns = c(`Pooled shift`, `Exaggeration gap`, `Net of rounding`), decimals = 3) |>
+  tab_header(title = "Signed deviation summary — level shift and (net) exaggeration gap",
+             subtitle = glue("gap = Q5−Q1 · positive = exaggeration (poles), negative = compression (middle) · ",
+                             "rounding-floor gap = {round(rn_gap_q_pt,3)} · ±SESOI = {round(sesoi,3)}"))
+```
+
+### Signed deviation across the democracy gradient (quintile cut)
+
+Zero is the human/oracle target (dotted); the shaded band is ±SESOI. An **upward** slope
+(negative-autocratic → positive-democratic) is exaggeration; a **downward** slope is compression.
+
+```{r fig-quintile}
+#| fig-height: 5.0
+band <- tibble(ymin = -sesoi, ymax = sesoi)
+ggplot(dm_q, aes(quintile, est)) +
+  geom_rect(data = band, inherit.aes = FALSE,
+            aes(xmin = -Inf, xmax = Inf, ymin = ymin, ymax = ymax), fill = "grey85", alpha = 0.5) +
+  geom_hline(yintercept = 0, linetype = "dotted", linewidth = 0.4, color = "grey30") +
+  geom_line(color = "#0072B2", linewidth = 0.6) +
+  geom_pointrange(aes(ymin = lo, ymax = hi), color = "#0072B2", size = 0.3) +
+  facet_wrap(~ cell, nrow = 2) +
+  scale_x_continuous(breaks = 1:5) +
+  labs(x = "democracy quintile (1 = most autocratic → 5 = most democratic)",
+       y = "mean signed deviation (AI − panel mean)",
+       title = "Signed deviation by democracy quintile — the direction detector",
+       subtitle = "dotted 0 = human/oracle target · grey band = ±SESOI · upward slope = exaggeration, downward = compression") +
+  theme_minimal(base_size = 11) +
+  theme(legend.position = "none", panel.grid.minor = element_blank())
+```
+
+#### FT-raw against the field (highlight view)
+
+The faceted panels show each cell on its own; this overlays all seven on one axis, with
+**FT-raw:Ev** highlighted (95% CI at each quintile) and the other six greyed for context — the
+analog of `07`'s slope-highlight. FT-raw is the protagonist by the strategy note's rule (the cell
+chosen on human-likeness, not MAE), so the question is simply whether its regime gradient sits
+closest to the flat zero target. It does: FT-raw is the shallowest curve in the field, staying
+inside or near the ±SESOI band across the whole gradient while the base evidence cells fan out.
+
+```{r fig-quintile-highlight}
+#| fig-height: 4.6
+hl <- "FT-raw:Ev"
+ggplot() +
+  geom_rect(data = band, aes(xmin = -Inf, xmax = Inf, ymin = ymin, ymax = ymax),
+            fill = "grey85", alpha = 0.5) +
+  geom_hline(yintercept = 0, linetype = "dotted", linewidth = 0.4, color = "grey30") +
+  geom_line(data = filter(dm_q, cell != hl), aes(quintile, est, group = cell, color = "Other cells"),
+            linewidth = 0.5) +
+  geom_ribbon(data = filter(dm_q, cell == hl), aes(quintile, ymin = lo, ymax = hi),
+              fill = "#0072B2", alpha = 0.22) +
+  geom_line(data = filter(dm_q, cell == hl), aes(quintile, est, color = "FT-raw:Ev"), linewidth = 1.1) +
+  geom_pointrange(data = filter(dm_q, cell == hl), aes(quintile, est, ymin = lo, ymax = hi),
+                  color = "#0072B2", size = 0.35) +
+  scale_x_continuous(breaks = 1:5) +
+  scale_color_manual(values = c("FT-raw:Ev" = "#0072B2", "Other cells" = "grey78"), name = NULL) +
+  labs(x = "democracy quintile (1 = most autocratic → 5 = most democratic)",
+       y = "mean signed deviation (AI − panel mean)",
+       title = "Signed deviation by quintile — FT-raw highlighted against the field",
+       subtitle = "grey = other six cells · FT-raw:Ev with 95% CI · dotted 0 = human/oracle target · band = ±SESOI") +
+  theme_minimal(base_size = 11) +
+  theme(legend.position = "top", panel.grid.minor = element_blank())
+```
+
+### Signed deviation across Regime of the World (regime cut)
+
+The same picture over the four substantive regime categories (the cut exploratory hypothesis A7
+names). Imbalanced *n* across categories, so the CIs differ in width from the equal-*n* quintiles,
+but the directional reading is identical.
+
+```{r fig-regime}
+#| fig-height: 5.0
+reg_lbl <- c("0\nClosed\nautoc", "1\nElectoral\nautoc", "2\nElectoral\ndem", "3\nLiberal\ndem")
+ggplot(dm_r, aes(regime, est)) +
+  geom_rect(data = band, inherit.aes = FALSE,
+            aes(xmin = -Inf, xmax = Inf, ymin = ymin, ymax = ymax), fill = "grey85", alpha = 0.5) +
+  geom_hline(yintercept = 0, linetype = "dotted", linewidth = 0.4, color = "grey30") +
+  geom_line(color = "#E69F00", linewidth = 0.6) +
+  geom_pointrange(aes(ymin = lo, ymax = hi), color = "#E69F00", size = 0.3) +
+  facet_wrap(~ cell, nrow = 2) +
+  scale_x_continuous(breaks = 0:3, labels = reg_lbl) +
+  labs(x = "Regime of the World (v2x_regime)",
+       y = "mean signed deviation (AI − panel mean)",
+       title = "Signed deviation by regime type — the direction detector (A7's cut)",
+       subtitle = "dotted 0 = human/oracle target · grey band = ±SESOI · upward slope = exaggeration, downward = compression") +
+  theme_minimal(base_size = 11) +
+  theme(legend.position = "none", panel.grid.minor = element_blank())
+```
+
+#### FT-raw against the field (highlight view)
+
+The regime-cut analog of the quintile highlight: all seven cells overlaid on the four substantive
+regime categories, with **FT-raw:Ev** highlighted (95% CI at each category) and the rest greyed.
+The reading matches the quintile view — FT-raw carries the flattest regime gradient of the field.
+
+```{r fig-regime-highlight}
+#| fig-height: 4.6
+hl <- "FT-raw:Ev"
+reg_lbl <- c("0\nClosed\nautoc", "1\nElectoral\nautoc", "2\nElectoral\ndem", "3\nLiberal\ndem")
+ggplot() +
+  geom_rect(data = band, aes(xmin = -Inf, xmax = Inf, ymin = ymin, ymax = ymax),
+            fill = "grey85", alpha = 0.5) +
+  geom_hline(yintercept = 0, linetype = "dotted", linewidth = 0.4, color = "grey30") +
+  geom_line(data = filter(dm_r, cell != hl), aes(regime, est, group = cell, color = "Other cells"),
+            linewidth = 0.5) +
+  geom_ribbon(data = filter(dm_r, cell == hl), aes(regime, ymin = lo, ymax = hi),
+              fill = "#0072B2", alpha = 0.22) +
+  geom_line(data = filter(dm_r, cell == hl), aes(regime, est, color = "FT-raw:Ev"), linewidth = 1.1) +
+  geom_pointrange(data = filter(dm_r, cell == hl), aes(regime, est, ymin = lo, ymax = hi),
+                  color = "#0072B2", size = 0.35) +
+  scale_x_continuous(breaks = 0:3, labels = reg_lbl) +
+  scale_color_manual(values = c("FT-raw:Ev" = "#0072B2", "Other cells" = "grey78"), name = NULL) +
+  labs(x = "Regime of the World (v2x_regime)",
+       y = "mean signed deviation (AI − panel mean)",
+       title = "Signed deviation by regime type — FT-raw highlighted against the field",
+       subtitle = "grey = other six cells · FT-raw:Ev with 95% CI · dotted 0 = human/oracle target · band = ±SESOI") +
+  theme_minimal(base_size = 11) +
+  theme(legend.position = "top", panel.grid.minor = element_blank())
+```
+
+### Paired cell-vs-cell exaggeration-gap deltas
+
+As in `07`, the honest cell-vs-cell comparison is a **paired within-draw** delta, so the CI is on
+the difference itself rather than the overlap of two bars. Following `07`'s structure exactly, the
+contrasts center **FT-raw:Ev** — the protagonist chosen on human-likeness, not MAE — and ask
+whether it is measurably *less exaggerated* (flatter regime gradient) than each other cell; the
+base ladder (Base:Cb − Base:Ev) is kept as the pure evidence-effect rung, and the last row repeats
+the FT-raw − Base:Ev contrast on the regime cut. Exploratory, reported with CIs, not pass/fail. The
+gap is on the rating-point axis, so ±SESOI = `r round(sesoi, 3)` is a reasonable size reference.
+(One caution: the FT-raw − FT-anon row comes out *positive* not because FT-anon is better
+calibrated but because its endpoint gap is small for the wrong reason — a mid-scale hump rather
+than genuine flatness; read it with FT-anon's +0.12 pooled shift, per §Reading.)
+
+```{r paired-deltas}
+dm_delta <- function(M, a, b, label, id = draw_id) {
+  d <- M[, a] - M[, b]; boot <- d[id != "Apparent"]
+  tibble(Contrast = label, est = d[id == "Apparent"],
+         lo = quantile(boot, 0.025), hi = quantile(boot, 0.975), p_gt = mean(boot > 0))
+}
+
+bind_rows(
+  dm_delta(eg_q_draws, "FT-raw:Ev", "Base:Ev",    "gap-Q: FT-raw − Base:Ev"),
+  dm_delta(eg_q_draws, "FT-raw:Ev", "FT-summ:Su", "gap-Q: FT-raw − FT-summ"),
+  dm_delta(eg_q_draws, "FT-raw:Ev", "FT-anon:An", "gap-Q: FT-raw − FT-anon"),
+  dm_delta(eg_q_draws, "Base:Cb",   "Base:Ev",    "gap-Q: Base:Cb − Base:Ev"),
+  dm_delta(eg_r_draws, "FT-raw:Ev", "Base:Ev",    "gap-R: FT-raw − Base:Ev")
+) |>
+  transmute(Contrast, `Δ gap` = est, `95% CI` = glue("[{round(lo, 3)}, {round(hi, 3)}]"),
+            `P(Δ>0)` = p_gt,
+            `CI excl. 0` = if_else(lo > 0 | hi < 0, "yes", "no")) |>
+  gt() |>
+  tab_header(title = "Paired exaggeration-gap deltas (within-draw)",
+             subtitle = "Δ<0 = first cell less exaggerated (flatter regime gradient) than the second") |>
+  fmt_number(columns = c(`Δ gap`, `P(Δ>0)`), decimals = 3)
+```
+
+### Reading (prototype)
+
+The paper-facing narrative lives in the exploratory deliverable; this is the working readout. Three
+things to read off each cell:
+
+- **Direction.** Every cell here slopes *upward* — negative at the autocratic end, positive at the
+  democratic end. The AI rates autocracies below the human panel and democracies above it: it
+  **exaggerates** the regime gradient rather than compressing it. This is the mirror image of the
+  human central-tendency tendency the diagnostic was named for, and it is not a rounding artifact —
+  the rounding floor is nearly flat, with a gap of only `r round(rn_gap_q_pt, 3)` (summary table),
+  so the net-of-rounding gap barely differs from the raw gap.
+- **Tilt (exaggeration gap).** How steep that slope is separates the cells: FT-raw:Ev carries the
+  mildest genuine gradient, the base evidence ladder and FT-summ the steepest. FT-anon:An's
+  endpoint gap is numerically the smallest of all, but for a different reason — its curve is a
+  *hump* (near-zero at both extremes, lifted +0.2 in the middle quintiles), so its small Q5−Q1
+  reflects mid-scale generosity, not clean calibration; read it together with its +0.12 pooled
+  shift, not the gap alone.
+- **Level (pooled shift).** Independent of tilt: de-identification (Anonymized, Summarized) drives
+  the *whole* curve downward — the AI gets uniformly harsher across all regimes — a directional
+  companion to why Anonymized was the worst cell on MAE. A cell can be flat in tilt yet shifted in
+  level, or steep in tilt with no net shift; the summary table separates the two.
+
+Signed deviation is orthogonal to `06`/`07`: a cell can win on MAE while badly exaggerating (or
+compressing), and a cell far on MAE can be directionally clean. This is the axis that tells those
+apart.
+
+## 6. Serialize the bundle
+
+```{r serialize}
+saveRDS(
+  list(# aggregated point + CI tables (read directly by the figures)
+       dm_q = dm_q, dm_r = dm_r, dm_rn_q = dm_rn_q, dm_rn_r = dm_rn_r,
+       dm_eg_q = dm_eg_q, dm_eg_r = dm_eg_r, dm_net_q = dm_net_q, dm_ov = dm_ov,
+       rn_gap_q_pt = rn_gap_q_pt,
+       # per-draw matrices [draw x cell] — analog of 06/07's boot_results, for paired deltas
+       eg_q_draws = eg_q_draws, eg_r_draws = eg_r_draws,
+       rn_gap_q_v = rn_gap_q_v, rn_gap_r_v = rn_gap_r_v, draw_id = draw_id,
+       # metadata
+       cell_lbl = cell_lbl, sesoi = sesoi, n_boot = params$n_boot),
+  file.path(derived_dir, "signeddev_2019.rds")
+)
+glue("signeddev_2019.rds written · B = {params$n_boot} · SESOI ±{round(sesoi, 3)} · ",
+     "rounding-floor gap {round(rn_gap_q_pt, 3)}")
+```

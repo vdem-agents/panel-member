@@ -17,7 +17,9 @@ params:
 After stripping named entities from source text, the coding model is asked which country
 the anonymized passage describes. This notebook characterizes the re-identification results:
 overall accuracy, variation by regime type and region, per-country consistency across
-indicators, and qualitative patterns in what cues survived anonymization.
+indicators, and qualitative patterns in what cues survived anonymization. A closing section
+(§12) folds in the summarized re-identification log to ask a design question for the name-swap
+experiment: when the model misses the exact country, does it still land in the right *region*?
 
 The primary question for the paper's identification strategy is not the overall accuracy
 rate per se, but whether re-identification is systematically concentrated among countries
@@ -34,6 +36,7 @@ library(jsonlite)
 library(vdemdata)
 library(gt)
 library(here)
+library(countrycode)
 
 region_labels <- c(
   "1" = "E. Europe & C. Asia",
@@ -610,3 +613,90 @@ anchoring is most plausible — those the model knows best. This attenuates
 meaning any observed improvement from anonymization likely understates the true effect.
 The re-identification test (hypothesis 5) is therefore not merely a robustness check
 but the primary diagnostic of how much anchoring remains in the anonymized condition.
+
+---
+
+## 12. Does re-identification stay in-region? (design diagnostic for the name-swap)
+
+Sections 4–5 measured *exact-country* re-identification by region. This closing section asks the
+adjacent question that motivates the **name-swap design** (`../notes/name-swap-design.md`): when the
+model fails to name the exact country, does its guess still land in the right **region**? If the
+cues surviving de-identification are regional, a same-region injected name is consistent with what
+the model perceives (a believable swap), while a cross-region name would clash with it.
+
+This brings in the **summarized** re-identification log alongside the anonymized one (the summarized
+text is the name-swap substrate), and uses the 9-region `region_map` that the name-swap pairing
+itself conditions on — finer than the `e_regionpol_6C` scheme in §4–5, and the conservative choice.
+Guessed countries are resolved to ISO codes with `countrycode`. Raw re-identification scores are
+used for both conditions (the four anonymized corrections in §2 shift these by well under a point).
+
+```{r inregion}
+source(here("R", "region_map.R"))   # region_map9: 9-region ISO3 lookup (shared with the pairing)
+
+# Pull the country named on each ranked line ("1." / "2." / "3.").
+parse_guesses <- function(resp) {
+  lines <- str_split(resp, "\n")[[1]]
+  m <- str_match(lines, "^\\s*([123])[.)]\\s*(.+)$")
+  g <- c(`1` = NA_character_, `2` = NA_character_, `3` = NA_character_)
+  for (i in seq_len(nrow(m))) {
+    rk <- m[i, 2]
+    if (!is.na(rk) && is.na(g[[rk]]))
+      g[[rk]] <- str_trim(str_split(m[i, 3], "[(\\-–:]| [Rr]eason", n = 2)[[1]][1])
+  }
+  as.list(g)
+}
+cc_iso  <- function(x) countrycode(x, "country.name", "iso3c",
+             custom_match = c("Kosovo" = "XKX", "Burma/Myanmar" = "MMR"), warn = FALSE)
+region9 <- function(v) unname(region_map9[cc_iso(v)])
+
+load_ir <- function(cond, fn) {
+  fromJSON(here("logs", fn)) |> as_tibble() |>
+    mutate(gg = map(llm_response, parse_guesses),
+           g1 = map_chr(gg, "1"), g2 = map_chr(gg, "2"), g3 = map_chr(gg, "3"),
+           true_region = unname(region_map9[iso]),
+           r1 = region9(g1), r2 = region9(g2), r3 = region9(g3),
+           condition = cond) |>
+    select(condition, iso, country, correct_top1, true_region, r1, r2, r3)
+}
+ir <- bind_rows(
+  load_ir("Anonymized", params$reid_file),
+  load_ir("Summarized", "reidentify_summ_2019_73427004.json")
+)
+
+ir_scored <- ir |>
+  filter(!is.na(true_region)) |>
+  mutate(top1_inreg = !is.na(r1) & r1 == true_region,
+         top3_inreg = (!is.na(r1) & r1 == true_region) |
+                      (!is.na(r2) & r2 == true_region) |
+                      (!is.na(r3) & r3 == true_region))
+
+ir_scored |>
+  group_by(condition) |>
+  summarise(
+    n = n(),
+    `exact country`          = mean(correct_top1),
+    `top-1 in-region`        = mean(top1_inreg),
+    `any top-3 in-region`    = mean(top3_inreg),
+    `wrong-country n`        = sum(!correct_top1),
+    `wrong, still in-region` = mean(top1_inreg[!correct_top1]),
+    .groups = "drop"
+  ) |>
+  gt() |>
+  fmt_percent(columns = c(`exact country`, `top-1 in-region`,
+                          `any top-3 in-region`, `wrong, still in-region`), decimals = 0) |>
+  tab_header(
+    title = "Exact country vs. right region",
+    subtitle = glue::glue("2019 re-id pilot · {sum(ir_scored$condition=='Anonymized')} anonymized, ",
+                          "{sum(ir_scored$condition=='Summarized')} summarized scorable cases ",
+                          "(microstates outside the region map dropped)")
+  )
+```
+
+**Reading it.** The gap between the first two columns is the finding: the model pins the exact
+*country* only 50–62% of the time, but the *region* 79–91% of the time — and even when it names the
+wrong country, its top guess is still a regional neighbour 58% (summarized) to 77% (anonymized) of
+the time. Its identity inferences are regional. On the summarized substrate the name-swap will
+actually use — the most de-identified — the residual signal is still ~79% regional, so pairing the
+swap **within region** attaches a name consistent with what the model reads off the text (a
+believable swap), while a cross-region name would fight the region it still perceives. This is the
+evidence behind the within-region choice recorded in `../notes/name-swap-design.md` (§Sampling).

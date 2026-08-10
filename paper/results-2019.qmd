@@ -198,7 +198,7 @@ vs_cb_all |>
   gt() |>
   tab_header(
     title    = "Divergence from the codebook-only prior",
-    subtitle = glue("Paired CYI bootstrap · SESOI = ±{round(sesoi, 3)}")
+    subtitle = glue("Paired country-clustered bootstrap · SESOI = ±{round(sesoi, 3)}")
   ) |>
   fmt_number(columns = ΔMAE, decimals = 3)
 ```
