@@ -18,6 +18,11 @@
 # anonymized-zeroshot summarized-zeroshot); override to run a subset, e.g.:
 #   VARIANT=raw CONDITIONS=codebook sbatch slurm/run_inference_finetuned.sh
 #
+# OUTPUT_DIR overrides where JSONL is written AND its archive subdir (default
+# data/output/runs -> ~/panel-member-archive/runs). Use it to keep a logprob-capturing
+# re-run off the frozen greedy files, e.g. for the expectation (mean) sensitivity analysis:
+#   OUTPUT_DIR=data/output/runs/expectation VARIANT=raw sbatch slurm/run_inference_finetuned.sh
+#
 #SBATCH --job-name=pm-ft-infer
 #SBATCH --partition=superChip
 #SBATCH --gres=gpu:gh200:1
@@ -40,7 +45,7 @@ MODEL_PATH=/scratch/ejtgrp/models/llama-3.3-70b-instruct
 ADAPTER_NAME=llama-70b-vdem-ft-${VARIANT}    # must match vdem_config.py
 ADAPTER_PATH=$HOME/panel-member-archive/adapters/${ADAPTER_NAME}
 VLLM_PORT=8000
-OUTPUT_DIR=data/output/runs
+OUTPUT_DIR=${OUTPUT_DIR:-data/output/runs}
 
 # ── Environment ────────────────────────────────────────────────────────────────
 source ~/miniforge3/etc/profile.d/conda.sh
@@ -108,7 +113,7 @@ python3 -m pipeline.run_finetuned_batch \
 kill "$VLLM_PID" && wait "$VLLM_PID" 2>/dev/null || true
 
 # ── Archive output to home (scratch purged after 30 days) ─────────────────────
-ARCHIVE_DIR="$HOME/panel-member-archive/runs"
+ARCHIVE_DIR="$HOME/panel-member-archive/$(basename "$OUTPUT_DIR")"
 mkdir -p "$ARCHIVE_DIR"
 rsync -av "${OUTPUT_DIR}"/ft_${VARIANT}_*_${YEAR}_*.jsonl "$ARCHIVE_DIR/"
 echo "Archived ft-${VARIANT} ${YEAR} runs to $ARCHIVE_DIR/"

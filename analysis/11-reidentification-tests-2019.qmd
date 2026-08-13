@@ -1,0 +1,728 @@
+---
+title: "Re-identification tests (2019) — per-model prevalence, salience labels, and the salience gap (R5/A8)"
+format:
+  html:
+    toc: true
+    toc-depth: 3
+    embed-resources: true
+    code-fold: true
+    fig-width: 8
+    fig-height: 5
+execute:
+  warning: false
+  message: false
+params:
+  n_boot: 2000
+  year: 2019
+  reid_subdir: "reid"
+  salience_primary: "anon"   # base:anon is the primary salience label; base:summ secondary
+---
+
+This document is the 2019 home for the re-identification battery. It does three jobs, in
+increasing dependence on other pipeline outputs:
+
+1. **Part A — per-model re-identification prevalence** (A6, and the weights-side read of A8).
+   How often does each of the four models (Base, FT-raw, FT-anon, FT-summ) name the true
+   country behind the *de-identified* evidence text, on the anonymized and summarized
+   substrates? Runs on the eight `reid_*` JSONL runs alone, plus the qualitative
+   cue / wrong-guess / flip sections carried over and generalized from `03`/`04`.
+2. **Part B — salience labels.** Turns the **base model's** re-identification into the fixed
+   per-CYI salience partition that Part C (and later docs) consume, and serializes it to
+   `data/derived/reid_salience_2019.rds`. Base only, so the partition does not move under the
+   cross-model comparison in Part C.
+3. **Part C — the salience gap (R5, A8).** *Mirror of `09` (R2).* Where R2 asks whether the
+   evidence gain grows where the frozen prior is *stale* (regime transitions), R5 asks
+   whether it *shrinks* where the frozen prior is *strong* (re-identifiable). Same
+   evidence-gain / difference-in-differences machinery, same country-clustered bootstrap,
+   the human LOO floor overlaid on the levels. Gated on the re-identification runs (Part B)
+   being present, and framed as **exploratory-on-2019** — the confirmatory R5 is registered on 2023.
+
+Design provenance for the two-role split (base as the fixed salience label; all four models
+as a prevalence diagnostic) is in the discussion recorded alongside
+`notes/secondary-and-robustness-metrics-roadmap.md`. Scoring, prompts, and the eight-run
+grid come from `pipeline/run_reid_batch.py` / `slurm/run_reid_batch.sh`.
+
+---
+
+## 1. Setup
+
+```{r setup}
+library(tidyverse)
+library(jsonlite)
+library(vdemdata)
+library(gt)
+library(glue)
+library(countrycode)
+
+if (!exists("params")) {
+  params <- list(n_boot = 2000, year = 2019, reid_subdir = "reid",
+                 salience_primary = "anon")
+}
+
+# Same root finder as 06/09, so the doc knits from any working dir in the workspace.
+find_panel_member_root <- function() {
+  up <- tryCatch(rprojroot::find_root(rprojroot::is_git_root), error = function(e) NA_character_)
+  if (!is.na(up)) return(up)
+  down <- file.path(getwd(), "panel-member")
+  if (dir.exists(file.path(down, ".git"))) return(down)
+  stop("Could not locate the panel-member project root from working dir: ", getwd())
+}
+proj_root   <- find_panel_member_root()
+source(file.path(proj_root, "R", "bootstrap_helpers.R"))  # model_labels, family_pal, country_boot_weights, ...
+data_dir    <- file.path(proj_root, "data", "processed")
+runs_dir    <- file.path(proj_root, "data", "output", "runs")
+reid_dir    <- file.path(proj_root, "data", "output", params$reid_subdir)
+derived_dir <- file.path(proj_root, "data", "derived")
+
+region_labels <- c(
+  "1" = "E. Europe & C. Asia", "2" = "Latin America", "3" = "MENA",
+  "4" = "Sub-Saharan Africa",  "5" = "W. Europe & N. America", "6" = "Asia & Pacific"
+)
+regime_labels <- c(
+  "0" = "Closed autocracy", "1" = "Electoral autocracy",
+  "2" = "Electoral democracy", "3" = "Liberal democracy"
+)
+```
+
+---
+
+## 2. Load the re-identification runs
+
+The eight runs are `reid_{tag}_{anon|summ}_{year}.jsonl`, `tag ∈ {base, ft-raw, ft-anon,
+ft-summ}`. Loading is tolerant of missing files so the doc knits with whatever subset is
+back; the `reid_available` flag below gates every Part A/B chunk.
+
+Correctness is **re-derived here by ISO resolution**, not taken from the runner's substring
+scorer. The runner keeps the pilot's raw substring match (`correct_top1/3`) for continuity,
+but that mis-scores a handful of names at scale (Brunei ⊂ "Brunei Darussalam"; "Congo" ⊂
+"Democratic Republic of the Congo" — a *different* country; Western-Sahara-as-denial). We
+resolve each guessed name to an ISO3 and compare codes, which fixes all of these uniformly
+and supersedes the per-CYI patches hand-coded in `03`/`04`.
+
+```{r load-reid}
+reid_files <- if (dir.exists(reid_dir)) {
+  list.files(reid_dir, pattern = glue("reid_.*_{params$year}\\.jsonl$"), full.names = TRUE)
+} else character(0)
+
+reid_available <- length(reid_files) > 0
+
+read_reid <- function(f) {
+  con <- file(f, "r"); on.exit(close(con))
+  stream_in(con, verbose = FALSE) |> as_tibble()
+}
+
+# ISO-based re-scoring, generalized from 03 §12's parser.
+parse_guesses <- function(resp) {
+  lines <- str_split(resp, "\n")[[1]]
+  m <- str_match(lines, "^\\s*([123])[.)]\\s*(.+)$")
+  g <- c(`1` = NA_character_, `2` = NA_character_, `3` = NA_character_)
+  for (i in seq_len(nrow(m))) {
+    rk <- m[i, 2]
+    if (!is.na(rk) && is.na(g[[rk]]))
+      g[[rk]] <- str_trim(str_split(m[i, 3], "[(\\-–:]| [Rr]eason", n = 2)[[1]][1])
+  }
+  as.list(g)
+}
+cc_iso <- function(x) countrycode(
+  x, "country.name", "iso3c",
+  custom_match = c("Kosovo" = "XKX", "Burma/Myanmar" = "MMR", "Micronesia" = "FSM"),
+  warn = FALSE
+)
+
+if (reid_available) {
+  reid <- reid_files |>
+    map(read_reid) |>
+    bind_rows() |>
+    mutate(
+      model_key = str_remove(model_key, "-local$"),          # base -> "llama-70b"
+      model     = factor(unname(model_labels[model_key]),
+                         levels = unname(model_labels)),
+      treatment = factor(treatment, levels = c("anonymized", "summarized"),
+                         labels = c("Anonymized", "Summarized"))
+    )
+
+  # Re-derive top-1 / top-3 by ISO equality.
+  guesses <- map(reid$llm_response, parse_guesses)
+  reid <- reid |>
+    mutate(
+      g1 = map_chr(guesses, "1"), g2 = map_chr(guesses, "2"), g3 = map_chr(guesses, "3"),
+      guess1_iso = cc_iso(g1), guess2_iso = cc_iso(g2), guess3_iso = cc_iso(g3),
+      hit1 = !is.na(guess1_iso) & guess1_iso == iso,
+      hit3 = hit1 |
+             (!is.na(guess2_iso) & guess2_iso == iso) |
+             (!is.na(guess3_iso) & guess3_iso == iso)
+    )
+
+  # V-Dem covariates (regime, region, polyarchy quintile).
+  vdem_cov <- vdem |>
+    filter(year == params$year) |>
+    transmute(iso = country_text_id, v2x_polyarchy, v2x_regime, e_regionpol_6C)
+  reid <- reid |>
+    left_join(vdem_cov, by = "iso") |>
+    mutate(
+      regime = factor(v2x_regime, levels = 0:3, labels = regime_labels),
+      region = factor(e_regionpol_6C, levels = 1:6, labels = region_labels),
+      poly_q = ntile(v2x_polyarchy, 5)
+    )
+
+  cat("Re-id runs loaded:", length(reid_files), "files,", nrow(reid), "rows\n")
+  cat("Models present:", paste(levels(droplevels(reid$model)), collapse = ", "), "\n")
+} else {
+  cat("No re-identification runs found in", reid_dir,
+      "\nRun slurm/run_reid_batch.sh (MODEL=base|raw|anon|summ) and pull the output.\n")
+}
+```
+
+```{r reid-boot-helper}
+#| eval: !expr reid_available
+# Country-clustered bootstrap of a per-cell logical rate (re-id is country-driven, so
+# CYI-independent resampling understates uncertainty — same argument as 06/09).
+boot_rate <- function(df, col, n_boot = params$n_boot, seed = 42) {
+  df <- df |> filter(!is.na(.data[[col]]))
+  if (nrow(df) == 0) return(tibble(est = NA_real_, lo = NA_real_, hi = NA_real_, n = 0L))
+  W  <- country_boot_weights(df$iso, n_boot, seed = seed)
+  v  <- as.numeric(df[[col]])
+  wm <- W[df$iso, , drop = FALSE]
+  rates <- colSums(wm * v) / colSums(wm)
+  tibble(
+    est = unname(rates["Apparent"]),
+    lo  = unname(quantile(rates[-1], 0.025)),
+    hi  = unname(quantile(rates[-1], 0.975)),
+    n   = nrow(df)
+  )
+}
+```
+
+---
+
+## Part A — Per-model re-identification prevalence
+
+### 3. Headline: top-1 / top-3 by model × treatment
+
+The 4×2 grid. Country-clustered CIs. This is the "how well can each set of weights recover
+country identity from de-identified text" table.
+
+```{r prevalence-grid}
+#| eval: !expr reid_available
+prevalence <- reid |>
+  group_by(model, treatment) |>
+  group_modify(~ bind_rows(
+    boot_rate(.x, "hit1") |> mutate(metric = "Top-1"),
+    boot_rate(.x, "hit3") |> mutate(metric = "Top-3")
+  )) |>
+  ungroup()
+
+prevalence |>
+  mutate(cell = glue("{scales::percent(est, 0.1)} [{scales::percent(lo, 0.1)}, {scales::percent(hi, 0.1)}]")) |>
+  select(model, treatment, metric, cell) |>
+  pivot_wider(names_from = metric, values_from = cell) |>
+  gt(groupname_col = "treatment") |>
+  tab_header(
+    title = "Re-identification accuracy by model and treatment",
+    subtitle = glue("{params$year} full pool · country-clustered 95% CI · {params$n_boot} resamples")
+  ) |>
+  cols_label(model = "Model")
+```
+
+```{r prevalence-plot}
+#| eval: !expr reid_available
+#| fig-height: 4.5
+prevalence |>
+  filter(metric == "Top-1") |>
+  ggplot(aes(x = est, y = fct_rev(model), colour = treatment)) +
+  geom_linerange(aes(xmin = lo, xmax = hi), position = position_dodge(width = 0.5)) +
+  geom_point(size = 3, position = position_dodge(width = 0.5)) +
+  scale_x_continuous(labels = scales::percent, limits = c(0, 1)) +
+  scale_colour_manual(values = c("Anonymized" = "tomato", "Summarized" = "steelblue"), name = NULL) +
+  labs(x = "Top-1 re-identification accuracy", y = NULL,
+       title = "Per-model re-identification prevalence (top-1)",
+       subtitle = "Country-clustered 95% CIs") +
+  theme_minimal(base_size = 12) + theme(legend.position = "bottom")
+```
+
+### 3a. A6 — does summarization beat anonymization *within each model*?
+
+A6 expects summarization to be materially harder to re-identify than anonymization. Here it
+is tested per model, not just for base, as a paired within-cell delta (same CYIs under both
+treatments).
+
+```{r a6-summ-vs-anon}
+#| eval: !expr reid_available
+paired_treat <- reid |>
+  select(model, iso, indicator, treatment, hit1) |>
+  pivot_wider(names_from = treatment, values_from = hit1) |>
+  filter(!is.na(Anonymized), !is.na(Summarized))
+
+a6 <- paired_treat |>
+  group_by(model) |>
+  group_modify(~ {
+    d <- .x |> mutate(diff = as.numeric(Summarized) - as.numeric(Anonymized))
+    W <- country_boot_weights(d$iso, params$n_boot, seed = 42)
+    wm <- W[d$iso, , drop = FALSE]
+    est <- colSums(wm * d$diff) / colSums(wm)
+    tibble(delta_top1 = unname(est["Apparent"]),
+           lo = unname(quantile(est[-1], 0.025)),
+           hi = unname(quantile(est[-1], 0.975)), n = nrow(d))
+  }) |>
+  ungroup()
+
+a6 |>
+  mutate(across(c(delta_top1, lo, hi), ~ scales::percent(.x, 0.1))) |>
+  gt() |>
+  tab_header(title = "A6: summarized − anonymized top-1 (paired, within-CYI)",
+             subtitle = "Negative = summarization is harder to re-identify (the expected sign)")
+```
+
+### 3b. A8 (weights side) — did de-identified training blunt identity recovery?
+
+A8's weights-side read: FT-raw should recover identity like Base (its training paired real
+names with ratings), while FT-anon and FT-summ — never trained on a real name — should
+recover *less*. Reported as Base-minus-FT paired deltas on the common cells, per treatment.
+
+```{r a8-weights}
+#| eval: !expr reid_available
+base_key_label <- "Base"
+a8 <- reid |>
+  filter(model %in% c("Base", "FT-raw", "FT-anon", "FT-summ")) |>
+  select(model, iso, indicator, treatment, hit1) |>
+  pivot_wider(names_from = model, values_from = hit1)
+
+a8_tbl <- map_dfr(c("FT-raw", "FT-anon", "FT-summ"), function(m) {
+  map_dfr(levels(reid$treatment), function(tr) {
+    d <- a8 |> filter(treatment == tr, !is.na(Base), !is.na(.data[[m]]))
+    if (nrow(d) == 0) return(tibble())
+    d <- d |> mutate(diff = as.numeric(Base) - as.numeric(.data[[m]]))
+    W <- country_boot_weights(d$iso, params$n_boot, seed = 42)
+    wm <- W[d$iso, , drop = FALSE]
+    est <- colSums(wm * d$diff) / colSums(wm)
+    tibble(contrast = glue("Base − {m}"), treatment = tr,
+           delta = unname(est["Apparent"]),
+           lo = unname(quantile(est[-1], 0.025)),
+           hi = unname(quantile(est[-1], 0.975)))
+  })
+})
+
+a8_tbl |>
+  mutate(across(c(delta, lo, hi), ~ scales::percent(.x, 0.1))) |>
+  gt(groupname_col = "treatment") |>
+  tab_header(title = "A8 (weights): Base − FT top-1 re-identification (paired)",
+             subtitle = "Positive = the FT model recovers identity LESS than base (expected for FT-anon/FT-summ, ~0 for FT-raw)")
+```
+
+### 4. Breakdown by regime, region, and democracy level
+
+Carried from `03`/`04` (§4–5) but faceted across models: is re-identification concentrated
+where country-identity anchoring is most plausible — the high-salience regimes the model
+knows best?
+
+```{r breakdown-regime}
+#| eval: !expr reid_available
+#| fig-height: 5
+reid |>
+  filter(!is.na(regime)) |>
+  group_by(model, treatment, regime) |>
+  summarise(top1 = mean(hit1), n = n(), .groups = "drop") |>
+  ggplot(aes(x = top1, y = fct_rev(regime), colour = treatment)) +
+  geom_point(size = 2.5, position = position_dodge(width = 0.4)) +
+  facet_wrap(~ model) +
+  scale_x_continuous(labels = scales::percent, limits = c(0, 1)) +
+  scale_colour_manual(values = c("Anonymized" = "tomato", "Summarized" = "steelblue"), name = NULL) +
+  labs(x = "Top-1 re-identification", y = NULL,
+       title = "Re-identification by regime type, per model") +
+  theme_minimal(base_size = 11) + theme(legend.position = "bottom")
+```
+
+```{r breakdown-polyarchy}
+#| eval: !expr reid_available
+#| fig-height: 4.5
+reid |>
+  filter(!is.na(poly_q)) |>
+  group_by(model, treatment, poly_q) |>
+  summarise(top1 = mean(hit1), .groups = "drop") |>
+  ggplot(aes(x = poly_q, y = top1, colour = treatment)) +
+  geom_line(linewidth = 0.8) + geom_point(size = 2) +
+  facet_wrap(~ model) +
+  scale_x_continuous(breaks = 1:5, labels = c("Q1", "Q2", "Q3", "Q4", "Q5")) +
+  scale_y_continuous(labels = scales::percent) +
+  scale_colour_manual(values = c("Anonymized" = "tomato", "Summarized" = "steelblue"), name = NULL) +
+  labs(x = "Polyarchy quintile (Q1 = most autocratic)", y = "Top-1 re-identification",
+       title = "Re-identification by democracy level, per model") +
+  theme_minimal(base_size = 11) + theme(legend.position = "bottom")
+```
+
+### 5. Qualitative: what cues survive? (carried from `03` §8)
+
+Classifies *why* a correct top-1 happened by reading the model's free-text `Reason:` field.
+Same four cue types as `03`: signature event, unique institution, salient profile, niche
+feature. Shown for base by default; switch `model` in the filter to inspect an FT model.
+
+```{r cue-typology}
+#| eval: !expr reid_available
+cue_of <- function(reasoning) {
+  r <- str_to_lower(reasoning)
+  case_when(
+    str_detect(r, "protest|uprising|referendum|coup|fare|constitutional|electoral manipulation|ousting|transitional") ~ "Signature event",
+    str_detect(r, "compact|canton|entity|peace agreement|dayton|free association|name change|accession")             ~ "Unique institution",
+    str_detect(r, "humanitarian|reeducation|uyghur|detention|absolute monarch|oil|1mdb|digital security")            ~ "Salient profile",
+    TRUE ~ "Niche or ambiguous"
+  )
+}
+
+reid_cues <- reid |>
+  filter(hit1) |>
+  mutate(reasoning = str_extract(llm_response, "(?<=Reason:\\s{0,3}).+") |> str_trim(),
+         cue_type  = cue_of(reasoning))
+
+reid_cues |>
+  count(model, treatment, cue_type) |>
+  group_by(model, treatment) |>
+  mutate(share = n / sum(n)) |>
+  ungroup() |>
+  ggplot(aes(x = share, y = fct_rev(model), fill = cue_type)) +
+  geom_col(width = 0.7) +
+  facet_wrap(~ treatment) +
+  scale_x_continuous(labels = scales::percent) +
+  scale_fill_brewer(palette = "Set2", name = "Cue type") +
+  labs(x = "Share of correct top-1 identifications", y = NULL,
+       title = "Cue types driving correct re-identification, by model") +
+  theme_minimal(base_size = 11) + theme(legend.position = "bottom")
+```
+
+### 6. Qualitative: wrong-guess / regional-prototype patterns (carried from `03` §7)
+
+When the model misses, what does it name instead? Systematic wrong guesses are the
+"regional prototypes" that dominate the model's prior for a given political profile.
+
+```{r wrong-guesses}
+#| eval: !expr reid_available
+reid |>
+  filter(!hit1, model == "Base") |>
+  mutate(wrong = coalesce(cc_iso(g1), g1)) |>
+  count(treatment, wrong, sort = TRUE) |>
+  group_by(treatment) |>
+  slice_head(n = 10) |>
+  ungroup() |>
+  gt(groupname_col = "treatment") |>
+  tab_header(title = "Base model: most common wrong top-1 guesses",
+             subtitle = "Resolved to ISO where possible; the regional prototypes")
+```
+
+### 7. Qualitative: flip countries — anon vs summ (carried from `04` §6)
+
+Countries identifiable under one treatment but not the other reveal *what kind* of
+information each treatment removes. Base model, aggregated to the country.
+
+```{r flip-countries}
+#| eval: !expr reid_available
+flips <- reid |>
+  filter(model == "Base") |>
+  group_by(iso, country, treatment) |>
+  summarise(top1 = mean(hit1), .groups = "drop") |>
+  pivot_wider(names_from = treatment, values_from = top1) |>
+  filter(!is.na(Anonymized), !is.na(Summarized)) |>
+  mutate(category = case_when(
+    Anonymized == 1 & Summarized == 1 ~ "Both",
+    Anonymized  > Summarized          ~ "Anon only",
+    Summarized  > Anonymized          ~ "Summ only",
+    Anonymized == 0 & Summarized == 0 ~ "Neither",
+    TRUE                              ~ "Tied (partial)"
+  ))
+
+flips |> count(category) |>
+  gt() |> tab_header(title = "Base model: anon-vs-summ flip categories (country level)")
+```
+
+---
+
+## Part B — Salience labels (base model)
+
+The fixed partition Part C consumes. Base only, so the label does not move under the
+cross-model gap comparison. Three encodings:
+
+- **Binary base:anon** (primary) and **binary base:summ** (secondary), each = top-1
+  re-identified from that substrate.
+- **Graded ladder**: `summ` (re-identified even from the summary → strongest prior) >
+  `anon-only` (re-identified from anon but not summ → moderate) > `none`. A monotone
+  prior-strength axis, matching the theory better than a single binary split.
+
+```{r salience-labels}
+#| eval: !expr reid_available
+base_reid <- reid |>
+  filter(model == "Base") |>
+  select(iso, indicator, treatment, hit1) |>
+  pivot_wider(names_from = treatment, values_from = hit1)
+
+salience <- base_reid |>
+  transmute(
+    country_text_id = iso,
+    indicator,
+    year            = params$year,
+    salient_anon    = coalesce(Anonymized, FALSE),
+    salient_summ    = coalesce(Summarized, FALSE),
+    salience_grade  = factor(case_when(
+      salient_summ                 ~ "summ",       # strongest prior
+      salient_anon                 ~ "anon-only",  # moderate
+      TRUE                         ~ "none"        # weakest
+    ), levels = c("none", "anon-only", "summ"))
+  )
+
+# Coverage + anon/summ cross-tab.
+salience |>
+  summarise(
+    n_cells        = n(),
+    salient_anon   = mean(salient_anon),
+    salient_summ   = mean(salient_summ),
+    both           = mean(salient_anon & salient_summ),
+    anon_only      = mean(salient_anon & !salient_summ),
+    summ_only      = mean(!salient_anon & salient_summ),
+    neither        = mean(!salient_anon & !salient_summ)
+  ) |>
+  mutate(across(-n_cells, ~ scales::percent(.x, 0.1))) |>
+  gt() |> tab_header(title = "Salience-label coverage (base model, 2019 pool)")
+
+cat("Graded ladder distribution:\n"); print(count(salience, salience_grade))
+```
+
+```{r serialize-salience}
+#| eval: !expr reid_available
+dir.create(derived_dir, showWarnings = FALSE, recursive = TRUE)
+saveRDS(salience, file.path(derived_dir, glue("reid_salience_{params$year}.rds")))
+cat("Wrote", file.path(derived_dir, glue("reid_salience_{params$year}.rds")),
+    "—", nrow(salience), "labeled cells.\n")
+```
+
+---
+
+## Part C — The salience gap (R5, A8) — *gated on coding runs*
+
+**Mirror of `09` (R2).** R5: the evidence gain — the paired MAE change from codebook to a
+text condition — is *less negative* (evidence helps less) on **salient** (strong-prior)
+cells than on non-salient ones, because a strong competing prior lets the model discount the
+text. A8 asks whether that salience gap is ordered by model: FT-raw should replicate base's
+gap; FT-anon/FT-summ, whose weights never paired a real name with a rating, should show a
+smaller gap.
+
+Machinery is identical to `09`: per-CYI absolute error against the panel mean, the
+evidence-gain difference-in-differences across the salience split, a **country-clustered**
+bootstrap via `country_boot_weights()`, and the human **LOO floor overlaid on the levels**
+(not on the gain — LOO is a level, not a delta). Note the deviation from the prereg's R5
+text, which specifies a CYI-level resample; the restructured pipeline uses country-clustered
+throughout because salience is country-driven and the independent-CYI CI is anti-conservative
+(see `notes/bootstrap-clustering-figures-check.qmd`).
+
+**FT "Evidence" is zero-shot.** Base's evidence gain uses the few-shot `evidence` condition;
+the FT models have no few-shot block, so their analog is `evidence-zeroshot`, which
+`canon_col()` collapses to the same `evidence` column. The DiD is always a within-model
+contrast (each model's own text condition minus its own codebook), so this asymmetry never
+crosses between rows — but the A8 comparison is base-few-shot-gain vs FT-zero-shot-gain, and
+that is the intended reading, not a confound to remove.
+
+**Mode/mean caveat.** Greedy decoding returns the *mode*, so this panel-mean MAE gap inherits
+the mode/mean gap discussed in `notes/mode-vs-mean-decode-and-act1-next-steps.md`; the
+exact-match/mode lens on the same split belongs in `12` and is cross-referenced there.
+
+```{r partc-gate}
+coding_ready <- reid_available &&
+  dir.exists(runs_dir) &&
+  length(list.files(runs_dir, pattern = "\\.jsonl$")) > 0 &&
+  file.exists(file.path(data_dir, "panel_means.csv")) &&
+  file.exists(file.path(data_dir, "human_ratings.csv"))
+if (!coding_ready) {
+  cat("Part C is gated: needs the salience labels (Part B, from the reid_* runs) AND the\n",
+      "coding JSONL runs + panel_means.csv + human_ratings.csv. The 2019 coding runs are\n",
+      "downloaded; the reid_* runs are the outstanding piece, so run slurm/run_reid_batch.sh\n",
+      "and pull the output, then re-knit. Exploratory-on-2019; confirmatory R5 is 2023.\n")
+}
+```
+
+### 8. Load coding runs, panel means, human LOO
+
+```{r partc-load}
+#| eval: !expr coding_ready
+#| cache: true
+#| cache.lazy: false
+needed_cols <- c("country", "year", "indicator", "condition", "model_key", "rating")
+read_run <- function(f) {
+  con <- file(f, "r"); on.exit(close(con))
+  stream_in(con, verbose = FALSE) |> as_tibble() |> select(all_of(needed_cols))
+}
+ai_raw <- list.files(runs_dir, pattern = "\\.jsonl$", full.names = TRUE) |>
+  map(read_run) |> bind_rows() |>
+  mutate(model_key = str_remove(model_key, "-local$"),
+         cond_canon = canon_col(condition))   # collapse -zeroshot to Cb/Ev/An/Su
+
+panel_means <- read_csv(file.path(data_dir, "panel_means.csv"), show_col_types = FALSE)
+pm_year <- panel_means |> filter(year == params$year) |>
+  select(country_text_id, indicator, raw_mean)
+
+# Per-CYI AI error against the panel mean, joined to the salience label.
+cell_err <- ai_raw |>
+  filter(year == params$year) |>
+  inner_join(pm_year, by = c("country" = "country_text_id", "indicator")) |>
+  mutate(err = abs(rating - raw_mean)) |>
+  inner_join(salience, by = c("country" = "country_text_id", "indicator", "year"))
+
+# Human LOO floor per CYI (≥2 coders), for the level overlay.
+human_ratings <- read_csv(file.path(data_dir, "human_ratings.csv"), show_col_types = FALSE)
+human_loo <- human_ratings |>
+  filter(year == params$year) |>
+  group_by(country_text_id, indicator) |>
+  filter(n() >= 2) |>
+  summarise(hloo = mean(abs(rating - (sum(rating) - rating) / (n() - 1))), .groups = "drop")
+```
+
+### 9. Evidence-gain DiD across the salience split (R5) + by model (A8)
+
+For each model row (base Ev/An/Su, and each FT diagonal), the evidence gain is
+`MAE(text) − MAE(codebook)`. The salience DiD is `gain(non-salient) − gain(salient)`; R5
+predicts it is **negative** (gain is more negative — larger — on non-salient cells).
+Country-clustered, seed 42.
+
+```{r partc-did}
+#| eval: !expr coding_ready
+# Rows to evaluate: base on each text condition, plus each FT diagonal (vs its own codebook).
+gain_rows <- bind_rows(
+  tibble(model_key = "llama-70b", text_cond = c("evidence", "anonymized", "summarized"),
+         row = c("Base: Ev−Cb", "Base: An−Cb", "Base: Su−Cb")),
+  ft_diag |> transmute(model_key, text_cond = canon_col(condition), row)
+)
+
+# Wide per-CYI error: codebook + the relevant text condition, per model.
+err_wide <- cell_err |>
+  select(model_key, country, indicator, cond_canon, err,
+         salient_anon, salient_summ, salience_grade) |>
+  pivot_wider(names_from = cond_canon, values_from = err)
+
+salience_col <- if (params$salience_primary == "summ") "salient_summ" else "salient_anon"
+
+did_one <- function(mk, text_cond, row, sal_col = salience_col) {
+  d <- err_wide |>
+    filter(model_key == mk, !is.na(.data[["codebook"]]), !is.na(.data[[text_cond]])) |>
+    mutate(gain = .data[[text_cond]] - codebook, sal = .data[[sal_col]])
+  if (nrow(d) == 0) return(tibble())
+  W  <- country_boot_weights(d$country, params$n_boot, seed = 42)
+  wm <- W[d$country, , drop = FALSE]
+  gmean <- function(mask) colSums(wm * d$gain * mask) / colSums(wm * mask)
+  g_sal <- gmean(as.numeric(d$sal)); g_non <- gmean(as.numeric(!d$sal))
+  did <- g_non - g_sal
+  tibble(
+    row = row,
+    gain_salient     = unname(g_sal["Apparent"]),
+    gain_nonsalient  = unname(g_non["Apparent"]),
+    did = unname(did["Apparent"]),
+    lo  = unname(quantile(did[-1], 0.025)),
+    hi  = unname(quantile(did[-1], 0.975)),
+    n_sal = sum(d$sal), n_non = sum(!d$sal)
+  )
+}
+
+did_tbl <- pmap_dfr(gain_rows, function(model_key, text_cond, row)
+  did_one(model_key, text_cond, row))
+
+did_tbl |>
+  mutate(across(c(gain_salient, gain_nonsalient, did, lo, hi), ~ round(.x, 3))) |>
+  gt() |>
+  tab_header(
+    title = glue("R5/A8 evidence-gain DiD across the base:{params$salience_primary} salience split"),
+    subtitle = "did = gain(non-salient) − gain(salient); R5 predicts did < 0 (evidence helps salient cells less)"
+  )
+```
+
+### 10. Levels within each stratum, with the human LOO floor
+
+The DiD in §9 is a delta; here are the underlying MAE *levels* (codebook vs the text
+condition) within the salient / non-salient strata, with the human LOO floor line — the
+`06`-style "is the AI human-close *within* this stratum" read, tying to D1.
+
+```{r partc-levels}
+#| eval: !expr coding_ready
+#| fig-height: 4.5
+lvl <- cell_err |>
+  filter(model_key == "llama-70b", cond_canon %in% c("codebook", "evidence")) |>
+  mutate(salient = .data[[salience_col]]) |>
+  group_by(salient, cond_canon) |>
+  summarise(mae = mean(err), .groups = "drop") |>
+  mutate(stratum = if_else(salient, "Salient", "Non-salient"),
+         cond = recode(cond_canon, codebook = "Codebook", evidence = "Evidence"))
+
+loo_line <- cell_err |>
+  filter(model_key == "llama-70b", cond_canon == "codebook") |>
+  distinct(country, indicator, .data[[salience_col]]) |>
+  rename(salient = !!salience_col) |>
+  inner_join(human_loo, by = c("country" = "country_text_id", "indicator")) |>
+  group_by(salient) |>
+  summarise(hloo = mean(hloo), .groups = "drop") |>
+  mutate(stratum = if_else(salient, "Salient", "Non-salient"))
+
+ggplot(lvl, aes(x = cond, y = mae, group = stratum)) +
+  geom_line(aes(colour = stratum), linewidth = 0.9) +
+  geom_point(aes(colour = stratum), size = 3) +
+  geom_hline(data = loo_line, aes(yintercept = hloo, colour = stratum),
+             linetype = "dashed", linewidth = 0.4) +
+  labs(x = NULL, y = "AI MAE (panel mean)",
+       title = "Base model: MAE levels by salience stratum, with human LOO floor (dashed)",
+       subtitle = glue("Salience = base:{params$salience_primary}. LOO overlaid per stratum.")) +
+  theme_minimal(base_size = 12) + theme(legend.position = "bottom")
+```
+
+### 11. Cross with the movement split (does R5 = R2 in disguise?)
+
+If salient cells are also the *stable* cells, then R5 (salience) and R2 (regime transition,
+`09`) are two lenses on one mechanism — evidence matters where the frozen prior is least
+useful. Cross the base salience label with the ERT episode flag used in `09`.
+
+```{r partc-cross-movement}
+#| eval: !expr coding_ready
+ert_path <- file.path(data_dir, "ert.csv")
+if (file.exists(ert_path)) {
+  ert <- read_csv(ert_path, show_col_types = FALSE)
+  ert_flag <- ert |>
+    filter(year == params$year) |>
+    transmute(country_text_id,
+              in_episode = (reg_trans != 0) | (!is.na(v2x_polyarchy)))  # placeholder: reconcile with 09's exact flag
+  salience |>
+    left_join(ert_flag, by = "country_text_id") |>
+    mutate(in_episode = coalesce(in_episode, FALSE)) |>
+    count(salience_grade, in_episode) |>
+    pivot_wider(names_from = in_episode, values_from = n, values_fill = 0) |>
+    gt() |>
+    tab_header(title = "Salience grade × ERT transition flag",
+               subtitle = "If salient concentrates in NON-episode (stable) cells, R5 and R2 share a mechanism")
+} else {
+  cat("ert.csv not found — reconcile the ERT flag construction with 09 before running this cross.\n")
+}
+```
+
+---
+
+## 12. Summary
+
+```{r summary}
+#| eval: !expr reid_available
+tibble(
+  Item = c(
+    "Re-id runs loaded",
+    "Models present",
+    "Salience label (primary)",
+    "Salient share (primary)",
+    "Salience labels serialized",
+    "Part C (R5/A8 gap)"
+  ),
+  Value = c(
+    as.character(length(reid_files)),
+    paste(levels(droplevels(reid$model)), collapse = ", "),
+    glue("base:{params$salience_primary}"),
+    scales::percent(mean(salience[[if (params$salience_primary == "summ") "salient_summ" else "salient_anon"]]), 0.1),
+    file.path("data/derived", glue("reid_salience_{params$year}.rds")),
+    if (exists("coding_ready") && coding_ready) "computed" else "gated (coding runs pending)"
+  )
+) |>
+  gt() |> tab_header(title = glue("Re-identification battery — {params$year} status"))
+```
+
+**Reading the battery.** Part A says how much country identity each model can pull back out
+of de-identified text (A6: does summarization help; A8-weights: did de-identified training
+blunt it). Part B freezes the base model's re-identification into the salience partition.
+Part C uses that partition to ask whether the *evidence gain* concentrates where the prior
+is weak — the mirror image of the regime-transition result in `09` — with the human LOO
+floor as the yardstick and the mode/mean caveat carried forward to `12`.

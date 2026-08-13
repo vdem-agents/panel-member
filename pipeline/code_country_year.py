@@ -18,6 +18,7 @@ Usage (programmatic):
 """
 
 import json
+import math
 import os
 import re
 import sys
@@ -81,6 +82,51 @@ def _parse_response(raw: str, max_rating: int = 4) -> tuple[int, str]:
     raise ValueError(f"Could not parse rating from response:\n{text[:300]}")
 
 
+def _first_rating_digit(token: str, max_rating: int) -> int | None:
+    """First character of `token` that is a digit in 0..max_rating, else None."""
+    for ch in token.strip():
+        if ch.isdigit() and int(ch) <= max_rating:
+            return int(ch)
+    return None
+
+
+def _extract_rating_dist(content: list | None, max_rating: int) -> list[float] | None:
+    """
+    Recover the model's probability distribution over the integer ratings 0..max_rating
+    at the rating-digit token — the five bars greedy decoding collapses to one number.
+
+    `content` is response.choices[0].logprobs.content, the per-token logprob list vLLM
+    returns when logprobs=True. We walk it until the '"rating"' key has been emitted, then
+    take the first digit-bearing token after it as the rating value and read that position's
+    top_logprobs.
+
+    Returns a list indexed by rating (index i == p(i)), probabilities NOT renormalized —
+    they are raw exp(logprob), so they need not sum to 1 (mass on non-digit tokens or on
+    ratings outside the top-k is simply absent); the downstream analysis renormalizes over
+    the digits it keeps. Absent rating tokens are 0.0. Returns None if the position can't be
+    located, in which case the caller still has the greedy rating parsed from the text.
+    """
+    if not content:
+        return None
+    running = ""
+    for tok in content:
+        running += tok.token
+        if '"rating"' not in running:
+            continue
+        digit = _first_rating_digit(tok.token, max_rating)
+        if digit is None:
+            continue  # ':' , whitespace, etc. sitting between the key and the value
+        probs = [0.0] * (max_rating + 1)
+        for alt in (tok.top_logprobs or []):
+            d = _first_rating_digit(alt.token, max_rating)
+            if d is not None and probs[d] == 0.0:
+                probs[d] = round(math.exp(alt.logprob), 6)
+        if probs[digit] == 0.0:  # chosen token missing from its own top-k (rare)
+            probs[digit] = round(math.exp(tok.logprob), 6)
+        return probs
+    return None
+
+
 def code_country_year(
     iso: str,
     slug: str,
@@ -134,19 +180,42 @@ def code_country_year(
     config = _load_config()
     max_rating = len(config[indicator]["categories"]) - 1
 
-    client = OpenAI(base_url=cfg["base_url"], api_key=api_key)
-    response = client.chat.completions.create(
-        model=cfg["model"],
-        messages=[
+    # Capture the rating-token distribution where the served endpoint supports it (all
+    # vLLM-served models; see vdem_config "supports_logprobs"). temperature=0 means the
+    # greedy rating below is byte-identical whether or not logprobs are requested, so this
+    # never perturbs the confirmatory result — it only retains the bars greedy discards,
+    # for the exploratory expectation (mean) readout.
+    want_logprobs = cfg.get("supports_logprobs", False)
+
+    create_kwargs = {
+        "model": cfg["model"],
+        "messages": [
             {"role": "system", "content": system_text},
             {"role": "user", "content": user_text},
         ],
-        temperature=0,
-        max_tokens=cfg.get("max_tokens", 128),
-    )
+        "temperature": 0,
+        "max_tokens": cfg.get("max_tokens", 128),
+    }
+    if want_logprobs:
+        create_kwargs["logprobs"] = True
+        create_kwargs["top_logprobs"] = 20  # OpenAI/vLLM cap; ample for 5 rating digits
+
+    client = OpenAI(base_url=cfg["base_url"], api_key=api_key)
+    response = client.chat.completions.create(**create_kwargs)
 
     raw = response.choices[0].message.content or ""
     rating, justification = _parse_response(raw, max_rating=max_rating)
+
+    # Store only the rating-digit distribution, never the all-token logprobs, which would
+    # bloat each row ~40-60x. A capture miss (parse edge case) leaves rating_dist None; the
+    # greedy `rating` above still stands.
+    rating_dist = None
+    if want_logprobs:
+        try:
+            lp = response.choices[0].logprobs
+            rating_dist = _extract_rating_dist(lp.content if lp else None, max_rating)
+        except Exception:
+            rating_dist = None
 
     usage = response.usage
     tokens = {
@@ -169,6 +238,7 @@ def code_country_year(
         "condition": condition,
         "prompt_variant": PROMPT_VARIANT,
         "rating": rating,
+        "rating_dist": rating_dist,
         "raw_mean": raw_mean,
         "signed_dev": signed_dev,
         "abs_dev": abs_dev,

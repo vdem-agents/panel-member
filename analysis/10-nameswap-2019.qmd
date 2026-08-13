@@ -1,0 +1,560 @@
+---
+title: "2019 name-swap (R4) — compute & prototype figures"
+format:
+  html:
+    toc: true
+    toc-depth: 2
+    embed-resources: true
+    code-fold: true
+    fig-width: 8
+    fig-height: 5
+execute:
+  warning: false
+  message: false
+params:
+  n_boot: 2000
+  year: 2019
+  min_coders: 2
+---
+
+> **SCAFFOLD — not yet run.** No name-swap JSONL exists in `data/output/runs/` yet; this document
+> is written to the known output schema so the analysis can start the moment the runs land. On the
+> first real render, check the **load diagnostic (§2)** before trusting anything downstream: cell
+> counts per arm/model, that `arm` splits cleanly on `source == named`, and the double-join
+> coverage (every swapped CYI carries both a `source_mean` and a `named_mean`).
+
+Exploratory **name-swap** analysis (hypothesis **R4** in `preregistration/preregistration-draft.qmd`;
+design: `notes/name-swap-design.md`). R4 asks whether a swapped rating tracks the **described
+conditions** (the source country's summarized text) or the **injected name** (a different,
+within-region country). Registered R4 is on 2023/the carried model; **this document is the
+exploratory 2019 prototype**, in the 06–09 mould — the correct-name arm already gives the
+cue-shift baseline, so both arms are new inference here (see the design note).
+
+Two models, both on the **summarized** substrate: **base** (`summarized`, few-shot kept) and
+**FT-summ** (`summarized-zeroshot`, calibration in the adapter weights). FT-raw/FT-anon are dropped
+(off-diagonal on this substrate — see the design note §Arms and models).
+
+**Three name conditions over the same source text.** Each is the *source's* summarized text with a
+different name in the framing line:
+
+- **swapped** — framed with σ(source)'s name. Carries the registered tracking metric and the
+  cue-shift treatment.
+- **correct** — framed with the source's own name. The name-visible baseline the cue-shift
+  differences against.
+- **no-name** — the existing name-hidden summarized runs ("the focal country"). Reused, no new
+  inference; lets the cue-shift decompose into "any name vs. none" and "wrong name vs. right name".
+
+**Two axes, both headline.** (1) *Tracking* — does the rating land closer to the source or the
+named panel mean (the registered R4 quantity). (2) *Coder axis* — is the rating's distance to the
+**source** panel within a held-out human coder's own distance (**human LOO**)? The tracking metric
+is a *difference of two distances*, so the human-like elevation that reverses the level hypotheses
+(06–09) largely cancels; the LOO rail is carried on every level view so the result can be read in
+coder-terms, not only oracle-terms. **Cue-shift** (Metric 2) never touches a panel mean at all.
+
+**Country-clustered resampling on the *source* country** (seed 42, `country_boot_weights`), like
+06–09 — a source carries its whole swapped indicator block.
+
+## 1. Setup
+
+```{r setup}
+library(tidyverse)
+library(rsample)
+library(gt)
+library(glue)
+library(patchwork)
+
+if (!exists("params")) params <- list(n_boot = 2000, year = 2019, min_coders = 2)
+
+find_panel_member_root <- function() {
+  up <- tryCatch(rprojroot::find_root(rprojroot::is_git_root), error = function(e) NA_character_)
+  if (!is.na(up)) return(up)
+  down <- file.path(getwd(), "panel-member")
+  if (dir.exists(file.path(down, ".git"))) return(down)
+  stop("Could not locate the panel-member project root from working dir: ", getwd())
+}
+proj_root   <- find_panel_member_root()
+source(file.path(proj_root, "R", "bootstrap_helpers.R"))
+data_dir    <- file.path(proj_root, "data", "processed")
+runs_dir    <- file.path(proj_root, "data", "output", "runs")
+derived_dir <- file.path(proj_root, "data", "derived")
+dir.create(derived_dir, showWarnings = FALSE, recursive = TRUE)
+
+# SESOI is fixed by the main analysis; carry it over so every document bands on the identical
+# value. Tracking and cue-shift are on the rating-point axis, so ±SESOI is a valid band here.
+sesoi <- readRDS(file.path(derived_dir, "bootstrap_2019.rds"))$sesoi
+
+# The two name-swap cells, keyed by model_key. Base keeps its few-shot summarized condition;
+# FT-summ runs zero-shot. Both read the same summarized substrate.
+ns_models <- tibble::tribble(
+  ~model_key,            ~condition,             ~label,
+  "llama-70b",           "summarized",           "Base",
+  "llama-70b-ft-summ",   "summarized-zeroshot",  "FT-summ")
+```
+
+## 2. Data loading
+
+Name-swap runs (both arms) join to `panel_means` **twice** — on `source` and on `named` — so each
+swapped rating carries both benchmarks. The **no-name control** is the existing summarized runs,
+matched to a source country on `country == source`. The **human LOO** floor is built on the source
+cells (≥ `r params$min_coders` coders). ERT flags feed the §8 transition split.
+
+```{r load-data}
+#| cache: true
+#| cache.lazy: false
+
+if (!dir.exists(runs_dir)) stop("runs dir not found: ", runs_dir)
+all_jsonl <- list.files(runs_dir, pattern = "\\.jsonl$", full.names = TRUE)
+
+ns_files    <- all_jsonl[grepl("^nameswap_", basename(all_jsonl))]
+plain_files <- setdiff(all_jsonl, ns_files)
+if (length(ns_files) == 0)
+  stop("No name-swap JSONL in ", runs_dir, " — run slurm/run_nameswap_*.sh first.")
+
+# Name-swap records carry `source`/`named`; plain summarized runs do not — hence two readers.
+read_ns <- function(f) {
+  con <- file(f, "r"); on.exit(close(con))
+  jsonlite::stream_in(con, verbose = FALSE) |> as_tibble() |>
+    select(source, named, year, indicator, condition, model_key, rating)
+}
+read_plain <- function(f) {
+  con <- file(f, "r"); on.exit(close(con))
+  jsonlite::stream_in(con, verbose = FALSE) |> as_tibble() |>
+    select(country, year, indicator, condition, model_key, rating)
+}
+
+# Both arms. Arm is derived from the data (correct: source == named; swapped: source != named),
+# so it does not depend on the filename. `-local` is normalized back to the config key, as in 06.
+ns_raw <- ns_files |>
+  map(read_ns) |> bind_rows() |>
+  mutate(model_key = str_remove(model_key, "-local$"),
+         arm = if_else(source == named, "correct", "swapped")) |>
+  filter(year == params$year)
+
+# No-name control: the two summarized cells from the ordinary runs.
+control_raw <- plain_files |>
+  map(read_plain) |> bind_rows() |>
+  mutate(model_key = str_remove(model_key, "-local$")) |>
+  filter(year == params$year,
+         model_key %in% ns_models$model_key,
+         (model_key == "llama-70b"         & condition == "summarized") |
+         (model_key == "llama-70b-ft-summ" & condition == "summarized-zeroshot")) |>
+  transmute(model_key, source = country, indicator, rating_nn = rating)
+
+panel_means   <- read_csv(file.path(data_dir, "panel_means.csv"),   show_col_types = FALSE)
+human_ratings <- read_csv(file.path(data_dir, "human_ratings.csv"), show_col_types = FALSE)
+ert <- read_csv(file.path(data_dir, "ert.csv"), show_col_types = FALSE) |>
+  select(country_text_id, year, dem_ep, aut_ep)
+
+pm_year <- panel_means |> filter(year == params$year) |>
+  select(country_text_id, indicator, raw_mean)
+
+# Human LOO per source cell (≥ min_coders), same construction as 06/09.
+human_loo <- human_ratings |>
+  filter(year == params$year) |>
+  group_by(country_text_id, indicator) |>
+  filter(n() >= params$min_coders) |>
+  summarise(human_loo = mean(abs(rating - (sum(rating) - rating) / (n() - 1))),
+            .groups = "drop")
+```
+
+**Load diagnostic** — confirm both arms and both models are present, and that `arm` split cleanly.
+
+```{r load-diagnostic}
+ns_raw |>
+  count(model_key, arm, condition) |>
+  mutate(model = recode(model_key, !!!model_labels)) |>
+  arrange(model_key, arm) |>
+  gt() |>
+  tab_header(title = glue("Name-swap cells present for {params$year}"),
+             subtitle = glue("{n_distinct(ns_raw$source)} source countries · ",
+                             "no-name control rows: {nrow(control_raw)}"))
+```
+
+## 3. Metric construction (per CYI × model)
+
+One row per (model, source, indicator): the swapped rating and both means, the correct-name and
+no-name ratings on the same source cell, and the derived quantities.
+
+```{r metrics}
+swapped <- ns_raw |>
+  filter(arm == "swapped") |>
+  transmute(model_key, source, named, indicator, rating_sw = rating) |>
+  inner_join(rename(pm_year, source = country_text_id, source_mean = raw_mean),
+             by = c("source", "indicator")) |>
+  inner_join(rename(pm_year, named = country_text_id, named_mean = raw_mean),
+             by = c("named", "indicator"))
+
+correct <- ns_raw |>
+  filter(arm == "correct") |>
+  transmute(model_key, source, indicator, rating_cor = rating)
+
+ns <- swapped |>
+  left_join(correct,     by = c("model_key", "source", "indicator")) |>
+  left_join(control_raw, by = c("model_key", "source", "indicator")) |>
+  left_join(rename(human_loo, source = country_text_id), by = c("source", "indicator")) |>
+  mutate(
+    # Metric 1 — tracking: positive = closer to source (content) than named (name).
+    track       = abs(rating_sw - named_mean) - abs(rating_sw - source_mean),
+    gap         = abs(source_mean - named_mean),         # conditioning variable
+    signed_gap  = named_mean - source_mean,              # anchoring x-var (Metric 2)
+    # Level errors (carry the LOO rail):
+    src_err_sw  = abs(rating_sw  - source_mean),
+    src_err_cor = abs(rating_cor - source_mean),
+    named_err_sw= abs(rating_sw  - named_mean),
+    # Metric 2 — cue-shift: the within-text effect of the name (swapped − correct name).
+    cue         = rating_sw - rating_cor,
+    flip        = as.integer(abs(rating_sw - rating_cor) >= 1)
+  )
+
+glue("per-CYI pool: {nrow(ns)} rows · ",
+     "with correct-name arm {sum(!is.na(ns$rating_cor))} · ",
+     "with no-name control {sum(!is.na(ns$rating_nn))} · ",
+     "with human LOO {sum(!is.na(ns$human_loo))} · ",
+     "median source–named gap {round(median(ns$gap, na.rm = TRUE), 3)}")
+```
+
+```{r gap-distribution}
+#| fig-width: 7
+#| fig-height: 3
+ns |>
+  ggplot(aes(gap)) +
+  geom_histogram(bins = 40, fill = "#0072B2", alpha = 0.8) +
+  labs(x = "source–named panel-mean gap  |source_mean − named_mean|", y = "CYIs",
+       title = "Distribution of the source–named gap",
+       subtitle = "Near-zero pairs carry no tracking signal; Metric 1 is read conditioned on this") +
+  theme_minimal(base_size = 11) +
+  theme(plot.title.position = "plot", plot.title = element_text(face = "bold"))
+```
+
+## 4. Bootstrap engine (country-clustered on source)
+
+Seed-42 country-clustered resample via the shared helper. Per draw × model: the tracking mean, the
+level MAEs (swapped/correct vs source, swapped vs named), the human LOO level, the cue-shift flip
+rate and signed mean, and two slopes — tracking on the gap (the gap-conditioning) and cue-shift on
+the signed gap (the anchoring slope). All weighted means use `na.rm` so cells missing the
+correct-name arm or a LOO floor drop from that statistic only.
+
+```{r bootstrap}
+#| cache: true
+#| cache.lazy: false
+
+# weighted OLS slope of y on x (closed form), non-NA on both — as in 09.
+wslope <- function(y, x, w) {
+  m <- !is.na(y) & !is.na(x); wt <- w[m]; yy <- y[m]; xx <- x[m]
+  W <- sum(wt); mx <- sum(wt * xx) / W; my <- sum(wt * yy) / W
+  sum(wt * (xx - mx) * (yy - my)) / sum(wt * (xx - mx)^2)
+}
+
+W <- country_boot_weights(ns$source, params$n_boot, seed = 42)
+
+boot <- map_dfr(colnames(W), \(draw) {
+  cw <- tibble(source = rownames(W), w = W[, draw]) |> filter(w > 0)
+  ns |>
+    inner_join(cw, by = "source") |>
+    group_by(model_key) |>
+    summarise(
+      track_mae    = weighted.mean(track,        w, na.rm = TRUE),
+      src_sw_mae   = weighted.mean(src_err_sw,   w, na.rm = TRUE),
+      src_cor_mae  = weighted.mean(src_err_cor,  w, na.rm = TRUE),
+      named_sw_mae = weighted.mean(named_err_sw, w, na.rm = TRUE),
+      human_mae    = weighted.mean(human_loo,    w, na.rm = TRUE),
+      flip_rate    = weighted.mean(flip,         w, na.rm = TRUE),
+      cue_mean     = weighted.mean(cue,          w, na.rm = TRUE),
+      slope_gap    = wslope(track, gap,        w),   # tracking vs gap
+      slope_anchor = wslope(cue,   signed_gap, w),   # cue-shift vs (named − source)
+      .groups = "drop") |>
+    mutate(id = draw)
+})
+
+# est / lo / hi / P(>0) per model × metric.
+boot_ci <- boot |>
+  pivot_longer(-c(id, model_key), names_to = "metric", values_to = "value") |>
+  group_by(model_key, metric) |>
+  summarise(
+    est  = value[id == "Apparent"],
+    lo   = quantile(value[id != "Apparent"], 0.025, na.rm = TRUE),
+    hi   = quantile(value[id != "Apparent"], 0.975, na.rm = TRUE),
+    p_gt = mean(value[id != "Apparent"] > 0, na.rm = TRUE),
+    .groups = "drop") |>
+  mutate(model = recode(model_key, !!!model_labels))
+
+getm <- function(m) filter(boot_ci, metric == m)   # convenience accessor for figures
+```
+
+## 5. Metric 1 — Tracking (registered R4 quantity)
+
+Positive = the swapped rating sits closer to the **source** (content) than the **named** country;
+negative = it anchors to the name. Paired within case (the delta is formed per CYI before
+resampling), country-clustered on source, with the ±SESOI band.
+
+```{r}
+#| label: fig-tracking
+#| fig-width: 8
+#| fig-height: 2.8
+getm("track_mae") |>
+  mutate(model = factor(model, levels = c("FT-summ", "Base"))) |>
+  ggplot(aes(est, model)) +
+  annotate("rect", xmin = -sesoi, xmax = sesoi, ymin = -Inf, ymax = Inf,
+           fill = "grey85", alpha = 0.55) +
+  geom_vline(xintercept = 0, linetype = "dashed", color = "grey40") +
+  geom_errorbar(aes(xmin = lo, xmax = hi), orientation = "y", width = 0.15,
+                linewidth = 0.7, color = "#0072B2") +
+  geom_point(size = 3, color = "#0072B2") +
+  labs(x = "tracking Δ = |r − named| − |r − source| · right = tracks source (content) · grey = ±SESOI",
+       y = NULL,
+       title = "Figure 1 — Name-swap tracking: content vs. name",
+       subtitle = glue("2019 · positive = reads the text, not the name · paired · SESOI ±{round(sesoi, 3)}")) +
+  theme_minimal(base_size = 12) +
+  theme(panel.grid.major.y = element_blank(), plot.title.position = "plot",
+        plot.title = element_text(face = "bold"))
+```
+
+```{r tracking-readout}
+getm("track_mae") |>
+  transmute(Model = model, `Tracking Δ` = est,
+            `95% CI` = glue("[{round(lo, 3)}, {round(hi, 3)}]"),
+            `P(Δ>0)` = p_gt,
+            `Beyond SESOI?` = if_else(abs(est) > sesoi, "yes", "no")) |>
+  gt() |>
+  tab_header(title = "Metric 1 — tracking (R4 quantity, 2019 exploratory)",
+             subtitle = glue("Positive = tracks source · paired CYI bootstrap · SESOI ±{round(sesoi, 3)}")) |>
+  fmt_number(columns = c(`Tracking Δ`, `P(Δ>0)`), decimals = 3)
+```
+
+### Gap-conditioned tracking (the slope as a shape)
+
+Near-equal pairs are mechanically ~0 and dilute the headline, so the design reports tracking
+**conditioned on the source–named gap**. Two views: the bootstrapped **slope** of tracking on the
+gap (should be positive — more signal where the two countries differ), and a descriptive gap-tercile
+table (point estimates).
+
+```{r tracking-slope}
+getm("slope_gap") |>
+  transmute(Model = model, `Slope (track on gap)` = est,
+            `95% CI` = glue("[{round(lo, 3)}, {round(hi, 3)}]"), `P(slope>0)` = p_gt) |>
+  gt() |>
+  tab_header(title = "Tracking vs. source–named gap",
+             subtitle = "slope>0 = tracking grows where the countries differ more") |>
+  fmt_number(columns = c(`Slope (track on gap)`, `P(slope>0)`), decimals = 3)
+```
+
+```{r tracking-tercile}
+ns |>
+  filter(!is.na(gap)) |>
+  group_by(model_key) |>
+  mutate(gap_tercile = ntile(gap, 3)) |>
+  group_by(model_key, gap_tercile) |>
+  summarise(n = n(), track = mean(track, na.rm = TRUE),
+            gap_mid = median(gap), .groups = "drop") |>
+  mutate(model = recode(model_key, !!!model_labels),
+         tercile = recode(gap_tercile, `1` = "low gap", `2` = "mid", `3` = "high gap")) |>
+  select(model, tercile, n, `median gap` = gap_mid, `mean tracking Δ` = track) |>
+  gt() |>
+  tab_header(title = "Tracking by source–named gap tercile (descriptive)",
+             subtitle = "Point estimates only — the CI on the trend is the bootstrapped slope above") |>
+  fmt_number(columns = c(`median gap`, `mean tracking Δ`), decimals = 3)
+```
+
+## 6. Axis 2 — Coder axis: source-directed error vs. human LOO
+
+The reframe. Even under a swapped name, is the rating's distance to the **source** panel within a
+held-out human coder's own distance? Level MAEs on a common axis against the **human LOO** rail
+(±SESOI band), for both arms: swapped-vs-source and correct-vs-source (the coder-distance whether or
+not the name was swapped), with swapped-vs-named for contrast.
+
+```{r}
+#| label: fig-coder-axis
+#| fig-width: 8.5
+#| fig-height: 3.8
+coder <- bind_rows(
+  getm("src_sw_mae")   |> mutate(row = "swapped vs source"),
+  getm("src_cor_mae")  |> mutate(row = "correct vs source"),
+  getm("named_sw_mae") |> mutate(row = "swapped vs named")
+) |>
+  mutate(row = factor(row, levels = c("swapped vs named", "correct vs source", "swapped vs source")))
+
+human_rail <- getm("human_mae") |> select(model, human_mae = est)
+
+ggplot(coder, aes(est, row, color = model)) +
+  geom_vline(data = human_rail, aes(xintercept = human_mae, color = model),
+             linetype = "longdash", alpha = 0.7) +
+  geom_errorbar(aes(xmin = lo, xmax = hi), orientation = "y",
+                width = 0.2, linewidth = 0.7,
+                position = position_dodge(width = 0.4)) +
+  geom_point(size = 2.6, position = position_dodge(width = 0.4)) +
+  scale_color_manual(values = c("Base" = "#0072B2", "FT-summ" = "#E69F00"), name = NULL) +
+  labs(x = "MAE (rating vs. the stated benchmark) · long-dash = that model's human LOO",
+       y = NULL,
+       title = "Figure 2 — Coder axis: is the source-directed error within human range?",
+       subtitle = glue("2019 · dashed = human LOO per model · lower = closer · SESOI ±{round(sesoi, 3)}")) +
+  theme_minimal(base_size = 12) +
+  theme(legend.position = "top", legend.justification = "left",
+        panel.grid.major.y = element_blank(), plot.title.position = "plot",
+        plot.title = element_text(face = "bold"))
+```
+
+```{r coder-readout}
+bind_rows(
+  getm("src_sw_mae")   |> mutate(Quantity = "swapped vs source"),
+  getm("src_cor_mae")  |> mutate(Quantity = "correct vs source"),
+  getm("named_sw_mae") |> mutate(Quantity = "swapped vs named"),
+  getm("human_mae")    |> mutate(Quantity = "human LOO (source cells)")
+) |>
+  transmute(Model = model, Quantity, MAE = est,
+            `95% CI` = glue("[{round(lo, 3)}, {round(hi, 3)}]")) |>
+  arrange(Model, Quantity) |>
+  gt() |>
+  tab_header(title = "Axis 2 — level MAEs against the human LOO floor",
+             subtitle = "Coder-terms reading: is the swapped rating within LOO of the source panel?") |>
+  fmt_number(columns = MAE, decimals = 3)
+```
+
+## 7. Metric 2 — Cue-shift (exploratory companion)
+
+The pure within-text name effect: `rating(swapped) − rating(correct)` on the *same* source text — no
+panel mean, so immune to the oracle/coder ambiguity. Integer outputs make it coarse: a difference of
+two integers, reported as a **flip rate** (|Δ| ≥ 1) and a signed mean.
+
+```{r cueshift-readout}
+bind_rows(
+  getm("flip_rate") |> mutate(Quantity = "flip rate  P(|cue| ≥ 1)"),
+  getm("cue_mean")  |> mutate(Quantity = "signed cue-shift  mean(swapped − correct)")
+) |>
+  transmute(Model = model, Quantity, est,
+            `95% CI` = glue("[{round(lo, 3)}, {round(hi, 3)}]")) |>
+  gt() |>
+  tab_header(title = "Metric 2 — cue-shift (2019 exploratory)",
+             subtitle = "flip rate = how often the name flips the integer; signed = net direction") |>
+  fmt_number(columns = est, decimals = 3)
+```
+
+### Anchoring — does a higher-rated name pull the rating up?
+
+Signed cue-shift against the signed gap `named_mean − source_mean`. A **positive slope** = swapping
+in a more-democratic name pushes the rating up: the anchoring mechanism, stated directly.
+
+```{r anchoring-slope}
+getm("slope_anchor") |>
+  transmute(Model = model, `Anchoring slope` = est,
+            `95% CI` = glue("[{round(lo, 3)}, {round(hi, 3)}]"), `P(slope>0)` = p_gt) |>
+  gt() |>
+  tab_header(title = "Cue-shift vs. (named − source) panel-mean gap",
+             subtitle = "slope>0 = a higher-rated injected name pulls the rating up (anchoring)") |>
+  fmt_number(columns = c(`Anchoring slope`, `P(slope>0)`), decimals = 3)
+```
+
+```{r}
+#| label: fig-anchoring
+#| cache: true
+#| cache.lazy: false
+#| fig-width: 8
+#| fig-height: 4.4
+# 20 equal-count bins of the signed gap (per model), with the weighted fit + country-clustered
+# ribbon — the 09-Fig-2 "slope as a shape" idiom.
+Wf <- country_boot_weights(ns$source, 1000L, seed = 42)
+fit_anchor <- function(mk) {
+  d   <- filter(ns, model_key == mk, !is.na(cue), !is.na(signed_gap))
+  lab <- recode(mk, !!!model_labels)
+  xg  <- seq(quantile(d$signed_gap, 0.02), quantile(d$signed_gap, 0.98), length.out = 60)
+  wfit <- function(w) {
+    Wt <- sum(w); mx <- sum(w * d$signed_gap) / Wt; my <- sum(w * d$cue) / Wt
+    b  <- sum(w * (d$signed_gap - mx) * (d$cue - my)) / sum(w * (d$signed_gap - mx)^2)
+    c(a = my - b * mx, b = b)
+  }
+  f0 <- wfit(rep(1, nrow(d)))
+  P  <- vapply(colnames(Wf)[-1], function(dr) {
+    w <- unname(Wf[, dr][d$source]); f <- wfit(w); f[["a"]] + f[["b"]] * xg
+  }, numeric(length(xg)))
+  bins <- ntile(d$signed_gap, 20)
+  list(
+    line = tibble(model = lab, x = xg, yhat = f0[["a"]] + f0[["b"]] * xg,
+                  lo = apply(P, 1, quantile, 0.025, na.rm = TRUE),
+                  hi = apply(P, 1, quantile, 0.975, na.rm = TRUE)),
+    pts  = tibble(model = lab, x = as.numeric(tapply(d$signed_gap, bins, mean)),
+                  y = as.numeric(tapply(d$cue, bins, mean)))
+  )
+}
+fits    <- map(ns_models$model_key, fit_anchor)
+line_df <- bind_rows(map(fits, "line"))
+pts_df  <- bind_rows(map(fits, "pts"))
+
+ggplot() +
+  geom_hline(yintercept = 0, linetype = "dashed", color = "grey40") +
+  geom_vline(xintercept = 0, linetype = "dotted", color = "grey65") +
+  geom_ribbon(data = line_df, aes(x, ymin = lo, ymax = hi, fill = model), alpha = 0.15) +
+  geom_line(data = line_df, aes(x, yhat, color = model), linewidth = 1.1) +
+  geom_point(data = pts_df, aes(x, y, color = model), size = 1.5, alpha = 0.65) +
+  scale_color_manual(values = c("Base" = "#0072B2", "FT-summ" = "#E69F00"),
+                     aesthetics = c("color", "fill"), name = NULL) +
+  labs(x = "named − source panel mean  (higher = swapped-in name is more democratic)",
+       y = "cue-shift  (swapped − correct rating)",
+       title = "Figure 3 — Anchoring: does the injected name pull the rating toward its reputation?",
+       subtitle = "above 0 & rising = a more-democratic name raises the rating · points = 20 equal-count bins") +
+  theme_minimal(base_size = 11) +
+  theme(legend.position = "top", legend.justification = "left",
+        plot.title.position = "plot", plot.title = element_text(face = "bold"))
+```
+
+### Three-point ladder (none → correct → swapped)
+
+The no-name control decomposes the name effect: **none → correct** = the effect of adding the
+*true* name (should be small if the model reads content); **correct → swapped** = the cue-shift (the
+effect of the name being *wrong*). Both signed, per model.
+
+```{r ladder}
+ns |>
+  group_by(model_key) |>
+  summarise(
+    `add true name (correct − none)` = mean(rating_cor - rating_nn, na.rm = TRUE),
+    `swap name (swapped − correct)`  = mean(rating_sw  - rating_cor, na.rm = TRUE),
+    n_none = sum(!is.na(rating_nn)), .groups = "drop") |>
+  mutate(model = recode(model_key, !!!model_labels)) |>
+  select(model, `add true name (correct − none)`, `swap name (swapped − correct)`, n_none) |>
+  gt() |>
+  tab_header(title = "Name-effect ladder (descriptive point estimates)",
+             subtitle = "none = existing name-hidden summarized runs · signed rating change") |>
+  fmt_number(columns = 2:3, decimals = 3)
+```
+
+## 8. Transition-adjacency split (secondary, descriptive)
+
+Per the design note, transition is a **split of the result, not a pairing criterion** — the
+source–named gap concentrates in transition-adjacent countries, so tracking signal does too. A
+single descriptive table (09 showed the 2019 movement signal is underpowered under clustering, so no
+DiD engine here): mean tracking Δ for source countries in an ERT episode vs. stable.
+
+```{r transition-split}
+ert_flag <- ert |>
+  filter(year == params$year) |>
+  transmute(source = country_text_id,
+            in_ep = replace_na((dem_ep == 1) | (aut_ep == 1), FALSE))
+
+ns |>
+  left_join(ert_flag, by = "source") |>
+  mutate(in_ep = replace_na(in_ep, FALSE),
+         grp = if_else(in_ep, "transition-adjacent", "stable")) |>
+  group_by(model_key, grp) |>
+  summarise(n = n(), `mean tracking Δ` = mean(track, na.rm = TRUE),
+            `median gap` = median(gap, na.rm = TRUE), .groups = "drop") |>
+  mutate(model = recode(model_key, !!!model_labels)) |>
+  select(model, grp, n, `median gap`, `mean tracking Δ`) |>
+  gt() |>
+  tab_header(title = "Table — tracking by transition-adjacency (2019, descriptive)",
+             subtitle = "ERT episode flag on the source country · point estimates (see 09 on 2019 power)") |>
+  fmt_number(columns = c(`median gap`, `mean tracking Δ`), decimals = 3)
+```
+
+## 9. Serialize the bundle for the paper documents
+
+```{r serialize-bundle}
+bundle_path <- file.path(derived_dir, "nameswap_2019.rds")
+saveRDS(
+  list(
+    boot_ci = boot_ci,   # per-model × metric: est/lo/hi/p_gt (tracking, level MAEs, cue-shift, slopes)
+    ns      = ns,        # per-CYI table (for any paper-side re-cut; carries both means + all arms)
+    sesoi   = sesoi
+  ),
+  bundle_path
+)
+glue("bundle written: {bundle_path} ({round(file.size(bundle_path)/1024)} KB)")
+```

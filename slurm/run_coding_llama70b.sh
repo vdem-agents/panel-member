@@ -9,6 +9,12 @@
 #   YEAR=2019 CONDITION=evidence   sbatch slurm/run_coding_llama70b.sh
 #   YEAR=2019 CONDITION=anonymized sbatch slurm/run_coding_llama70b.sh
 #
+# OUTPUT_DIR overrides where JSONL is written AND its archive subdir (default
+# data/output/runs -> ~/panel-member-archive/runs). Use it to keep a logprob-capturing
+# re-run off the frozen greedy files, e.g. for the expectation (mean) sensitivity analysis:
+#   OUTPUT_DIR=data/output/runs/expectation YEAR=2019 CONDITION=codebook \
+#       sbatch slurm/run_coding_llama70b.sh
+#
 #SBATCH --job-name=pm-llama70b
 #SBATCH --partition=superChip
 #SBATCH --gres=gpu:gh200:1
@@ -33,7 +39,8 @@ CONDITION=${CONDITION:-evidence}    # codebook | evidence | anonymized | summari
 MODEL_KEY=llama-70b-local
 MODEL_PATH=/scratch/ejtgrp/models/llama-3.3-70b-instruct
 VLLM_PORT=8000
-OUTPUT=data/output/runs/${CONDITION}_${YEAR}_llama70b.jsonl
+OUTPUT_DIR=${OUTPUT_DIR:-data/output/runs}
+OUTPUT=${OUTPUT_DIR}/${CONDITION}_${YEAR}_llama70b.jsonl
 
 # ── Environment ────────────────────────────────────────────────────────────────
 source ~/miniforge3/etc/profile.d/conda.sh
@@ -82,7 +89,7 @@ python3 -m pipeline.run_coding_batch \
 kill "$VLLM_PID" && wait "$VLLM_PID" 2>/dev/null || true
 
 # ── Archive output to home (scratch purged after 30 days) ─────────────────────
-ARCHIVE_DIR="$HOME/panel-member-archive/runs"
+ARCHIVE_DIR="$HOME/panel-member-archive/$(basename "$OUTPUT_DIR")"
 mkdir -p "$ARCHIVE_DIR"
 rsync -av "$OUTPUT" "$ARCHIVE_DIR/"
 echo "Archived to $ARCHIVE_DIR/$(basename "$OUTPUT")"
