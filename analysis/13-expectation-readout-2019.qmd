@@ -1,0 +1,577 @@
+---
+title: "2019 expectation (mean) readout — sensitivity analysis"
+format:
+  html:
+    toc: true
+    toc-depth: 3
+    embed-resources: true
+    code-fold: true
+    fig-width: 8
+    fig-height: 5
+execute:
+  warning: false
+  message: false
+params:
+  n_boot: 2000
+  year: 2019
+  min_coders: 2
+  exp_subdir: "expectation"
+---
+
+This is the **expectation-readout sensitivity analysis** pre-committed in
+`notes/expectation-readout-precommitment.md`. It recomputes the entire 2019 result set under
+the expectation readout `Ê[y|X] = Σ y·p(y|X)` (the distribution's **mean**) and reports it
+beside the pre-registered greedy readout (the **mode**), using the identical
+country-clustered bootstrap.
+
+It reads the logprob-capturing re-run only — the JSONL files that carry the `rating_dist`
+field — from `data/output/runs/<exp_subdir>/`. Those files are a separate inference pass
+(same adapters, same prompts, `temperature = 0`) whose sole difference from the confirmatory
+runs is that the rating-token distribution is retained rather than discarded. The frozen
+greedy files in `data/output/runs/` are never opened here.
+
+**Integrity note.** Everything below is exploratory and pre-specified. The greedy readout
+stays the confirmatory result; nothing here is relabelled confirmatory. Interpretive prose is
+left as `TODO (EJT)` markers — this document computes; the paper narrates.
+
+---
+
+## 1. Setup
+
+```{r setup}
+library(tidyverse)
+library(gt)
+library(glue)
+
+if (!exists("params")) {
+  params <- list(n_boot = 2000, year = 2019, min_coders = 2, exp_subdir = "expectation")
+}
+
+# Same robust root resolution as analysis/06 (walk up to .git, else step down into
+# panel-member); avoids here()'s cached-root pin.
+find_panel_member_root <- function() {
+  up <- tryCatch(rprojroot::find_root(rprojroot::is_git_root), error = function(e) NA_character_)
+  if (!is.na(up)) return(up)
+  down <- file.path(getwd(), "panel-member")
+  if (dir.exists(file.path(down, ".git"))) return(down)
+  stop("Could not locate the panel-member project root from working dir: ", getwd())
+}
+proj_root <- find_panel_member_root()
+
+# Shared vocabulary + paired-delta machinery (model_labels, family_pal, canon_col, ft_diag,
+# country_boot_weights, cell_series(), paired_delta()). Same source of truth as doc 06.
+source(file.path(proj_root, "R", "bootstrap_helpers.R"))
+
+data_dir    <- file.path(proj_root, "data", "processed")
+exp_dir     <- file.path(proj_root, "data", "output", "runs", params$exp_subdir)
+derived_dir <- file.path(proj_root, "data", "derived")
+dir.create(derived_dir, showWarnings = FALSE, recursive = TRUE)
+```
+
+---
+
+## 2. Data loading
+
+Load the expectation re-run JSONLs. Each record carries the same scalar fields as the greedy
+runs **plus** `rating_dist`: the model's probability over the integer ratings at the
+rating-digit token, index `i` == p(rating `i`), raw (un-renormalized) `exp(logprob)` with `0`
+for any rating absent from the captured top-k, or `null` on a capture miss.
+
+```{r load-exp}
+#| cache: true
+#| cache.lazy: false
+
+if (!dir.exists(exp_dir)) {
+  stop("expectation runs dir not found:\n  ", exp_dir,
+       "\nProduce it with the logprob-capturing re-run, e.g.:\n",
+       "  OUTPUT_DIR=data/output/runs/expectation YEAR=2019 CONDITION=codebook sbatch slurm/run_coding_llama70b.sh\n",
+       "  OUTPUT_DIR=data/output/runs/expectation VARIANT=raw sbatch slurm/run_inference_finetuned.sh\n",
+       "then pull the archive locally into that directory.")
+}
+exp_files <- list.files(exp_dir, pattern = "\\.jsonl$", full.names = TRUE)
+if (length(exp_files) == 0) stop("No .jsonl files in ", exp_dir)
+
+needed_cols <- c("country", "year", "indicator", "condition", "model_key", "rating", "rating_dist")
+
+read_exp <- function(f) {
+  con <- file(f, "r")
+  on.exit(close(con))
+  # simplifyMatrix = FALSE keeps rating_dist a list-column even when every dist has the same
+  # length (else jsonlite collapses equal-length arrays to a matrix column).
+  df <- jsonlite::stream_in(con, simplifyMatrix = FALSE, verbose = FALSE) |> as_tibble()
+  if (!"rating_dist" %in% names(df)) {
+    stop("No 'rating_dist' in ", basename(f),
+         " — these look like greedy files. Point exp_subdir at the logprob re-run.")
+  }
+  # Normalize to a list-column of numeric vectors regardless of how jsonlite simplified it.
+  d <- df[["rating_dist"]]
+  df[["rating_dist"]] <- if (is.matrix(d)) asplit(d, 1) else as.list(d)
+  select(df, all_of(needed_cols))
+}
+
+exp_raw <- exp_files |>
+  map(read_exp) |>
+  bind_rows() |>
+  mutate(model_key = str_remove(model_key, "-local$"))
+
+panel_means   <- read_csv(file.path(data_dir, "panel_means.csv"), show_col_types = FALSE)
+human_ratings <- read_csv(file.path(data_dir, "human_ratings.csv"), show_col_types = FALSE)
+```
+
+**Load diagnostic** — the 2019 grid should show 19 cells: base (7 = 4 primary + 3 zero-shot)
+and 12 FT (3 variants × 4 conditions).
+
+```{r load-diagnostic}
+exp_raw |>
+  filter(year == params$year) |>
+  count(model_key, condition) |>
+  mutate(model = recode(model_key, !!!model_labels)) |>
+  arrange(model_key, condition) |>
+  gt() |>
+  tab_header(
+    title    = glue("Expectation-run cells present for {params$year}"),
+    subtitle = glue("{n_distinct(paste(exp_raw$model_key, exp_raw$condition))} model×condition cells loaded")
+  )
+```
+
+---
+
+## 3. Metric construction
+
+### Human LOO baseline (per CYI)
+
+Identical to doc 06: each coder's leave-one-out error against the panel mean computed with
+them removed, averaged per CYI over panels of ≥ `r params$min_coders` coders.
+
+```{r human-loo}
+#| cache: true
+human_loo <- human_ratings |>
+  filter(year == params$year) |>
+  group_by(country_text_id, year, indicator) |>
+  filter(n() >= params$min_coders) |>
+  mutate(
+    panel_sum = sum(rating),
+    n_coders  = n(),
+    loo_mean  = (panel_sum - rating) / (n_coders - 1),
+    loo_error = abs(rating - loo_mean)
+  ) |>
+  summarise(human_loo_mae = mean(loo_error), n_coders = first(n_coders), .groups = "drop")
+```
+
+### Greedy + expectation error (per CYI × model × condition)
+
+`Ê = Σ_i i · p_i / Σ_i p_i` renormalized over the captured rating tokens. `greedy_error` uses
+the emitted `rating` (the mode); `exp_error` uses `Ê` (the mean). Both are absolute error
+against the same canonical panel mean, restricted to CYIs carrying a human LOO floor so AI and
+human compare on identical cases — again matching doc 06.
+
+```{r metrics}
+#| cache: true
+#| cache.lazy: false
+
+exp_rating_of <- function(d) {
+  d <- suppressWarnings(as.numeric(unlist(d)))
+  if (length(d) == 0 || all(is.na(d)) || sum(d, na.rm = TRUE) <= 0) return(NA_real_)
+  sum((seq_along(d) - 1) * d, na.rm = TRUE) / sum(d, na.rm = TRUE)
+}
+
+cell_metrics_all <- exp_raw |>
+  filter(year == params$year) |>
+  rename(country_text_id = country) |>
+  inner_join(select(panel_means, country_text_id, year, indicator, raw_mean),
+             by = c("country_text_id", "year", "indicator")) |>
+  inner_join(select(human_loo, country_text_id, year, indicator, human_loo_mae),
+             by = c("country_text_id", "year", "indicator")) |>
+  mutate(
+    exp_rating   = map_dbl(rating_dist, exp_rating_of),
+    greedy_error = abs(rating - raw_mean),
+    exp_error    = abs(exp_rating - raw_mean),
+    col          = canon_col(condition),
+    family       = recode(model_key, !!!model_family)
+  )
+
+# Capture-miss accounting: keep only CYIs with a valid expectation, so greedy and expectation
+# are paired on exactly the same rows (a fair within-draw difference). Report what is dropped.
+miss_tbl <- cell_metrics_all |>
+  group_by(model_key, condition) |>
+  summarise(n = n(), n_missing = sum(is.na(exp_rating)),
+            pct_missing = round(100 * n_missing / n, 3), .groups = "drop")
+
+cell_metrics <- filter(cell_metrics_all, !is.na(exp_rating))
+
+miss_tbl |>
+  arrange(desc(pct_missing)) |>
+  gt() |>
+  tab_header(title = "Rating-token capture misses per cell",
+             subtitle = "Dropped from the paired analysis; expect ~0% if capture is clean")
+```
+
+---
+
+## 4. Reference lines (loaded from the greedy bundle)
+
+SESOI, the rounding floor, and the human-LOO / persistence rails are properties of the panel
+and the pool, not of the readout, so they are reused from the confirmatory bundle rather than
+recomputed. If the bundle is absent, render doc 06 first.
+
+```{r rails}
+bundle_path <- file.path(derived_dir, "bootstrap_2019.rds")
+if (!file.exists(bundle_path)) {
+  stop("greedy bundle not found: ", bundle_path, "\nRender analysis/06-bootstrap-metrics-2019.qmd first.")
+}
+greedy_bundle <- readRDS(bundle_path)
+sesoi          <- greedy_bundle$sesoi
+rounding_floor <- greedy_bundle$rounding_floor
+human_ref      <- greedy_bundle$human_ref
+persist_ref    <- greedy_bundle$persist_ref
+greedy_boot_ci <- greedy_bundle$boot_ci   # confirmatory greedy MAE per cell (for cross-check)
+
+glue("SESOI (±) = {round(sesoi,3)} · rounding floor = {round(rounding_floor,3)} · ",
+     "human LOO = {round(human_ref$human_mae,3)} · persistence = {round(persist_ref$persist_mae,3)}")
+```
+
+---
+
+## 5. Bootstrap (country-clustered, seed 42 — matches doc 06)
+
+One draw step shared by greedy and expectation, so their difference is paired within draw.
+Countries are resampled with replacement, each carrying its whole indicator block; a country
+drawn `k` times is weighted `k`. `boot_both` carries both MAEs per cell per draw.
+
+```{r bootstrap}
+#| cache: true
+#| cache.lazy: false
+
+cyi_pool <- distinct(cell_metrics, country_text_id, year, indicator)
+W <- country_boot_weights(cyi_pool$country_text_id, params$n_boot, seed = 42)
+
+boot_both <- map_dfr(colnames(W), \(draw) {
+  country_w <- tibble(country_text_id = rownames(W), w = W[, draw]) |> filter(w > 0)
+  cell_metrics |>
+    inner_join(country_w, by = "country_text_id") |>
+    group_by(model_key, condition) |>
+    summarise(
+      greedy_mae = weighted.mean(greedy_error, w),
+      exp_mae    = weighted.mean(exp_error, w),
+      .groups    = "drop"
+    ) |>
+    mutate(id = draw, .before = 1)
+})
+
+# Two views of boot_both shaped like doc 06's `boot_results` so paired_delta() works unchanged
+# on either readout. Greedy here is recomputed on the captured pool (fair apples-to-apples with
+# expectation); §6 checks it against the confirmatory bundle.
+greedy_boot_results <- transmute(boot_both, id, model_key, condition, ai_mae = greedy_mae)
+exp_boot_results    <- transmute(boot_both, id, model_key, condition, ai_mae = exp_mae)
+
+boot_ci_of <- function(results) {
+  results |>
+    group_by(model_key, condition) |>
+    summarise(
+      ai_lo  = quantile(ai_mae[id != "Apparent"], 0.025),
+      ai_hi  = quantile(ai_mae[id != "Apparent"], 0.975),
+      ai_mae = mean(ai_mae[id == "Apparent"]),
+      .groups = "drop"
+    )
+}
+greedy_ci <- boot_ci_of(greedy_boot_results)
+exp_ci    <- boot_ci_of(exp_boot_results)
+```
+
+---
+
+## 6. Reproducibility check: recomputed greedy vs the confirmatory bundle
+
+`temperature = 0` means the re-run's emitted rating should match the archived greedy rating
+cell for cell, so the greedy MAE recomputed here (on the captured pool) should track the
+confirmatory bundle. Large gaps flag a pool mismatch or a nondeterministic decode, not an
+expectation result.
+
+```{r repro-check}
+greedy_ci |>
+  select(model_key, condition, ai_mae_rerun = ai_mae) |>
+  inner_join(select(greedy_boot_ci, model_key, condition, ai_mae_bundle = ai_mae),
+             by = c("model_key", "condition")) |>
+  mutate(abs_diff = abs(ai_mae_rerun - ai_mae_bundle)) |>
+  arrange(desc(abs_diff)) |>
+  mutate(model = recode(model_key, !!!model_labels)) |>
+  gt() |>
+  tab_header(title = "Greedy MAE: expectation re-run vs confirmatory bundle",
+             subtitle = "abs_diff should be ~0 (pool differs only by dropped capture misses)") |>
+  fmt_number(columns = c(ai_mae_rerun, ai_mae_bundle, abs_diff), decimals = 4)
+```
+
+---
+
+## 7. Expectation vs greedy MAE — the three-number landscape
+
+Per cell: greedy (mode) point, expectation (mean) point, against the floor / human-LOO /
+persistence rails. `TODO (EJT)`: narrative — does expectation drop toward the floor (readout
+artifact) or stall short (real center-shift)?
+
+```{r}
+#| label: fig-exp-vs-greedy
+#| fig-width: 8
+#| fig-height: 5.2
+
+grid_cells <- bind_rows(
+  filter(greedy_ci, model_key == "llama-70b",
+         condition %in% c("codebook","evidence","anonymized","summarized")) |>
+    mutate(readout = "Greedy (mode)"),
+  filter(exp_ci, model_key == "llama-70b",
+         condition %in% c("codebook","evidence","anonymized","summarized")) |>
+    mutate(readout = "Expectation (mean)"),
+  semi_join(greedy_ci, ft_diag, by = c("model_key","condition")) |> mutate(readout = "Greedy (mode)"),
+  semi_join(exp_ci,    ft_diag, by = c("model_key","condition")) |> mutate(readout = "Expectation (mean)")
+) |>
+  mutate(
+    row = case_when(
+      model_key == "llama-70b" ~ recode(condition, codebook="Codebook", evidence="Raw Text",
+                                        anonymized="Anonymized", summarized="Summarized"),
+      TRUE ~ recode(model_key, "llama-70b-ft-raw"="FT · Raw Text",
+                    "llama-70b-ft-anon"="FT · Anonymized", "llama-70b-ft-summ"="FT · Summarized")
+    ),
+    row = factor(row, levels = c("FT · Summarized","FT · Anonymized","FT · Raw Text",
+                                 "Summarized","Anonymized","Raw Text","Codebook")),
+    readout = factor(readout, levels = c("Greedy (mode)", "Expectation (mean)"))
+  )
+
+ggplot(grid_cells, aes(ai_mae, row, color = readout)) +
+  annotate("segment", x = rounding_floor, xend = rounding_floor, y = -Inf, yend = Inf,
+           linetype = "dotted", color = "grey40") +
+  annotate("segment", x = persist_ref$persist_mae, xend = persist_ref$persist_mae,
+           y = -Inf, yend = Inf, linetype = "dashed", color = "grey40") +
+  annotate("segment", x = human_ref$human_mae, xend = human_ref$human_mae,
+           y = -Inf, yend = Inf, linetype = "longdash", color = "grey40") +
+  geom_hline(yintercept = 3.5, color = "grey85", linewidth = 0.4) +
+  geom_errorbar(aes(xmin = ai_lo, xmax = ai_hi), orientation = "y",
+                width = 0.2, linewidth = 0.6, position = position_dodge(width = 0.5)) +
+  geom_point(size = 2.2, position = position_dodge(width = 0.5)) +
+  scale_color_manual(values = c("Greedy (mode)" = "#0072B2",
+                                "Expectation (mean)" = "#D55E00"), name = NULL) +
+  labs(x = "AI Mean Absolute Error vs panel mean",
+       y = NULL,
+       title = "Expectation (mean) vs greedy (mode) readout",
+       subtitle = glue("2019 · dotted = floor · dashed = persistence · long-dash = human LOO")) +
+  theme_minimal(base_size = 12) +
+  theme(legend.position = "top", legend.justification = "left",
+        panel.grid.major.y = element_blank(), plot.title.position = "plot",
+        plot.title = element_text(face = "bold"))
+```
+
+---
+
+## 8. Prediction 1 — asymmetric readout gain (FT gain ≫ base gain)
+
+Per-cell **expectation gain** = greedy MAE − expectation MAE (how much switching readout cuts
+error). The memo counts P1 supported iff the mean gain across FT cells exceeds the mean gain
+across base cells by **more than SESOI** *and* the bootstrap CI on that difference excludes
+zero. Paired within draw off `boot_both`.
+
+```{r p1-gain}
+gain_draws <- boot_both |>
+  mutate(family = if_else(model_key == "llama-70b", "Base", "Fine-tuned"),
+         gain   = greedy_mae - exp_mae)
+
+# Headline: all base cells (7) vs all FT cells (12), unweighted cell means per draw.
+by_group <- gain_draws |>
+  group_by(id, family) |>
+  summarise(mean_gain = mean(gain), .groups = "drop") |>
+  pivot_wider(names_from = family, values_from = mean_gain) |>
+  mutate(gap = `Fine-tuned` - Base)
+
+ci <- function(x, draws = by_group) c(
+  est = x[draws$id == "Apparent"],
+  lo  = unname(quantile(x[draws$id != "Apparent"], 0.025)),
+  hi  = unname(quantile(x[draws$id != "Apparent"], 0.975))
+)
+b <- ci(by_group$Base); f <- ci(by_group$`Fine-tuned`); g <- ci(by_group$gap)
+p_gap_gt0 <- mean(by_group$gap[by_group$id != "Apparent"] > 0)
+p1_supported <- (g["est"] > sesoi) && (g["lo"] > 0)
+
+tibble(
+  Quantity = c("Base mean gain", "FT mean gain", "FT − Base gap"),
+  Estimate = c(b["est"], f["est"], g["est"]),
+  `95% CI` = c(glue("[{round(b['lo'],3)}, {round(b['hi'],3)}]"),
+               glue("[{round(f['lo'],3)}, {round(f['hi'],3)}]"),
+               glue("[{round(g['lo'],3)}, {round(g['hi'],3)}]"))
+) |>
+  gt() |>
+  tab_header(
+    title    = "Prediction 1 — expectation gain, base vs fine-tuned",
+    subtitle = glue("P(gap>0) = {round(p_gap_gt0,3)} · SESOI = {round(sesoi,3)} · ",
+                    "gap > SESOI & CI excludes 0 → {ifelse(p1_supported,'SUPPORTED','not supported')}")
+  ) |>
+  fmt_number(columns = Estimate, decimals = 3)
+```
+
+**Cell-set robustness.** The memo says "fine-tuned cells" / "base cells" without pinning which
+of the 7 base and 12 FT cells enter the means. `TODO (EJT)`: confirm the headline (all-base vs
+all-FT). Two alternative reductions below — leave-off decision is yours, not the readout's.
+
+```{r p1-variants}
+gap_gap <- function(df) {
+  bg <- df |> group_by(id, family) |> summarise(m = mean(gain), .groups = "drop") |>
+    pivot_wider(names_from = family, values_from = m) |> mutate(gap = `Fine-tuned` - Base)
+  tibble(
+    gap_est = bg$gap[bg$id == "Apparent"],
+    gap_lo  = quantile(bg$gap[bg$id != "Apparent"], 0.025),
+    gap_hi  = quantile(bg$gap[bg$id != "Apparent"], 0.975),
+    p_gt0   = mean(bg$gap[bg$id != "Apparent"] > 0)
+  )
+}
+
+variants <- bind_rows(
+  gap_gap(gain_draws) |> mutate(spec = "All base (7) vs all FT (12)"),
+  gain_draws |>
+    filter((model_key == "llama-70b" & condition %in% c("codebook","evidence","anonymized","summarized")) |
+           (family == "Fine-tuned")) |>
+    gap_gap() |> mutate(spec = "Primary-4 base vs all FT (12)"),
+  gain_draws |>
+    semi_join(bind_rows(
+      tibble(model_key = "llama-70b", condition = c("codebook","evidence","anonymized","summarized")),
+      ft_diag |> select(model_key, condition)
+    ), by = c("model_key","condition")) |>
+    gap_gap() |> mutate(spec = "Primary-4 base vs FT diagonal (3)")
+) |>
+  transmute(Spec = spec, `Gap (FT−Base)` = gap_est,
+            `95% CI` = glue("[{round(gap_lo,3)}, {round(gap_hi,3)}]"),
+            `P(gap>0)` = p_gt0,
+            `> SESOI & CI>0` = if_else(gap_est > sesoi & gap_lo > 0, "yes", "no"))
+
+variants |> gt() |>
+  tab_header(title = "Prediction 1 — cell-set sensitivity",
+             subtitle = glue("SESOI = {round(sesoi,3)}")) |>
+  fmt_number(columns = c(`Gap (FT−Base)`, `P(gap>0)`), decimals = 3)
+```
+
+---
+
+## 9. Prediction 2 — do the condition contrasts survive the switch?
+
+Every registered and reported contrast, recomputed as a paired expectation-based delta and set
+beside its greedy value on the **same captured pool** (so the comparison is like-for-like, not
+against the confirmatory bundle). "Survives" = same side of the SESOI verdict under both
+readouts. `paired_delta()` is reused unchanged, pointed at each readout's `boot_results`.
+
+```{r p2-contrasts}
+contrast_specs <- tribble(
+  ~a_mk,               ~a_cond,               ~b_mk,               ~b_cond,               ~label,               ~grp,
+  "llama-70b",         "evidence",            "llama-70b",         "codebook",            "B1 · Ev−Cb",         "B",
+  "llama-70b",         "anonymized",          "llama-70b",         "codebook",            "B2 · An−Cb",         "B",
+  "llama-70b",         "anonymized",          "llama-70b",         "evidence",            "B3 · An−Ev",         "B",
+  "llama-70b",         "summarized",          "llama-70b",         "anonymized",          "B4 · Su−An",         "B",
+  "llama-70b-ft-raw",  "evidence-zeroshot",   "llama-70b",         "evidence",            "F1 · Raw",           "F1",
+  "llama-70b-ft-anon", "anonymized-zeroshot", "llama-70b",         "anonymized",          "F1 · Anon",          "F1",
+  "llama-70b-ft-summ", "summarized-zeroshot", "llama-70b",         "summarized",          "F1 · Summ",          "F1",
+  "llama-70b-ft-raw",  "evidence-zeroshot",   "llama-70b",         "evidence-zeroshot",   "F1' · Raw (pm)",     "F1pm",
+  "llama-70b-ft-anon", "anonymized-zeroshot", "llama-70b",         "anonymized-zeroshot", "F1' · Anon (pm)",    "F1pm",
+  "llama-70b-ft-summ", "summarized-zeroshot", "llama-70b",         "summarized-zeroshot", "F1' · Summ (pm)",    "F1pm",
+  "llama-70b-ft-anon", "evidence-zeroshot",   "llama-70b-ft-raw",  "evidence-zeroshot",   "F2 · anon−raw",      "F2",
+  "llama-70b-ft-summ", "evidence-zeroshot",   "llama-70b-ft-anon", "evidence-zeroshot",   "F2 · summ−anon",     "F2",
+  "llama-70b",         "evidence-zeroshot",   "llama-70b",         "codebook",            "A1 · Ev-zs−Cb",      "A1",
+  "llama-70b",         "anonymized-zeroshot", "llama-70b",         "codebook",            "A1 · An-zs−Cb",      "A1",
+  "llama-70b",         "summarized-zeroshot", "llama-70b",         "codebook",            "A1 · Su-zs−Cb",      "A1",
+  "llama-70b",         "evidence",            "llama-70b",         "evidence-zeroshot",   "A2 · Ev gap",        "A2",
+  "llama-70b",         "anonymized",          "llama-70b",         "anonymized-zeroshot", "A2 · An gap",        "A2",
+  "llama-70b",         "summarized",          "llama-70b",         "summarized-zeroshot", "A2 · Su gap",        "A2",
+  "llama-70b-ft-anon", "codebook",            "llama-70b-ft-raw",  "codebook",            "A3 · anon−raw",      "A3",
+  "llama-70b-ft-summ", "codebook",            "llama-70b-ft-anon", "codebook",            "A3 · summ−anon",     "A3",
+  "llama-70b-ft-anon", "evidence-zeroshot",   "llama-70b",         "evidence",            "A5 · FT-anon−Base",  "A5",
+  "llama-70b-ft-summ", "evidence-zeroshot",   "llama-70b",         "evidence",            "A5 · FT-summ−Base",  "A5"
+)
+
+run_contrasts <- function(results) {
+  pmap_dfr(contrast_specs, function(a_mk, a_cond, b_mk, b_cond, label, grp) {
+    paired_delta(a_mk, a_cond, b_mk, b_cond, label, results = results, sesoi_val = sesoi) |>
+      mutate(grp = grp)
+  })
+}
+
+greedy_contr <- run_contrasts(greedy_boot_results)
+exp_contr    <- run_contrasts(exp_boot_results)
+
+survival <- greedy_contr |>
+  select(label, grp, g_est = est, g_lo = lo, g_hi = hi, g_out = sesoi_out) |>
+  inner_join(select(exp_contr, label, e_est = est, e_lo = lo, e_hi = hi, e_out = sesoi_out),
+             by = "label") |>
+  mutate(
+    sign_flip = sign(g_est) != sign(e_est),
+    survives  = (g_out == e_out) & !sign_flip
+  )
+
+survival |>
+  transmute(
+    Contrast = label, Group = grp,
+    `Greedy Δ`      = g_est,
+    `Greedy CI`     = glue("[{round(g_lo,3)}, {round(g_hi,3)}]"),
+    `Greedy >SESOI` = if_else(g_out, "yes", "no"),
+    `Exp Δ`         = e_est,
+    `Exp CI`        = glue("[{round(e_lo,3)}, {round(e_hi,3)}]"),
+    `Exp >SESOI`    = if_else(e_out, "yes", "no"),
+    Survives        = if_else(survives, "yes", "NO")
+  ) |>
+  gt(groupname_col = "Group") |>
+  tab_header(title = "Prediction 2 — contrast survival, greedy vs expectation",
+             subtitle = glue("Survives = same SESOI verdict & no sign flip · SESOI = {round(sesoi,3)}")) |>
+  fmt_number(columns = c(`Greedy Δ`, `Exp Δ`), decimals = 3)
+```
+
+```{r p2-summary}
+glue("Prediction 2: {sum(survival$survives)}/{nrow(survival)} contrasts survive the switch",
+     " · {sum(!survival$survives)} change verdict",
+     if (any(!survival$survives)) glue(" ({paste(survival$label[!survival$survives], collapse=', ')})") else "")
+```
+
+---
+
+## 10. Per-cell expectation gain (full grid)
+
+```{r gain-table}
+gain_ci <- boot_both |>
+  mutate(gain = greedy_mae - exp_mae) |>
+  group_by(model_key, condition) |>
+  summarise(
+    greedy_mae = mean(greedy_mae[id == "Apparent"]),
+    exp_mae    = mean(exp_mae[id == "Apparent"]),
+    gain       = mean(gain[id == "Apparent"]),
+    gain_lo    = quantile(gain[id != "Apparent"], 0.025),
+    gain_hi    = quantile(gain[id != "Apparent"], 0.975),
+    .groups    = "drop"
+  ) |>
+  mutate(model = recode(model_key, !!!model_labels), col = canon_col(condition)) |>
+  arrange(model_key, condition)
+
+gain_ci |>
+  transmute(Model = model, Condition = condition,
+            `Greedy MAE` = greedy_mae, `Exp MAE` = exp_mae, Gain = gain,
+            `95% CI` = glue("[{round(gain_lo,3)}, {round(gain_hi,3)}]")) |>
+  gt() |>
+  tab_header(title = "Per-cell expectation gain (greedy MAE − expectation MAE)",
+             subtitle = glue("2019 · floor = {round(rounding_floor,3)} · SESOI = {round(sesoi,3)}")) |>
+  fmt_number(columns = c(`Greedy MAE`, `Exp MAE`, Gain), decimals = 3)
+```
+
+---
+
+## 11. Serialize the expectation bundle
+
+```{r serialize}
+exp_bundle_path <- file.path(derived_dir, "expectation_2019.rds")
+saveRDS(
+  list(
+    exp_ci              = exp_ci,               # per-cell expectation MAE + CIs
+    greedy_ci_rerun     = greedy_ci,            # greedy MAE recomputed on captured pool
+    boot_both           = boot_both,            # per-draw per-cell greedy + exp MAE
+    exp_boot_results    = exp_boot_results,     # paired_delta-ready (expectation)
+    greedy_boot_results = greedy_boot_results,  # paired_delta-ready (greedy, captured pool)
+    gain_ci             = gain_ci,              # per-cell gain
+    p2_survival         = survival,             # contrast survival table
+    miss_tbl            = miss_tbl,             # capture-miss accounting
+    sesoi               = sesoi,
+    rounding_floor      = rounding_floor
+  ),
+  exp_bundle_path
+)
+glue("bundle written: {exp_bundle_path} ({round(file.size(exp_bundle_path)/1024)} KB)")
+```

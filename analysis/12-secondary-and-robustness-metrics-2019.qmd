@@ -1,0 +1,1010 @@
+---
+title: "2019 secondary & robustness metrics — RMSE, exact-match/adjacent, QWK, Krippendorff α"
+format:
+  html:
+    toc: true
+    toc-depth: 3
+    embed-resources: true
+    code-fold: true
+    fig-width: 8
+    fig-height: 5
+execute:
+  warning: false
+  message: false
+params:
+  n_boot: 2000
+  year: 2019
+  # Confusion-matrix panels: base:Cb, base:Ev (reading-vs-reciting), and the carried cell.
+  # Carried model is finalized at 2019 unblinding; FT-raw:Ev is the working proxy (the cell
+  # the signed-deviation doc also treats as protagonist). Override when the rule is applied.
+  carried_key: "llama-70b-ft-raw"
+  carried_cond: "evidence-zeroshot"
+---
+
+Plan and rationale: `notes/secondary-and-robustness-metrics-roadmap.md`. This document re-scores
+the identical 2019 ratings `06` scores, under a different loss (squared error) and different
+agreement metrics (exact-match, adjacent-category, quadratic weighted kappa, Krippendorff's α).
+Nothing here is confirmatory: RMSE is a robustness re-run of `06`'s registered contrasts, and the
+agreement metrics are secondary/descriptive summaries. The identification story stays entirely on
+AI MAE. See the roadmap's integrity note for why adding these on 2019 is clean.
+
+**Reference object.** Exact-match, adjacent, QWK, and the confusion matrix are scored against
+`round(panel_mean)` — the same reference object `06`'s MAE uses, collapsed to one gold class — so
+the secondary table reads as "same reference, different loss." The per-coder / panel-distribution
+framing has its homes in `07` (distributional match) and §Check-4 (α), not here.
+
+**Mode/mean caveat, carried throughout.** Greedy decoding emits the *mode*, and
+`round(panel_mean) ≠ panel mode` in general, so exact-match is slightly misaligned with what the
+decoder actually optimizes. High exact-match is a raw hit rate on the rounded rating, **not**
+"closer to consensus" (that is MAE's job). The FT models are mode-targeted and should look best on
+exact-match while "losing" mean-MAE; that split is itself the evidence for the mode/mean story in
+`notes/mode-vs-mean-decode-and-act1-next-steps.md`.
+
+The paper-facing narrative lives in the deliverable; this is the working readout.
+
+## 1. Setup
+
+```{r setup}
+library(tidyverse)
+library(gt)
+library(glue)
+
+if (!exists("params")) {
+  params <- list(n_boot = 2000, year = 2019,
+                 carried_key = "llama-70b-ft-raw", carried_cond = "evidence-zeroshot")
+}
+
+# Same root finder as 06/08/11, so the doc knits from any working dir in the workspace.
+find_panel_member_root <- function() {
+  up <- tryCatch(rprojroot::find_root(rprojroot::is_git_root), error = function(e) NA_character_)
+  if (!is.na(up)) return(up)
+  down <- file.path(getwd(), "panel-member")
+  if (dir.exists(file.path(down, ".git"))) return(down)
+  stop("Could not locate the panel-member project root from working dir: ", getwd())
+}
+proj_root   <- find_panel_member_root()
+source(file.path(proj_root, "R", "bootstrap_helpers.R"))  # model_labels, col_labels, canon_col, country_boot_weights, ...
+data_dir    <- file.path(proj_root, "data", "processed")
+runs_dir    <- file.path(proj_root, "data", "output", "runs")
+derived_dir <- file.path(proj_root, "data", "derived")
+
+# SESOI + rounding floor are fixed by 06; carry them over so every doc bands on one value.
+.b06           <- readRDS(file.path(derived_dir, "bootstrap_2019.rds"))
+sesoi          <- .b06$sesoi
+rounding_floor <- 2 * sesoi
+# The coded indicators are ordinal but on HETEROGENEOUS scales: most are 0..4, but 12 run 0..5
+# and others 0..1/0..2/0..3. 0..5 is the widest in the AI-coded set (verified: no AI rating ever
+# exceeds its indicator's human scale), so K = 6 classes covers every rating. The class grid is
+# global and pooled across scales, exactly as 06/07/08 pool all indicators for MAE — see the
+# mixed-scale caveat under Checks 2/3.
+K              <- 6L   # 0..5 -> 6 classes (widest ordinal scale in the coded set)
+
+# A valid rating is an integer on the 0..K-1 scale; anything else (NA, negative, non-integer, or
+# above 5) is dropped before scoring so it cannot corrupt a confusion table or agreement metric.
+# In practice nothing legitimate is dropped: no model emits a rating above its indicator's scale.
+valid_rating <- function(x) !is.na(x) & x == round(x) & x >= 0 & x <= (K - 1)
+
+# α (Check 4) needs the `irr` package; the section self-gates so the doc knits without it.
+have_irr <- requireNamespace("irr", quietly = TRUE)
+```
+
+## 2. Data loading
+
+The three sources `06` uses: the JSONL runs, the panel means (the `raw_mean` reference), and the
+coder-level ratings (for the human LOO reference lines). Loaded once, cached.
+
+```{r load-data}
+#| cache: true
+#| cache.lazy: false
+needed_cols <- c("country", "year", "indicator", "condition", "model_key", "rating")
+read_run <- function(f) {
+  con <- file(f, "r"); on.exit(close(con))
+  jsonlite::stream_in(con, verbose = FALSE) |> as_tibble() |> select(all_of(needed_cols))
+}
+ai_raw <- list.files(runs_dir, pattern = "\\.jsonl$", full.names = TRUE) |>
+  map(read_run) |> bind_rows() |> mutate(model_key = str_remove(model_key, "-local$"))
+
+panel_means   <- read_csv(file.path(data_dir, "panel_means.csv"),   show_col_types = FALSE)
+human_ratings <- read_csv(file.path(data_dir, "human_ratings.csv"), show_col_types = FALSE)
+```
+
+## 3. Metric construction
+
+### The 16-cell grid and the gold class
+
+Rows are the 4 models × 4 conditions. Base runs its four conditions few-shot; each FT adapter runs
+codebook plus the three zero-shot text conditions, which `canon_col()` collapses to the same
+Cb/Ev/An/Su columns. The gold class is `round(panel_mean)` (round-half-up, matching `08`'s
+`floor(x + 0.5)`), and the AI class is its integer rating.
+
+```{r grid}
+grid_cells <- bind_rows(
+  tibble(model_key = "llama-70b",
+         condition = c("codebook", "evidence", "anonymized", "summarized")),
+  tidyr::crossing(
+    model_key = c("llama-70b-ft-raw", "llama-70b-ft-anon", "llama-70b-ft-summ"),
+    condition = c("codebook", "evidence-zeroshot", "anonymized-zeroshot", "summarized-zeroshot"))
+) |>
+  mutate(canon = canon_col(condition),
+         cell  = paste(model_key, condition, sep = "|"),
+         cell_lbl = paste0(recode(model_key, !!!model_labels), ":", recode(canon, !!!col_labels)))
+
+cell_levels <- grid_cells$cell
+cell_lab_of <- setNames(grid_cells$cell_lbl, grid_cells$cell)
+
+# The 7 "core" cells featured across 06-11: the base ladder (few-shot) + the FT diagonal (each FT
+# adapter on the input it was built for). Level figures (Checks 2/3) and the α table focus on these;
+# the other 9 off-diagonal cells go to the appendix figures at the bottom.
+core_cells <- c("llama-70b|codebook", "llama-70b|evidence", "llama-70b|anonymized",
+                "llama-70b|summarized", "llama-70b-ft-raw|evidence-zeroshot",
+                "llama-70b-ft-anon|anonymized-zeroshot", "llama-70b-ft-summ|summarized-zeroshot")
+core_lbl  <- unname(cell_lab_of[core_cells])
+other_lbl <- setdiff(unname(cell_lab_of[cell_levels]), core_lbl)
+
+pm_year <- panel_means |>
+  filter(year == params$year) |>
+  transmute(country_text_id, indicator, raw_mean, gold = as.integer(floor(raw_mean + 0.5)))
+
+# The indicators the AI actually coded (the grid runs), used to restrict the human reference to
+# the SAME indicator set. human_ratings.csv also carries human-only indicators on other scales
+# (e.g. 0..13, 0..100 interval variables) that the AI never coded; without this restriction the
+# human LOO reference would be contaminated by indicators absent from the AI comparison.
+ai_indicators <- ai_raw |>
+  filter(year == params$year) |>
+  inner_join(grid_cells |> select(model_key, condition), by = c("model_key", "condition")) |>
+  distinct(indicator) |> pull(indicator)
+
+# Per-CYI AI metrics on the 16 cells, restricted (like 06) to CYIs carrying a human LOO floor,
+# so the AI and human references live on the identical case set.
+```
+
+### Human LOO reference (per coder-cell)
+
+Each held-out coder's rating scored against the rounded *reduced* mean (the panel mean recomputed
+with them removed). This is the LOO analogue of every secondary metric: exact-match, adjacent, and
+squared error per coder-cell, plus the (gold, rating) pairs QWK/α read. Restricted to CYIs with
+≥ 2 coders (an LOO floor needs one to hold out and ≥ 1 to average).
+
+```{r human-loo}
+#| cache: true
+human_loo <- human_ratings |>
+  filter(year == params$year, valid_rating(rating), indicator %in% ai_indicators) |>
+  group_by(country_text_id, indicator) |>
+  filter(n() >= 2) |>
+  mutate(loo_mean  = (sum(rating) - rating) / (n() - 1),
+         loo_gold  = as.integer(floor(loo_mean + 0.5)),
+         h_se      = (rating - loo_mean)^2,
+         h_exact   = as.integer(rating == loo_gold),
+         h_adj     = as.integer(abs(rating - loo_gold) <= 1)) |>
+  ungroup()
+
+# The case set: CYIs with a human LOO floor. AI metrics are inner-joined to it.
+loo_cyi <- human_loo |> distinct(country_text_id, indicator)
+```
+
+### AI per-CYI metrics on the LOO case set
+
+```{r ai-metrics}
+ai_joined <- ai_raw |>
+  filter(year == params$year) |>
+  rename(country_text_id = country) |>
+  inner_join(grid_cells |> select(model_key, condition, canon, cell), by = c("model_key", "condition")) |>
+  inner_join(pm_year,  by = c("country_text_id", "indicator")) |>
+  inner_join(loo_cyi,  by = c("country_text_id", "indicator"))
+
+# A rater that emits an unparseable / off-scale value must not silently corrupt the confusion
+# table or the agreement metrics. Drop ratings not integer-valued in 0..K-1 (incl. NA), and
+# report how many per cell so the loss is visible rather than silent (valid_rating from setup).
+dropped <- ai_joined |> filter(!valid_rating(rating)) |> count(cell, name = "n_dropped")
+
+ai_metrics <- ai_joined |>
+  filter(valid_rating(rating)) |>
+  mutate(rating = as.integer(rating),
+         cell   = factor(cell, levels = cell_levels),
+         se     = (rating - raw_mean)^2,       # squared error (Check 1)
+         exact  = as.integer(rating == gold),  # 0/1 vs rounded mean (Check 2)
+         adj    = as.integer(abs(rating - gold) <= 1))
+
+cat("AI rows:", nrow(ai_metrics), "· cells present:",
+    nlevels(droplevels(ai_metrics$cell)), "of", length(cell_levels), "\n")
+cat("Dropped off-scale/NA ratings:", sum(dropped$n_dropped), "\n")
+if (nrow(dropped) > 0) print(dropped)
+cat("LOO case CYIs:", nrow(loo_cyi), "· coder-cells:", nrow(human_loo), "\n")
+```
+
+### Shared country-clustered weights
+
+One weight matrix over the country universe (seed 42), reused by every metric below so all CIs
+share one resampling scheme — the same `country_boot_weights()` primitive `06`/`08` use. A cell (or
+the human reference) broadcasts each draw's per-country weight onto its own rows.
+
+```{r weights}
+#| cache: true
+countries_all <- sort(unique(c(ai_metrics$country_text_id, human_loo$country_text_id)))
+W <- country_boot_weights(countries_all, params$n_boot, seed = 42)
+draw_id <- colnames(W)                 # col 1 = "Apparent"
+app     <- which(draw_id == "Apparent")
+boot    <- setdiff(seq_along(draw_id), app)
+
+# Weighted-mean-per-draw of a per-row value, grouped into `ncell` blocks, via rowsum (as in 08).
+# Returns an (ndraw x ncell) matrix. `grp` is a 1..ncell integer per row; `cid` the country id.
+wmean_by_cell <- function(val, grp, cid, ncell) {
+  Wc <- W[cid, , drop = FALSE]                              # (nrow x ndraw)
+  num <- rowsum(Wc * val, grp, reorder = FALSE)             # (ncell x ndraw)
+  den <- rowsum(Wc,       grp, reorder = FALSE)
+  # rowsum keeps only present groups; scatter back to full 1..ncell then transpose.
+  present <- as.integer(rownames(num))
+  M <- matrix(NA_real_, ncell, length(draw_id))
+  M[present, ] <- num / den
+  t(M)
+}
+```
+
+---
+
+## Check 1 — RMSE robustness on the registered contrasts
+
+Re-score 2019 under squared error and re-run `06`'s registered paired contrasts, asking
+verdict-by-verdict whether each SESOI call survives the L1→L2 switch. RMSE-vs-mean is a genuine
+robustness check on the L1-vs-L2 choice (per-coder RMSE would add nothing — squared error to each
+coder equals panel-mean MSE plus a per-cell constant, so every contrast is identical; see roadmap).
+
+The contrast machinery mirrors `06`'s `paired_delta`, but on `ai_rmse` rather than `ai_mae`, so
+this rebuilds a per-draw metric table from the raw squared errors rather than reading `06`'s
+`ai_mae` bundle (which stores L1 only). Resampling is country-clustered, seed 42 — identical to the
+MAE contrasts, so the two are comparable.
+
+**SESOI caveat.** SESOI (± `r round(sesoi, 3)`) was calibrated on the L1 axis as half the 2019
+rounding floor. RMSE deltas are on the root-mean-square axis, a different scale, so applying the
+same numeric band is a deliberate common-yardstick choice (per the roadmap's "same SESOI verdict
+rule"), not an exact re-derivation. Read the "survives" column as "does the L2 delta clear the same
+±SESOI ruler," and weight the sign/ordering as much as the strict verdict.
+
+```{r rmse-boot}
+#| cache: true
+#| cache.lazy: false
+# Per-draw RMSE per cell = sqrt(weighted-mean squared error). Reuse the block aggregator on `se`,
+# then sqrt. Cells map to 1..ncell by factor level.
+ncell   <- length(cell_levels)
+grp_ai  <- as.integer(ai_metrics$cell)
+mse_mat <- wmean_by_cell(ai_metrics$se, grp_ai, ai_metrics$country_text_id, ncell)  # (ndraw x ncell)
+rmse_mat <- sqrt(mse_mat)
+colnames(rmse_mat) <- cell_levels
+
+# Generic paired within-draw delta on any (ndraw x cell) metric matrix, against ±SESOI —
+# the L2 analogue of R/bootstrap_helpers.R::paired_delta, parameterized on the metric.
+paired_metric_delta <- function(M, a_cell, b_cell, label, sesoi_val = sesoi) {
+  if (!all(c(a_cell, b_cell) %in% colnames(M)))
+    return(tibble(label = label, est = NA, lo = NA, hi = NA, p_gt = NA, sesoi_out = NA))
+  d <- M[, a_cell] - M[, b_cell]
+  tibble(label = label,
+         est  = d[app], lo = quantile(d[boot], 0.025), hi = quantile(d[boot], 0.975),
+         p_gt = mean(d[boot] > 0), sesoi_out = abs(d[app]) > sesoi_val)
+}
+
+# The registered contrasts, exactly as 06 states them (cell keys = model_key|condition).
+B  <- "llama-70b|codebook"; EV <- "llama-70b|evidence"
+AN <- "llama-70b|anonymized"; SU <- "llama-70b|summarized"
+rmse_contrasts <- bind_rows(
+  # B-series (Figure 2): identity-stripping pushes error out; reading evidence does not.
+  paired_metric_delta(rmse_mat, EV, B,  "B1 · Ev−Cb"),
+  paired_metric_delta(rmse_mat, AN, B,  "B2 · An−Cb"),
+  paired_metric_delta(rmse_mat, SU, B,  "Su−Cb (descr.)"),
+  paired_metric_delta(rmse_mat, AN, EV, "B3 · An−Ev"),
+  paired_metric_delta(rmse_mat, SU, EV, "Su−Ev (descr.)"),
+  # F1 (appendix): fine-tuning vs. few-shot on matched conditions.
+  paired_metric_delta(rmse_mat, "llama-70b-ft-raw|evidence-zeroshot",   EV, "F1 · Raw Text"),
+  paired_metric_delta(rmse_mat, "llama-70b-ft-anon|anonymized-zeroshot", AN, "F1 · Anonymized"),
+  paired_metric_delta(rmse_mat, "llama-70b-ft-summ|summarized-zeroshot", SU, "F1 · Summarized")
+)
+```
+
+The MAE verdicts to compare against, read from `06`'s serialized `paired_delta` layer, so the
+"survives" column is L1-verdict vs L2-verdict on the same rows.
+
+```{r rmse-vs-mae}
+# Recompute the L1 verdicts from 06's boot_results with the shared helper, so both columns use
+# the identical SESOI rule. (list2env exposes boot_results/sesoi for paired_delta's defaults.)
+list2env(.b06[c("boot_results", "sesoi")], environment())
+mae_contrasts <- bind_rows(
+  paired_delta("llama-70b", "evidence",   "llama-70b", "codebook",   "B1 · Ev−Cb"),
+  paired_delta("llama-70b", "anonymized", "llama-70b", "codebook",   "B2 · An−Cb"),
+  paired_delta("llama-70b", "summarized", "llama-70b", "codebook",   "Su−Cb (descr.)"),
+  paired_delta("llama-70b", "anonymized", "llama-70b", "evidence",   "B3 · An−Ev"),
+  paired_delta("llama-70b", "summarized", "llama-70b", "evidence",   "Su−Ev (descr.)"),
+  paired_delta("llama-70b-ft-raw",  "evidence-zeroshot",   "llama-70b", "evidence",   "F1 · Raw Text"),
+  paired_delta("llama-70b-ft-anon", "anonymized-zeroshot", "llama-70b", "anonymized", "F1 · Anonymized"),
+  paired_delta("llama-70b-ft-summ", "summarized-zeroshot", "llama-70b", "summarized", "F1 · Summarized")
+) |> transmute(label, mae_est = est, mae_sesoi_out = sesoi_out)
+
+rmse_tbl <- rmse_contrasts |>
+  left_join(mae_contrasts, by = "label") |>
+  mutate(survives = if_else(sesoi_out == mae_sesoi_out, "yes", "FLIPPED"))
+
+# Shared renderer for the L1-vs-L2 survival table, called once per contrast group so the B-series
+# and F1 tables stay separate (mirroring 06's split readouts). Strips the "F1 · " label prefix.
+survival_gt <- function(df, title) {
+  df |>
+    transmute(Contrast = str_remove(label, "^F1 · "),
+              `ΔMAE` = round(mae_est, 3), `MAE > SESOI` = if_else(mae_sesoi_out, "yes", "no"),
+              `ΔRMSE` = round(est, 3), `RMSE 95% CI` = glue("[{round(lo,3)}, {round(hi,3)}]"),
+              `RMSE > SESOI` = if_else(sesoi_out, "yes", "no"),
+              `Survives L1→L2` = survives) |>
+    gt() |>
+    tab_header(title = title,
+               subtitle = glue("Paired country-clustered bootstrap · B = {params$n_boot} · ",
+                               "SESOI ±{round(sesoi, 3)} (L1-calibrated, common ruler)"))
+}
+```
+
+### RMSE robustness — base model (mirror of `06` Figure 2)
+
+The base-model B-series re-scored under squared error, in the same layout as `06`'s Figure 2:
+**top group** = each condition vs. the Codebook prior; **bottom group** = the de-identified
+conditions vs. full Evidence. The question is only whether each SESOI verdict survives L1→L2.
+
+```{r rmse-bseries-tbl}
+survival_gt(filter(rmse_tbl, !str_starts(label, "F1")),
+            "RMSE robustness — base-model identification contrasts (B-series)")
+```
+
+```{r rmse-fig-bseries}
+#| fig-height: 4.0
+rmse_b <- rmse_contrasts |>
+  filter(!str_starts(label, "F1")) |>
+  mutate(label = factor(label, levels = rev(c(
+    "B1 · Ev−Cb", "B2 · An−Cb", "Su−Cb (descr.)", "B3 · An−Ev", "Su−Ev (descr.)"))))
+
+ggplot(rmse_b, aes(est, label)) +
+  annotate("rect", xmin = -sesoi, xmax = sesoi, ymin = -Inf, ymax = Inf,
+           fill = "grey85", alpha = 0.55) +
+  geom_vline(xintercept = 0, linetype = "dashed", color = "grey40") +
+  # separator between the "vs Codebook" group (top 3) and the "vs Evidence" group (bottom 2)
+  geom_hline(yintercept = 2.5, color = "grey85", linewidth = 0.4) +
+  geom_errorbar(aes(xmin = lo, xmax = hi), orientation = "y",
+                width = 0.15, linewidth = 0.7, color = "#0072B2") +
+  geom_point(size = 3, color = "#0072B2") +
+  scale_x_continuous(expand = expansion(mult = c(0.06, 0.06))) +
+  labs(x = "ΔRMSE · right = higher error · grey band = ±SESOI", y = NULL,
+       title = "RMSE robustness — base model: reading the evidence or reading the country",
+       subtitle = glue("2019 · top: vs Codebook · bottom: vs Evidence · paired · SESOI ±{round(sesoi, 3)}")) +
+  theme_minimal(base_size = 12) +
+  theme(panel.grid.major.y = element_blank(), plot.title.position = "plot",
+        plot.title = element_text(face = "bold"))
+```
+
+### RMSE robustness (appendix) — F1: fine-tuning vs. few-shot
+
+The registered F1 contrast (each FT adapter minus the matched-condition base cell) under squared
+error, kept as a separate figure exactly as `06` does — different anchor (FT − matched base),
+different narrative. Left = fine-tuning reduces error.
+
+```{r rmse-f1-tbl}
+survival_gt(filter(rmse_tbl, str_starts(label, "F1")),
+            "RMSE robustness — F1: fine-tuning vs. few-shot (matched)")
+```
+
+```{r rmse-fig-f1}
+#| fig-height: 3.2
+rmse_f1 <- rmse_contrasts |>
+  filter(str_starts(label, "F1")) |>
+  mutate(label = factor(str_remove(label, "^F1 · "),
+                        levels = rev(c("Raw Text", "Anonymized", "Summarized"))))
+
+ggplot(rmse_f1, aes(est, label)) +
+  annotate("rect", xmin = -sesoi, xmax = sesoi, ymin = -Inf, ymax = Inf,
+           fill = "grey85", alpha = 0.55) +
+  geom_vline(xintercept = 0, linetype = "dashed", color = "grey40") +
+  geom_errorbar(aes(xmin = lo, xmax = hi), orientation = "y",
+                width = 0.15, linewidth = 0.7, color = "#E69F00") +
+  geom_point(size = 3, color = "#E69F00") +
+  scale_x_continuous(expand = expansion(mult = c(0.08, 0.08))) +
+  labs(x = "ΔRMSE (FT − base) · left = fine-tuning reduces error · grey band = ±SESOI", y = NULL,
+       title = "RMSE robustness (appendix) — F1: fine-tuning vs. few-shot (matched)",
+       subtitle = glue("2019 · registered F1 under L2 · SESOI ±{round(sesoi, 3)}")) +
+  theme_minimal(base_size = 12) +
+  theme(panel.grid.major.y = element_blank(), plot.title.position = "plot")
+```
+
+*Note.* The R-series contrasts (R2 in `09`, R5 in `11`) are difference-in-differences, not simple
+paired cell deltas, so their L2 robustness belongs in those docs if wanted, not here. This check
+covers the `06` contrasts (B-series and F1) — the registered paired-MAE deltas.
+
+---
+
+## Check 2 — Exact-match and adjacent-category agreement (levels)
+
+Per-cell 0/1 metrics against `round(panel_mean)`, so they support the same country-clustered
+weighting as MAE. Exact-match averaged to the rounded mean is the raw hit rate; adjacent is the
+tri-diagonal band (within one category). High adjacent + low exact is the expected signature of an
+integer rater against a fractional mean (close but rarely exact). A human LOO reference row is
+included, exactly as MAE carries one.
+
+```{r exact-adj-levels}
+#| fig-height: 4.6
+ex_mat  <- wmean_by_cell(ai_metrics$exact, grp_ai, ai_metrics$country_text_id, ncell)
+adj_mat <- wmean_by_cell(ai_metrics$adj,   grp_ai, ai_metrics$country_text_id, ncell)
+colnames(ex_mat) <- colnames(adj_mat) <- cell_levels
+
+level_ci <- function(M, labels = colnames(M)) {
+  tibble(cell = labels, est = M[app, ],
+         lo = apply(M[boot, , drop = FALSE], 2, quantile, 0.025, na.rm = TRUE),
+         hi = apply(M[boot, , drop = FALSE], 2, quantile, 0.975, na.rm = TRUE))
+}
+ex_lvl  <- level_ci(ex_mat)  |> mutate(metric = "Exact")
+adj_lvl <- level_ci(adj_mat) |> mutate(metric = "Adjacent")
+
+# Human LOO reference: one row, per-coder exact/adjacent, country-clustered on the coder-cells.
+h_grp <- rep(1L, nrow(human_loo))
+h_ex  <- wmean_by_cell(human_loo$h_exact, h_grp, human_loo$country_text_id, 1L)[, 1]
+h_adj <- wmean_by_cell(human_loo$h_adj,   h_grp, human_loo$country_text_id, 1L)[, 1]
+human_ref_row <- tibble(
+  cell = "Human (LOO)",
+  ex_est = h_ex[app], ex_lo = quantile(h_ex[boot], 0.025), ex_hi = quantile(h_ex[boot], 0.975),
+  adj_est = h_adj[app], adj_lo = quantile(h_adj[boot], 0.025), adj_hi = quantile(h_adj[boot], 0.975))
+
+exact_adj_tbl <- ex_lvl |>
+  transmute(Cell = cell_lab_of[cell],
+            `Exact` = est, `exact 95% CI` = glue("[{scales::percent(lo,0.1)}, {scales::percent(hi,0.1)}]")) |>
+  left_join(adj_lvl |> transmute(Cell = cell_lab_of[cell],
+            `Adjacent` = est, `adj 95% CI` = glue("[{scales::percent(lo,0.1)}, {scales::percent(hi,0.1)}]")),
+            by = "Cell") |>
+  bind_rows(human_ref_row |> transmute(Cell = cell,
+            Exact = ex_est, `exact 95% CI` = glue("[{scales::percent(ex_lo,0.1)}, {scales::percent(ex_hi,0.1)}]"),
+            Adjacent = adj_est, `adj 95% CI` = glue("[{scales::percent(adj_lo,0.1)}, {scales::percent(adj_hi,0.1)}]")))
+
+# Coefficient plot (mirrors 07/08): 16 cells as points+CIs coloured Base vs Fine-tuned, faceted by
+# metric, with the human LOO level as a dashed reference line and its 95% CI as a grey band. The
+# gt-source `exact_adj_tbl` above is kept for the serialized bundle / paper.
+ea_long <- bind_rows(
+  ex_lvl  |> transmute(cell_lbl = cell_lab_of[cell], metric = "Exact match",    est, lo, hi),
+  adj_lvl |> transmute(cell_lbl = cell_lab_of[cell], metric = "Adjacent (±1)", est, lo, hi)
+) |>
+  mutate(family = factor(if_else(str_starts(cell_lbl, "FT"), "Fine-tuned", "Base"),
+                         levels = c("Base", "Fine-tuned")),
+         metric = factor(metric, levels = c("Exact match", "Adjacent (±1)")))
+
+# Shared y-order across both facets: grouped by family (Base at top, FT below, as in 06-08),
+# ranked by exact-match within each group. `arrange(desc(fam), est)` yields bottom-to-top order:
+# FT (ascending) then Base (ascending), so Base sits above FT with the best cell atop each group.
+cell_order  <- ex_lvl |>
+  mutate(l = cell_lab_of[cell], fam = if_else(str_starts(l, "FT"), "Fine-tuned", "Base")) |>
+  arrange(desc(fam), est) |> pull(l)
+ea_long     <- ea_long |> mutate(cell_lbl = factor(cell_lbl, levels = cell_order))
+human_ref_ea <- bind_rows(
+  tibble(metric = "Exact match",    est = human_ref_row$ex_est,  lo = human_ref_row$ex_lo,  hi = human_ref_row$ex_hi),
+  tibble(metric = "Adjacent (±1)", est = human_ref_row$adj_est, lo = human_ref_row$adj_lo, hi = human_ref_row$adj_hi)
+) |> mutate(metric = factor(metric, levels = c("Exact match", "Adjacent (±1)")))
+
+# Reusable coefficient plot over a subset of cell labels (main = core cells; appendix = the rest),
+# keeping the shared exact-match ranking within the subset.
+ea_coef_plot <- function(labs, subtitle) {
+  ea_long |>
+    filter(cell_lbl %in% labs) |>
+    mutate(cell_lbl = factor(as.character(cell_lbl), levels = intersect(cell_order, labs))) |>
+    ggplot(aes(est, cell_lbl, color = family)) +
+    geom_rect(data = human_ref_ea, inherit.aes = FALSE,
+              aes(xmin = lo, xmax = hi, ymin = -Inf, ymax = Inf), fill = "grey85", alpha = 0.5) +
+    geom_vline(data = human_ref_ea, aes(xintercept = est), linetype = "dashed", color = "grey40") +
+    geom_errorbar(aes(xmin = lo, xmax = hi), orientation = "y", width = 0.3, linewidth = 0.6) +
+    geom_point(size = 2.6) +
+    facet_wrap(~ metric, scales = "free_x") +
+    scale_color_manual(values = family_pal, name = NULL) +
+    scale_x_continuous(labels = scales::percent, expand = expansion(mult = c(0.06, 0.06))) +
+    labs(x = "agreement vs round(panel_mean) · dashed = human LOO (grey band = its 95% CI)", y = NULL,
+         title = "Exact-match and adjacent-category agreement (levels)", subtitle = subtitle) +
+    theme_minimal(base_size = 11) +
+    theme(legend.position = "top", legend.justification = "left",
+          panel.grid.minor = element_blank(), panel.spacing.x = grid::unit(1.4, "lines"),
+          plot.title.position = "plot", plot.title = element_text(face = "bold"))
+}
+
+ea_coef_plot(core_lbl, glue("2019 · core cells (base ladder + FT diagonal) · country-clustered 95% CI · ",
+                            "B = {params$n_boot} · Base over FT, ranked within"))
+```
+
+*Mode caveat.* `round(panel_mean)` is not the panel mode, so even this exact-match is slightly
+misaligned with what greedy emits; do not narrate exact-match as consensus-fidelity. The FT models
+being mode-targeted should show here.
+
+*Mixed-scale caveat.* Exact and adjacent pool indicators of different ordinal widths (0..1 up to
+0..5). Both are scale-agnostic per cell, but the *baseline rate* differs by width: on a 0..1 binary
+indicator adjacent-agreement (`|rating − gold| ≤ 1`) is always 1, and exact-match is a coin-flip
+baseline, so short-scale indicators inflate both. The pooled numbers are read as a within-column
+contrast across models/conditions (the pool is fixed), not as absolute agreement rates.
+
+---
+
+## Check 3 — Quadratic weighted kappa (levels)
+
+QWK is chance-corrected ordinal agreement between the AI class and `round(panel_mean)`, the one
+scalar that gives no credit for marginal / central-tendency matching (its chance term is computed
+from both marginals), which is the direct rebuttal to "MAE rewards central tendency." It is a
+**sample-level** metric (defined over a *set* of cells), so there is no per-cell value and no
+within-cell pairing: reported as a level per model × condition with a country-clustered bootstrap
+CI, compared by CI overlap. It re-imposes a single gold label, so it is a secondary agreement
+number, never a target.
+
+QWK is computed from a weighted K×K contingency table (K = 6, spanning the 0..5 union of scales;
+rows = gold, cols = AI), so the country-clustered weights enter directly as table mass — no row
+expansion needed. Verified against `psych::cohen.kappa` at the point estimate below.
+
+**Mixed-scale caveat.** Ratings are pooled across indicators of different ordinal widths (0..1 up
+to 0..5), the same pool 06 uses for MAE. QWK's quadratic weights are normalized by `(K-1)^2 = 25`,
+so a one-step disagreement on a narrow (e.g. 0..1) indicator contributes less weighted disagreement
+than the same step on a 0..5 indicator, and the pooled scalar is dominated by the wider scales.
+This is inherent to a single pooled kappa (as raw-rating-point MAE is), not a defect of this
+computation; a per-indicator-then-averaged QWK is the more principled refinement if ever wanted.
+
+```{r qwk-helper}
+# Quadratic-weighted kappa from a K×K count matrix (weighted counts allowed). Weights
+# w_ij = (i-j)^2/(K-1)^2; kappa = 1 - sum(w*O)/sum(w*E), E = outer(row, col)/N under independence.
+qwk_from_counts <- function(N) {
+  Wt <- outer(0:(K-1), 0:(K-1), \(i, j) (i - j)^2) / (K - 1)^2
+  tot <- sum(N); if (tot <= 0) return(NA_real_)
+  O <- N / tot
+  E <- outer(rowSums(O), colSums(O))
+  denom <- sum(Wt * E)
+  if (denom == 0) return(NA_real_)
+  1 - sum(Wt * O) / denom
+}
+
+# Per-draw QWK for a cell: aggregate country weights into the K*K (gold,AI) bins via rowsum, then
+# reshape each draw's column to K×K. `gold`,`pred` are 0..K-1; `cid` the country ids.
+qwk_draws <- function(gold, pred, cid) {
+  keep <- valid_rating(gold) & valid_rating(pred)   # defensive: only in-scale integer pairs
+  gold <- gold[keep]; pred <- pred[keep]; cid <- cid[keep]
+  bin <- gold * K + pred + 1L                       # 1..K*K, row-major (gold, pred)
+  Wc  <- W[cid, , drop = FALSE]                      # (n x ndraw)
+  cnt <- matrix(0, K * K, length(draw_id))
+  agg <- rowsum(Wc, bin, reorder = FALSE)
+  cnt[as.integer(rownames(agg)), ] <- agg           # scatter to all K*K bins
+  apply(cnt, 2, \(col) qwk_from_counts(matrix(col, K, K, byrow = TRUE)))
+}
+```
+
+```{r qwk-levels}
+#| cache: true
+#| cache.lazy: false
+qwk_cells <- ai_metrics |>
+  group_by(cell) |>
+  group_map(~ {
+    v <- qwk_draws(.x$gold, .x$rating, .x$country_text_id)
+    tibble(cell = as.character(.y$cell[1]),
+           est = v[app], lo = quantile(v[boot], 0.025, na.rm = TRUE),
+           hi = quantile(v[boot], 0.975, na.rm = TRUE))
+  }) |>
+  bind_rows()
+
+# Human LOO QWK reference: (loo_gold, coder rating) pairs, same machinery.
+h_qwk <- qwk_draws(human_loo$loo_gold, human_loo$rating, human_loo$country_text_id)
+qwk_human <- tibble(cell = "Human (LOO)", est = h_qwk[app],
+                    lo = quantile(h_qwk[boot], 0.025, na.rm = TRUE),
+                    hi = quantile(h_qwk[boot], 0.975, na.rm = TRUE))
+
+# Point-estimate cross-check against psych on one cell (apparent draw = unweighted counts).
+qwk_check <- {
+  d <- ai_metrics |> filter(cell == cell_levels[1])
+  ck <- suppressWarnings(psych::cohen.kappa(cbind(d$gold, d$rating))$weighted.kappa)
+  mine <- qwk_from_counts(table(factor(d$gold, 0:(K-1)), factor(d$rating, 0:(K-1))))
+  glue("cross-check {cell_lab_of[cell_levels[1]]}: mine = {round(mine,4)} · psych = {round(ck,4)}")
+}
+
+```
+
+```{r qwk-fig}
+#| fig-height: 4.2
+# Reusable coefficient plot (mirrors 07): cells as points+CIs coloured Base vs Fine-tuned, human LOO
+# QWK as a dashed reference line + 95% CI band. Main = core cells; appendix = the rest. Ranked by QWK.
+qwk_all <- qwk_cells |>
+  transmute(cell_lbl = cell_lab_of[cell], est, lo, hi) |>
+  mutate(family = factor(if_else(str_starts(cell_lbl, "FT"), "Fine-tuned", "Base"),
+                         levels = c("Base", "Fine-tuned")))
+# Grouped by family (Base at top, FT below, as in 06-08), ranked by QWK within each group.
+qwk_order <- qwk_all |> arrange(desc(family), est) |> pull(cell_lbl)   # bottom-to-top: FT then Base
+
+qwk_coef_plot <- function(labs, subtitle) {
+  qwk_all |>
+    filter(cell_lbl %in% labs) |>
+    mutate(cell_lbl = factor(cell_lbl, levels = intersect(qwk_order, labs))) |>
+    ggplot(aes(est, cell_lbl, color = family)) +
+    annotate("rect", xmin = qwk_human$lo, xmax = qwk_human$hi, ymin = -Inf, ymax = Inf,
+             fill = "grey85", alpha = 0.5) +
+    geom_vline(xintercept = qwk_human$est, linetype = "dashed", color = "grey40") +
+    geom_errorbar(aes(xmin = lo, xmax = hi), orientation = "y", width = 0.3, linewidth = 0.6) +
+    geom_point(size = 2.8) +
+    scale_color_manual(values = family_pal, name = NULL) +
+    labs(x = "quadratic weighted kappa vs round(panel_mean) · dashed = human LOO (grey band = 95% CI)",
+         y = NULL, title = "Quadratic weighted kappa (levels)", subtitle = subtitle, caption = qwk_check) +
+    theme_minimal(base_size = 11) +
+    theme(legend.position = "top", legend.justification = "left",
+          panel.grid.minor = element_blank(), plot.title.position = "plot",
+          plot.title = element_text(face = "bold"))
+}
+
+qwk_coef_plot(core_lbl, glue("2019 · core cells (base ladder + FT diagonal) · sample-level · ",
+                             "country-clustered 95% CI · B = {params$n_boot} · Base over FT, ranked within"))
+```
+
+---
+
+## Check 4 — Krippendorff's α with the AI as an added coder (exploratory)
+
+Reliability-framed, and native to the multi-coder structure (no single gold label). Compute panel
+reliability on humans only, then with the AI inserted as one added coder, and ask whether
+reliability holds. This never collapses the panel; it is the reliability cousin of the D2
+augmentation test and points forward to the confirmatory D2 on 2023. Ordinal α (ordinal difference
+on the 0..5 union of scales). Reported for the same **7 core cells** as the other figures (base
+ladder + FT diagonal), since the added AI coder is that cell's ratings.
+
+```{r alpha}
+#| eval: !expr have_irr
+#| cache: true
+#| cache.lazy: false
+# Reliability data matrix: raters x subjects, NA where a rater did not score a subject. Coders are
+# not consistent across CYIs, so humans are slotted by arbitrary within-CYI order (α's coincidence
+# matrix is invariant to slot identity). The humans-only panel is built once; each core cell then
+# enters as one extra coder row (its own AI ratings, on the subjects that cell scored).
+alpha_base <- human_loo |>
+  transmute(country_text_id, indicator, rating) |>
+  group_by(country_text_id, indicator) |>
+  mutate(slot = row_number()) |>
+  ungroup()
+alpha_maxslot <- max(alpha_base$slot)
+alpha_subj    <- alpha_base |> distinct(country_text_id, indicator) |> mutate(subj = row_number())
+alpha_base    <- alpha_base |> left_join(alpha_subj, by = c("country_text_id", "indicator"))
+
+Hm <- matrix(NA_real_, alpha_maxslot, nrow(alpha_subj))
+Hm[cbind(alpha_base$slot, alpha_base$subj)] <- alpha_base$rating
+a_humans <- irr::kripp.alpha(Hm, method = "ordinal")$value   # humans-only (fixed across cells)
+
+alpha_for_cell <- function(cell_key) {
+  ai_cell <- ai_metrics |> filter(cell == cell_key) |>
+    distinct(country_text_id, indicator, ai = rating)
+  ai_j <- alpha_subj |> inner_join(ai_cell, by = c("country_text_id", "indicator"))
+  Ha <- rbind(Hm, NA_real_)
+  Ha[alpha_maxslot + 1, ai_j$subj] <- ai_j$ai
+  a_ha <- irr::kripp.alpha(Ha, method = "ordinal")$value
+  tibble(Cell = cell_lab_of[cell_key],
+         `α humans only` = a_humans, `α humans + AI` = a_ha, `Δα` = a_ha - a_humans,
+         n_added = nrow(ai_j))
+}
+
+alpha_tbl <- map_dfr(core_cells, alpha_for_cell) |>
+  mutate(family = if_else(str_starts(Cell, "FT"), "Fine-tuned", "Base"))
+alpha_tbl |>
+  select(-family) |>
+  gt() |>
+  fmt_number(columns = c(`α humans only`, `α humans + AI`, `Δα`), decimals = 3) |>
+  tab_header(title = "Krippendorff's α — humans only vs humans + AI (core cells, exploratory)",
+             subtitle = glue("Ordinal α · humans-only α = {round(a_humans, 3)} on {nrow(alpha_subj)} CYIs · ",
+                             "Δα > 0 = adding that cell's AI as a coder raises panel reliability")) |>
+  tab_style(style = cell_fill(color = "#fdf1dd"),
+            locations = cells_body(rows = str_starts(Cell, "FT")))
+```
+
+```{r alpha-skip}
+#| eval: !expr '!have_irr'
+cat("Check 4 (Krippendorff's α) skipped: package `irr` is not installed.\n",
+    "Install it (install.packages(\"irr\")) and re-knit to populate this section.\n")
+```
+
+---
+
+## Check 5 — Scale-normalized MAE robustness on the primary metric
+
+Companion to Check 1. The coded indicators do not share a single rating scale. Some are dichotomous
+(scored 0 or 1), most run 0 to 4, and a handful run 0 to 5. `06`'s primary MAE pools raw rating-point
+errors across all of them, but a one-point error means very different things depending on the scale:
+on a 0–1 dichotomy it is the entire range, whereas on a 0–5 scale it is one step out of five. Because
+the pool is dominated by the 0–4 indicators, the headline MAE is effectively tilted toward the longer
+scales rather than being an equal-weighted average of per-indicator skill.
+
+The scales present in the 2019 coded set, and how many indicators sit on each:
+
+| Indicator scale | Range (the divisor) | # indicators |
+|:---|:---:|:---:|
+| 0–1 (dichotomous) | 1 | 9 |
+| 0–2 | 2 | 19 |
+| 0–3 | 3 | 22 |
+| 0–4 | 4 | 143 |
+| 0–5 | 5 | 12 |
+
+This check re-scores the identical 2019 ratings under a scale-normalized loss: each error is divided
+by its indicator's range, so every indicator lands on a common 0-to-1 footing. It then re-runs `06`'s
+landscape (Figure 1) and base-model B-series (Figure 2), asking whether the identification story holds
+once a dichotomy and a 0–5 scale count equally.
+
+**Why the primary metric is still defensible (this is a robustness check, not a replacement).** The
+scale weighting applies equally to every cell being compared. The base ladder, the FT diagonal, and
+the human LOO reference are all scored on the same pooled country-year-indicators with the same
+scales, so every paired contrast is on matched scales on both sides and the weighting largely cancels
+in the deltas. Raw-point MAE also stays the interpretable, pre-registered unit ("rating points off
+consensus"). The purpose here is to confirm the picture is not an artifact of the longer scales
+dominating, not to re-anchor the paper on a normalized number.
+
+**Normalized SESOI.** Check 1's RMSE lives on a squared-error axis where the rounding floor is not
+cleanly defined, which is why it borrowed the raw SESOI as a common ruler. Normalized MAE stays on the
+absolute-error axis, so the floor is well defined per indicator as
+`|round(panel_mean) − panel_mean| / range`, and `nSESOI` is half its pool mean: a properly normalized
+band rather than a borrowed one.
+
+**How the scale is measured.** Each indicator's range is the largest human rating it ever receives
+(the minimum is 0 for every ordinal V-Dem C-variable). This recovers exactly the 12 known 0–5
+indicators and the 0–1 dichotomies. Reading the range off the codebook instead would be marginally
+more principled but gives the same answer here.
+
+```{r nmae-setup}
+#| cache: true
+#| cache.lazy: false
+# Indicator scale width: observed max rating across all human years for each AI-coded indicator.
+width_tbl <- human_ratings |>
+  filter(indicator %in% ai_indicators, valid_rating(rating)) |>
+  group_by(indicator) |>
+  summarise(width = max(rating), .groups = "drop") |>
+  filter(width > 0)                                  # no all-zero indicator in the AI set
+
+# Per-row scale-normalized absolute error: |rating - panel_mean| / width. Same fractional reference
+# (raw_mean) and same LOO case set as 06's primary MAE — only the per-indicator rescaling is new.
+ai_nmae <- ai_metrics |>
+  inner_join(width_tbl, by = "indicator") |>
+  mutate(cell = factor(cell, levels = cell_levels),
+         nerr = abs(rating - raw_mean) / width)
+
+# Normalized SESOI: the integer-vs-fractional-mean floor on the same 0..1-per-indicator footing,
+# halved. Computed over the CYI pool (one row per CYI), matching 06's rounding-floor construction.
+nfloor <- ai_nmae |>
+  distinct(country_text_id, indicator, raw_mean, width) |>
+  summarise(f = mean(abs(round(raw_mean) - raw_mean) / width)) |>
+  pull(f)
+nsesoi <- nfloor / 2
+
+# Human LOO rail (normalized): |rating - reduced_mean| / width, country-clustered single group.
+human_nmae <- human_loo |>
+  inner_join(width_tbl, by = "indicator") |>
+  mutate(h_nerr = abs(rating - loo_mean) / width)
+h_nv <- wmean_by_cell(human_nmae$h_nerr, rep(1L, nrow(human_nmae)),
+                      human_nmae$country_text_id, 1L)[, 1]
+human_nmae_ref <- tibble(est = h_nv[app],
+                         lo = quantile(h_nv[boot], 0.025), hi = quantile(h_nv[boot], 0.975))
+
+# Persistence ("Naive") rail (normalized): |round(2018 mean) - 2019 mean| / width, on the LOO pool.
+pm18 <- panel_means |> filter(year == 2018) |>
+  select(country_text_id, indicator, mean_2018 = raw_mean)
+persist_nmae <- loo_cyi |>
+  inner_join(select(pm_year, country_text_id, indicator, raw_mean),
+             by = c("country_text_id", "indicator")) |>
+  inner_join(width_tbl, by = "indicator") |>
+  left_join(pm18, by = c("country_text_id", "indicator")) |>
+  filter(!is.na(mean_2018)) |>
+  mutate(p_nerr = abs(round(mean_2018) - raw_mean) / width)
+p_nv <- wmean_by_cell(persist_nmae$p_nerr, rep(1L, nrow(persist_nmae)),
+                      persist_nmae$country_text_id, 1L)[, 1]
+persist_nmae_ref <- tibble(est = p_nv[app],
+                           lo = quantile(p_nv[boot], 0.025), hi = quantile(p_nv[boot], 0.975))
+
+# Per-cell normalized MAE per draw, via the shared block aggregator; level CIs via Check 2's helper.
+nmae_mat <- wmean_by_cell(ai_nmae$nerr, as.integer(ai_nmae$cell),
+                          ai_nmae$country_text_id, ncell)
+colnames(nmae_mat) <- cell_levels
+nmae_lvl <- level_ci(nmae_mat)
+
+glue("nSESOI (±) = {round(nsesoi, 3)} · normalized rounding floor = {round(nfloor, 3)} · ",
+     "human LOO nMAE = {round(human_nmae_ref$est, 3)} · persistence nMAE = {round(persist_nmae_ref$est, 3)}")
+```
+
+### Check 5 · levels — the normalized-MAE landscape (mirror of `06` Figure 1)
+
+The 7 core cells on one normalized-MAE axis — the base ladder (Cb→Ev→An→Su) on top, the FT diagonal
+below — against the **Naive model** (persistence) and **human LOO** rails, with the ±nSESOI band on
+the human line. Same layout as `06`'s Figure 1; the question is whether the same two dynamics (base
+ladder fanning right as identity is stripped, FT cluster pulling onto the human line) hold once every
+indicator counts equally.
+
+```{r nmae-fig-levels}
+#| fig-width: 8
+#| fig-height: 4.8
+land_n <- nmae_lvl |>
+  filter(cell %in% core_cells) |>
+  mutate(lbl    = cell_lab_of[cell],
+         family = factor(if_else(str_starts(lbl, "FT"), "Fine-tuned", "Base"),
+                         levels = c("Base", "Fine-tuned")),
+         # first level plots at the bottom: FT block below, base ladder above (as in 06 Fig 1)
+         row = factor(lbl, levels = c("FT-summ:Su", "FT-anon:An", "FT-raw:Ev",
+                                      "Base:Su", "Base:An", "Base:Ev", "Base:Cb")))
+
+ggplot(land_n, aes(est, row, color = family)) +
+  annotate("rect", xmin = human_nmae_ref$est - nsesoi, xmax = human_nmae_ref$est + nsesoi,
+           ymin = -Inf, ymax = 7.3, fill = "grey85", alpha = 0.55) +
+  annotate("segment", x = persist_nmae_ref$est, xend = persist_nmae_ref$est,
+           y = -Inf, yend = 7.3, linetype = "dashed", color = "grey40") +
+  annotate("segment", x = human_nmae_ref$est, xend = human_nmae_ref$est,
+           y = -Inf, yend = 7.3, linetype = "longdash", color = "grey40") +
+  annotate("text", x = persist_nmae_ref$est, y = 6.8, label = "Naive model",
+           color = "grey40", size = 2.9, hjust = -0.07, vjust = 0.5) +
+  annotate("text", x = human_nmae_ref$est, y = 7.5, label = "±nSESOI of human LOO nMAE",
+           color = "grey40", size = 2.9, hjust = 0.5, vjust = 0.5) +
+  geom_hline(yintercept = 3.5, color = "grey85", linewidth = 0.4) +
+  geom_errorbar(aes(xmin = lo, xmax = hi), orientation = "y", width = 0.20, linewidth = 0.7) +
+  geom_point(size = 2) +
+  scale_color_manual(values = family_pal, name = NULL) +
+  scale_y_discrete() +   # keep y discrete so the numeric rail labels (y = 6.8/7.3/7.5) place correctly
+  scale_x_continuous(expand = expansion(mult = c(0.02, 0.08), add = c(0.005, 0))) +
+  coord_cartesian(clip = "off") +
+  labs(x = "Scale-normalized MAE  (|error| / scale range)", y = NULL,
+       title = "Check 5 — Scale-normalized synthetic-coder performance",
+       subtitle = glue("2019 · core cells · every indicator on a common 0-1 footing (lower = closer to consensus) · nSESOI ±{round(nsesoi, 3)}")) +
+  theme_minimal(base_size = 12) +
+  theme(legend.position = "top", legend.justification = "left",
+        panel.grid.major.y = element_blank(), plot.title.position = "plot",
+        plot.title = element_text(face = "bold"))
+```
+
+### Check 5 · deltas — base-model B-series under normalized loss (mirror of `06` Figure 2)
+
+The base-model identification contrasts re-scored under normalized MAE, in `06` Figure 2's layout:
+**top group** = each condition vs. the Codebook prior; **bottom group** = the de-identified
+conditions vs. full Evidence. The survival table reads each metric against its own properly-scaled
+band — raw ΔMAE vs ±SESOI beside normalized ΔnMAE vs ±nSESOI — so "survives" means the SESOI verdict
+is unchanged by neutralizing scale width.
+
+```{r nmae-contrasts}
+Bc  <- "llama-70b|codebook"; EVc <- "llama-70b|evidence"
+ANc <- "llama-70b|anonymized"; SUc <- "llama-70b|summarized"
+nmae_contrasts <- bind_rows(
+  paired_metric_delta(nmae_mat, EVc, Bc,  "B1 · Ev−Cb",     nsesoi),
+  paired_metric_delta(nmae_mat, ANc, Bc,  "B2 · An−Cb",     nsesoi),
+  paired_metric_delta(nmae_mat, SUc, Bc,  "Su−Cb (descr.)", nsesoi),
+  paired_metric_delta(nmae_mat, ANc, EVc, "B3 · An−Ev",     nsesoi),
+  paired_metric_delta(nmae_mat, SUc, EVc, "Su−Ev (descr.)", nsesoi)
+)
+
+# Raw-MAE B-series verdicts (reuse Check 1's mae_contrasts, computed from 06's boot_results).
+nmae_tbl <- nmae_contrasts |>
+  left_join(select(mae_contrasts, label, mae_est, mae_sesoi_out), by = "label") |>
+  mutate(survives = if_else(sesoi_out == mae_sesoi_out, "yes", "FLIPPED"))
+
+nmae_tbl |>
+  transmute(Contrast = label,
+            `ΔMAE (raw)` = round(mae_est, 3),
+            `raw > SESOI` = if_else(mae_sesoi_out, "yes", "no"),
+            `ΔnMAE` = round(est, 3),
+            `nMAE 95% CI` = glue("[{round(lo, 3)}, {round(hi, 3)}]"),
+            `nMAE > nSESOI` = if_else(sesoi_out, "yes", "no"),
+            `Survives` = survives) |>
+  gt() |>
+  tab_header(title = "Scale-normalized MAE robustness — base-model B-series",
+             subtitle = glue("Raw MAE vs ±SESOI ({round(sesoi, 3)}) beside normalized MAE vs ±nSESOI ",
+                             "({round(nsesoi, 3)}) · paired country-clustered bootstrap · B = {params$n_boot}"))
+```
+
+```{r nmae-fig-deltas}
+#| fig-height: 4.0
+nmae_b <- nmae_contrasts |>
+  mutate(label = factor(label, levels = rev(c(
+    "B1 · Ev−Cb", "B2 · An−Cb", "Su−Cb (descr.)", "B3 · An−Ev", "Su−Ev (descr.)"))))
+
+ggplot(nmae_b, aes(est, label)) +
+  annotate("rect", xmin = -nsesoi, xmax = nsesoi, ymin = -Inf, ymax = Inf,
+           fill = "grey85", alpha = 0.55) +
+  geom_vline(xintercept = 0, linetype = "dashed", color = "grey40") +
+  # separator between the "vs Codebook" group (top 3) and the "vs Evidence" group (bottom 2)
+  geom_hline(yintercept = 2.5, color = "grey85", linewidth = 0.4) +
+  geom_errorbar(aes(xmin = lo, xmax = hi), orientation = "y",
+                width = 0.15, linewidth = 0.7, color = "#0072B2") +
+  geom_point(size = 3, color = "#0072B2") +
+  scale_x_continuous(expand = expansion(mult = c(0.06, 0.06))) +
+  labs(x = "ΔnMAE · right = higher normalized error · grey band = ±nSESOI", y = NULL,
+       title = "Check 5 — Scale-normalized base model: reading the evidence or reading the country",
+       subtitle = glue("2019 · top: vs Codebook · bottom: vs Evidence · paired · nSESOI ±{round(nsesoi, 3)}")) +
+  theme_minimal(base_size = 12) +
+  theme(panel.grid.major.y = element_blank(), plot.title.position = "plot",
+        plot.title = element_text(face = "bold"))
+```
+
+---
+
+## Confusion matrix (display, not a scalar)
+
+A 6×6 matrix (`round(panel_mean)` × AI class, classes 0..5) shows the error *structure* the scalars hide:
+diagonal mass = exact-match, tri-diagonal band = adjacent, above/below-diagonal asymmetry = the
+signed-deviation story as a matrix. Shown for the reading-vs-reciting shift (base:Cb → base:Ev)
+plus the carried cell (`r glue("{recode(params$carried_key, !!!model_labels)}:{recode(canon_col(params$carried_cond), !!!col_labels)}")`,
+finalized at unblinding). Not all sixteen.
+
+```{r confusion}
+#| fig-height: 3.8
+cm_cells <- c("llama-70b|codebook", "llama-70b|evidence",
+              paste(params$carried_key, params$carried_cond, sep = "|"))
+cm_df <- ai_metrics |>
+  filter(cell %in% cm_cells) |>
+  mutate(cell = factor(cell, levels = cm_cells)) |>
+  count(cell, gold, rating, name = "n") |>
+  group_by(cell, gold) |>
+  mutate(row_share = n / sum(n)) |>
+  ungroup()
+
+ggplot(cm_df, aes(rating, gold, fill = row_share)) +
+  geom_tile(color = "grey90") +
+  geom_text(aes(label = n), size = 2.8) +
+  facet_wrap(~ cell, labeller = as_labeller(cm_cells |> setNames(cell_lab_of[cm_cells]) |> {\(x) setNames(names(x), x)}())) +
+  scale_fill_gradient(low = "white", high = "#0072B2", labels = scales::percent, name = "row share") +
+  scale_x_continuous(breaks = 0:5) + scale_y_continuous(breaks = 0:5) +
+  coord_equal() +
+  labs(x = "AI rating", y = "round(panel mean)",
+       title = "Confusion structure: gold class × AI class",
+       subtitle = "Cell counts; fill = share within the gold row (diagonal = exact, band = adjacent)") +
+  theme_minimal(base_size = 11) + theme(panel.grid.minor = element_blank())
+```
+
+*Facet labels* fall back to the raw cell key if the labeller lookup misses; the panels are
+base:Cb, base:Ev, and the carried cell, left to right.
+
+---
+
+## Appendix — off-diagonal cells (levels)
+
+The nine cells outside the core set (each base condition is already in the core figure; these are
+the FT adapters run *off* their diagonal — e.g. FT-summ on codebook, FT-raw on anonymized). Same
+metrics, same human LOO reference, same Base/Fine-tuned colouring as the core figures above.
+
+```{r exact-adj-appendix}
+#| fig-height: 4.6
+ea_coef_plot(other_lbl, glue("2019 · off-diagonal cells · country-clustered 95% CI · ",
+                             "B = {params$n_boot} · ranked by exact-match"))
+```
+
+```{r qwk-appendix}
+#| fig-height: 4.0
+qwk_coef_plot(other_lbl, glue("2019 · off-diagonal cells · sample-level · ",
+                              "country-clustered 95% CI · B = {params$n_boot} · ranked by QWK"))
+```
+
+---
+
+## Serialize the bundle
+
+Parallel to `06`/`08`, so `paper/` reads it without recomputing.
+
+```{r serialize}
+saveRDS(
+  list(
+    rmse_tbl      = rmse_tbl,          # Check 1: L1 vs L2 verdicts
+    rmse_contrasts = rmse_contrasts,
+    exact_adj_tbl = exact_adj_tbl,     # Check 2 levels
+    ex_lvl = ex_lvl, adj_lvl = adj_lvl, human_ref_row = human_ref_row,
+    qwk_cells = qwk_cells, qwk_human = qwk_human,   # Check 3
+    alpha_tbl = if (have_irr) alpha_tbl else NULL,  # Check 4 (may be NULL)
+    nmae_lvl = nmae_lvl, nmae_contrasts = nmae_contrasts, nmae_tbl = nmae_tbl,  # Check 5
+    human_nmae_ref = human_nmae_ref, persist_nmae_ref = persist_nmae_ref, nsesoi = nsesoi,
+    confusion = cm_df,
+    cell_lab_of = cell_lab_of, sesoi = sesoi, K = K, n_boot = params$n_boot),
+  file.path(derived_dir, "secondary_2019.rds")
+)
+glue("secondary_2019.rds written · B = {params$n_boot} · SESOI ±{round(sesoi,3)} · ",
+     "α section: {if (have_irr) 'computed' else 'skipped (install irr)'}")
+```
+
+## Summary
+
+```{r summary}
+tibble(
+  Check = c("1 · RMSE robustness", "2 · Exact / adjacent", "3 · QWK", "4 · Krippendorff α",
+            "5 · Scale-normalized MAE", "Confusion matrix"),
+  Reference = c("squared error, paired B/F1 contrasts vs ±SESOI",
+                "round(panel_mean), per-cell levels + human LOO",
+                "round(panel_mean), sample-level levels + human LOO",
+                "no gold label; humans vs humans+AI, base model",
+                "|error|/width, landscape + B-series vs ±nSESOI",
+                "round(panel_mean) × AI, base:Cb / base:Ev / carried"),
+  Role = c("robustness on registered contrasts", "secondary descriptive", "secondary descriptive",
+           "exploratory reliability (→ D2)", "robustness on primary metric", "display"),
+  Status = c(if (any(rmse_tbl$survives == "FLIPPED")) "built · some verdicts flip" else "built · all verdicts survive",
+             "built", "built", if (have_irr) "built" else "skipped (install irr)",
+             if (any(nmae_tbl$survives == "FLIPPED")) "built · some verdicts flip" else "built · all verdicts survive",
+             "built")
+) |>
+  gt() |>
+  tab_header(title = glue("Secondary & robustness metrics — {params$year} status"),
+             subtitle = "All exploratory / robustness; the identification story stays on AI MAE")
+```

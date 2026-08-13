@@ -35,20 +35,27 @@ LLM_CONFIGS = {
     # ── Open models via GW Pegasus vLLM (production runs) ────────────────────────
     # Set VLLM_BASE_URL to http://<node-hostname>:<port>/v1 before running.
     # Set VLLM_API_KEY to any non-empty string if the server runs without auth.
+    # supports_logprobs: vLLM's OpenAI server returns top_logprobs, so these keys capture
+    # the rating-token distribution for the expectation (mean) readout. Left off the
+    # Together keys above (dev-only; top_logprobs support is inconsistent) and off any
+    # non-logprob provider — code_country_year only requests logprobs where this is True.
     "llama-405b-local": {
         "base_url": _VLLM_URL,
         "model": "meta-llama/Meta-Llama-3.1-405B-Instruct",
         "api_key_env": "VLLM_API_KEY",
+        "supports_logprobs": True,
     },
     "llama-70b-local": {
         "base_url": _VLLM_URL,
         "model": "meta-llama/Llama-3.3-70B-Instruct",
         "api_key_env": "VLLM_API_KEY",
+        "supports_logprobs": True,
     },
     "llama-8b-local": {
         "base_url": _VLLM_URL,
         "model": "meta-llama/Llama-3.1-8B-Instruct",
         "api_key_env": "VLLM_API_KEY",
+        "supports_logprobs": True,
     },
 
     # ── Fine-tuned models (FT-raw, FT-anon, FT-summ) ─────────────────────────
@@ -58,16 +65,19 @@ LLM_CONFIGS = {
         "base_url": _VLLM_URL,
         "model": "llama-70b-vdem-ft-raw",
         "api_key_env": "VLLM_API_KEY",
+        "supports_logprobs": True,
     },
     "llama-70b-ft-anon": {
         "base_url": _VLLM_URL,
         "model": "llama-70b-vdem-ft-anon",
         "api_key_env": "VLLM_API_KEY",
+        "supports_logprobs": True,
     },
     "llama-70b-ft-summ": {
         "base_url": _VLLM_URL,
         "model": "llama-70b-vdem-ft-summ",
         "api_key_env": "VLLM_API_KEY",
+        "supports_logprobs": True,
     },
 }
 
