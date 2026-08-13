@@ -45,7 +45,10 @@ OUTPUT=${OUTPUT_DIR}/${CONDITION}_${YEAR}_llama70b.jsonl
 # ── Environment ────────────────────────────────────────────────────────────────
 source ~/miniforge3/etc/profile.d/conda.sh
 module load cuda/13
-NVCC_BIN=$(which nvcc 2>/dev/null || true); [ -n "$NVCC_BIN" ] && export CUDA_HOME="$(dirname "$(dirname "$NVCC_BIN")")"
+# GH200: module cuda/13 has no nvcc; point CUDA_HOME at the vllm env's bundled cu13 and
+# skip flashinfer's sampler JIT (see run_inference_finetuned.sh for the full rationale).
+export CUDA_HOME="$HOME/miniforge3/envs/vllm/lib/python3.11/site-packages/nvidia/cu13"
+export PATH="$CUDA_HOME/bin:$PATH"
 set -a; source .env; set +a
 conda activate panel-member
 
@@ -53,6 +56,7 @@ export VLLM_BASE_URL="http://localhost:${VLLM_PORT}/v1"
 export VLLM_API_KEY="local"
 export HF_HUB_OFFLINE=1
 export TRANSFORMERS_OFFLINE=1
+export VLLM_USE_FLASHINFER_SAMPLER=0
 
 # ── Start vLLM ─────────────────────────────────────────────────────────────────
 VLLM_PYTHON=~/miniforge3/envs/vllm/bin/python
