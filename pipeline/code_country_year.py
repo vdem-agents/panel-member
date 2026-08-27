@@ -83,10 +83,18 @@ def _parse_response(raw: str, max_rating: int = 4) -> tuple[int, str]:
 
 
 def _first_rating_digit(token: str, max_rating: int) -> int | None:
-    """First character of `token` that is a digit in 0..max_rating, else None."""
+    """First ASCII digit in 0..max_rating in `token`, else None.
+
+    Use ASCII only: str.isdigit() is True for Unicode digits (e.g. superscript ²) but
+    int(ch) then raises — vLLM top_logprobs can include those tokens and a bare
+    isdigit() check turned a recoverable alt into a full capture miss (production
+    swallows the exception and leaves rating_dist null).
+    """
     for ch in token.strip():
-        if ch.isdigit() and int(ch) <= max_rating:
-            return int(ch)
+        if "0" <= ch <= "9":
+            d = ord(ch) - ord("0")
+            if d <= max_rating:
+                return d
     return None
 
 
