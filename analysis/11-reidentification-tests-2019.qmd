@@ -514,8 +514,11 @@ throughout because salience is country-driven and the independent-CYI CI is anti
 the FT models have no few-shot block, so their analog is `evidence-zeroshot`, which
 `canon_col()` collapses to the same `evidence` column. The DiD is always a within-model
 contrast (each model's own text condition minus its own codebook), so this asymmetry never
-crosses between rows — but the A8 comparison is base-few-shot-gain vs FT-zero-shot-gain, and
-that is the intended reading, not a confound to remove.
+crosses between rows — the A8 comparison is base-few-shot-gain vs FT-zero-shot-gain, and
+that is the intended reading, not a confound to remove. Note the base model *also* carries the
+`*-zeroshot` text ablations (the exploratory A1/A2 grid); since `canon_col()` would collapse those
+onto the few-shot columns and collide in the pivot, the Part C loader drops base `*-zeroshot` rows
+so each model contributes exactly one column per canonical condition.
 
 **Mode/mean caveat.** Greedy decoding returns the *mode*, so this panel-mean MAE gap inherits
 the mode/mean gap discussed in `notes/mode-vs-mean-decode-and-act1-next-steps.md`; the
@@ -548,8 +551,14 @@ read_run <- function(f) {
 }
 ai_raw <- list.files(runs_dir, pattern = "\\.jsonl$", full.names = TRUE) |>
   map(read_run) |> bind_rows() |>
-  mutate(model_key = str_remove(model_key, "-local$"),
-         cond_canon = canon_col(condition))   # collapse -zeroshot to Cb/Ev/An/Su
+  mutate(model_key = str_remove(model_key, "-local$")) |>
+  # Base carries BOTH the few-shot text conditions {evidence, anonymized, summarized} and their
+  # -zeroshot ablations; canon_col() strips "-zeroshot", so both would land in the same column and
+  # collide in pivot_wider (→ list-columns → non-numeric subtraction). The base DiD is the few-shot
+  # gain; the base -zeroshot runs are the exploratory A1/A2 grid, not part of this cross. FT models
+  # only carry the -zeroshot text conditions, so they never collide. Drop base -zeroshot here.
+  filter(!(model_key == "llama-70b" & grepl("-zeroshot$", condition))) |>
+  mutate(cond_canon = canon_col(condition))   # collapse -zeroshot to codebook/evidence/anon/summ
 
 panel_means <- read_csv(file.path(data_dir, "panel_means.csv"), show_col_types = FALSE)
 pm_year <- panel_means |> filter(year == params$year) |>
@@ -676,10 +685,12 @@ useful. Cross the base salience label with the ERT episode flag used in `09`.
 ert_path <- file.path(data_dir, "ert.csv")
 if (file.exists(ert_path)) {
   ert <- read_csv(ert_path, show_col_types = FALSE)
+  # Canonical ERT episode flag, identical to 09 (§ load) and 10 (§8): in a dem or aut episode.
+  # ert.csv carries dem_ep/aut_ep as 0/1/NA; NA means "no episode" → FALSE.
   ert_flag <- ert |>
     filter(year == params$year) |>
     transmute(country_text_id,
-              in_episode = (reg_trans != 0) | (!is.na(v2x_polyarchy)))  # placeholder: reconcile with 09's exact flag
+              in_episode = replace_na((dem_ep == 1) | (aut_ep == 1), FALSE))
   salience |>
     left_join(ert_flag, by = "country_text_id") |>
     mutate(in_episode = coalesce(in_episode, FALSE)) |>

@@ -39,7 +39,7 @@ MODEL_PATH=/scratch/ejtgrp/models/llama-3.3-70b-instruct
 ADAPTER_NAME=llama-70b-vdem-ft-${VARIANT}    # must match vdem_config.py
 ADAPTER_PATH=$HOME/panel-member-archive/adapters/${ADAPTER_NAME}
 VLLM_PORT=8000
-OUTPUT_DIR=data/output/runs
+OUTPUT_DIR=data/output/nameswap    # own dir: keys collide with the grid, so keep out of runs/
 PAIRS=data/derived/nameswap_pairs_${YEAR}.csv
 
 # ── Environment ────────────────────────────────────────────────────────────────
@@ -106,10 +106,10 @@ python3 -m pipeline.run_nameswap_batch \
 kill "$VLLM_PID" && wait "$VLLM_PID" 2>/dev/null || true
 
 # ── Archive output to home (scratch purged after 30 days) ─────────────────────
-ARCHIVE_DIR="$HOME/panel-member-archive/runs"
+ARCHIVE_DIR="$HOME/panel-member-archive/nameswap"
 mkdir -p "$ARCHIVE_DIR"
 rsync -av "${OUTPUT_DIR}"/nameswap_*_${CONDITION}_${YEAR}_*.jsonl "$ARCHIVE_DIR/"
 rsync -av "$PAIRS" "$HOME/panel-member-archive/"
 echo "Archived FT-summ name-swap $YEAR runs + pairing set to $ARCHIVE_DIR/"
-echo "Pull locally: rsync -avz <user>@pegasus.arc.gwu.edu:~/panel-member-archive/ data/output/"
+echo "Pull locally: rsync -avz <user>@pegasus.arc.gwu.edu:~/panel-member-archive/nameswap/ data/output/nameswap/"
 echo "Done."

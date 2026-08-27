@@ -118,8 +118,9 @@ panel_means   <- read_csv(file.path(data_dir, "panel_means.csv"), show_col_types
 human_ratings <- read_csv(file.path(data_dir, "human_ratings.csv"), show_col_types = FALSE)
 ```
 
-**Load diagnostic** — the 2019 grid should show 19 cells: base (7 = 4 primary + 3 zero-shot)
-and 12 FT (3 variants × 4 conditions).
+**Load diagnostic** — the expectation re-run captured **16 cells**: base (4 primary conditions)
+and 12 FT (3 variants × 4 conditions). The 3 base `*-zeroshot` cells are optional (precommitment)
+and were not run, so the A1/A2 grid contrasts in §9 are skipped until they are.
 
 ```{r load-diagnostic}
 exp_raw |>
@@ -453,6 +454,8 @@ Every registered and reported contrast, recomputed as a paired expectation-based
 beside its greedy value on the **same captured pool** (so the comparison is like-for-like, not
 against the confirmatory bundle). "Survives" = same side of the SESOI verdict under both
 readouts. `paired_delta()` is reused unchanged, pointed at each readout's `boot_results`.
+Contrasts whose endpoints include a cell absent from the captured pool (the A1/A2 grid and the
+F1' primes, which need the optional base `*-zeroshot` expectation cells) are skipped and listed.
 
 ```{r p2-contrasts}
 contrast_specs <- tribble(
@@ -481,11 +484,30 @@ contrast_specs <- tribble(
   "llama-70b-ft-summ", "evidence-zeroshot",   "llama-70b",         "evidence",            "A5 · FT-summ−Base",  "A5"
 )
 
+# The captured pool covers the 4 base primary conditions + 12 FT cells; the 3 base *-zeroshot
+# expectation cells are optional (precommitment) and were not run. Any contrast whose endpoints
+# include a cell absent from the pool (groups A1, A2, and the F1' "(pm)" primes, which need base
+# *-zeroshot) is not computable here — filter those out and report them rather than erroring.
+avail_cells <- distinct(greedy_boot_results, model_key, condition)
+has_cell <- function(mk, cond) any(avail_cells$model_key == mk & avail_cells$condition == cond)
+
+contrast_specs <- contrast_specs |>
+  mutate(computable = pmap_lgl(list(a_mk, a_cond, b_mk, b_cond),
+    \(a_mk, a_cond, b_mk, b_cond) has_cell(a_mk, a_cond) && has_cell(b_mk, b_cond)))
+specs_run  <- filter(contrast_specs, computable) |> select(-computable)
+specs_skip <- filter(contrast_specs, !computable)
+
 run_contrasts <- function(results) {
-  pmap_dfr(contrast_specs, function(a_mk, a_cond, b_mk, b_cond, label, grp) {
+  pmap_dfr(specs_run, function(a_mk, a_cond, b_mk, b_cond, label, grp) {
     paired_delta(a_mk, a_cond, b_mk, b_cond, label, results = results, sesoi_val = sesoi) |>
       mutate(grp = grp)
   })
+}
+
+if (nrow(specs_skip) > 0) {
+  cat("Skipped", nrow(specs_skip), "contrast(s) needing the optional base *-zeroshot expectation\n",
+      "cells (not run): ", paste(specs_skip$label, collapse = ", "), "\n",
+      "Run the 3 base zero-shot expectation cells and re-pull to populate A1/A2/F1' rows.\n", sep = "")
 }
 
 greedy_contr <- run_contrasts(greedy_boot_results)
@@ -531,12 +553,14 @@ glue("Prediction 2: {sum(survival$survives)}/{nrow(survival)} contrasts survive 
 gain_ci <- boot_both |>
   mutate(gain = greedy_mae - exp_mae) |>
   group_by(model_key, condition) |>
+  # CIs first: the row-wise `gain` must be read before the scalar point estimate below reuses the
+  # name (dplyr exposes earlier-created columns to later args, which would shadow the vector).
   summarise(
     greedy_mae = mean(greedy_mae[id == "Apparent"]),
     exp_mae    = mean(exp_mae[id == "Apparent"]),
-    gain       = mean(gain[id == "Apparent"]),
     gain_lo    = quantile(gain[id != "Apparent"], 0.025),
     gain_hi    = quantile(gain[id != "Apparent"], 0.975),
+    gain       = mean(gain[id == "Apparent"]),
     .groups    = "drop"
   ) |>
   mutate(model = recode(model_key, !!!model_labels), col = canon_col(condition)) |>
