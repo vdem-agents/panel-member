@@ -17,11 +17,11 @@ params:
   min_coders: 2
 ---
 
-> **SCAFFOLD — not yet run.** No name-swap JSONL exists in `data/output/runs/` yet; this document
-> is written to the known output schema so the analysis can start the moment the runs land. On the
-> first real render, check the **load diagnostic (§2)** before trusting anything downstream: cell
-> counts per arm/model, that `arm` splits cleanly on `source == named`, and the double-join
-> coverage (every swapped CYI carries both a `source_mean` and a `named_mean`).
+> **First real render (runs landed 2026-08-13, pulled 2026-08-26).** The 4 name-swap JSONLs live in
+> `data/output/nameswap/` (2 models × {correct, swapped}). Before trusting anything downstream, check
+> the **load diagnostic (§2)**: cell counts per arm/model, that `arm` splits cleanly on
+> `source == named`, and the double-join coverage (every swapped CYI carries both a `source_mean` and
+> a `named_mean`).
 
 Exploratory **name-swap** analysis (hypothesis **R4** in `preregistration/preregistration-draft.qmd`;
 design: `notes/name-swap-design.md`). R4 asks whether a swapped rating tracks the **described
@@ -74,9 +74,10 @@ find_panel_member_root <- function() {
 }
 proj_root   <- find_panel_member_root()
 source(file.path(proj_root, "R", "bootstrap_helpers.R"))
-data_dir    <- file.path(proj_root, "data", "processed")
-runs_dir    <- file.path(proj_root, "data", "output", "runs")
-derived_dir <- file.path(proj_root, "data", "derived")
+data_dir     <- file.path(proj_root, "data", "processed")
+runs_dir     <- file.path(proj_root, "data", "output", "runs")
+nameswap_dir <- file.path(proj_root, "data", "output", "nameswap")
+derived_dir  <- file.path(proj_root, "data", "derived")
 dir.create(derived_dir, showWarnings = FALSE, recursive = TRUE)
 
 # SESOI is fixed by the main analysis; carry it over so every document bands on the identical
@@ -103,12 +104,18 @@ cells (≥ `r params$min_coders` coders). ERT flags feed the §8 transition spli
 #| cache.lazy: false
 
 if (!dir.exists(runs_dir)) stop("runs dir not found: ", runs_dir)
-all_jsonl <- list.files(runs_dir, pattern = "\\.jsonl$", full.names = TRUE)
 
-ns_files    <- all_jsonl[grepl("^nameswap_", basename(all_jsonl))]
-plain_files <- setdiff(all_jsonl, ns_files)
+# Name-swap runs live in their own output dir (their `condition`/`model_key` keys collide with the
+# confirmatory grid cells, so co-locating them in runs/ would fold them into 06's unfiltered glob).
+# The `^nameswap_` filename guard is kept as a belt-and-suspenders filter.
+ns_files <- if (dir.exists(nameswap_dir)) {
+  list.files(nameswap_dir, pattern = "^nameswap_.*\\.jsonl$", full.names = TRUE)
+} else character(0)
 if (length(ns_files) == 0)
-  stop("No name-swap JSONL in ", runs_dir, " — run slurm/run_nameswap_*.sh first.")
+  stop("No name-swap JSONL in ", nameswap_dir, " — run slurm/run_nameswap_*.sh first.")
+
+# No-name control = the ordinary summarized grid runs, read straight from runs/.
+plain_files <- list.files(runs_dir, pattern = "\\.jsonl$", full.names = TRUE)
 
 # Name-swap records carry `source`/`named`; plain summarized runs do not — hence two readers.
 read_ns <- function(f) {

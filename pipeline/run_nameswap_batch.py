@@ -255,7 +255,7 @@ def main() -> None:
         "--indicators", nargs="+", default=all_indicators,
         help=f"Indicators to run (default: all {len(all_indicators)})",
     )
-    parser.add_argument("--output-dir", default="data/output/runs")
+    parser.add_argument("--output-dir", default="data/output/nameswap")
     parser.add_argument("--workers", type=int, default=1)
     args = parser.parse_args()
 
