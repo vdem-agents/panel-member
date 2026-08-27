@@ -92,7 +92,11 @@ def _classify(response) -> dict:
     # Peek at first digit-ish top_logprobs richness
     n_with_top = sum(1 for t in content if getattr(t, "top_logprobs", None))
     out["tokens_with_top_logprobs"] = n_with_top
-    dist = _extract_rating_dist(content, max_rating=4)
+    dist = None
+    try:
+        dist = _extract_rating_dist(content, max_rating=4)
+    except Exception as exc:
+        out["extract_error"] = repr(exc)
     out["rating_dist"] = dist
     if dist is None:
         out["bucket"] = "C_extract_miss"
