@@ -22,4 +22,6 @@ paper/*.html
 preregistration/*.html
 .ipynb_checkpoints/
 logs/
-notes/
+# Working notes: symlink to the private project-notes repo. Ignored here (no trailing
+# slash so it also matches the symlink itself), tracked/backed up privately instead.
+/notes
