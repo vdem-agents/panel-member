@@ -40,7 +40,13 @@ MODEL_KEY=llama-70b-local
 MODEL_PATH=/scratch/ejtgrp/models/llama-3.3-70b-instruct
 VLLM_PORT=8000
 OUTPUT_DIR=${OUTPUT_DIR:-data/output/runs}
-OUTPUT=${OUTPUT_DIR}/${CONDITION}_${YEAR}_llama70b.jsonl
+# FH_ONLY=1 restricts sources to Freedom House (R3 2024 holdout + 2023 companion): scans
+# freedom-house/{year}/ for the country list and drops the State Dept block. The _fhonly
+# filename suffix keeps these separate from the full-source runs (and from load_done()).
+FH_ONLY=${FH_ONLY:-0}
+FH_FLAG=""; FH_SUFFIX=""
+if [ "$FH_ONLY" = "1" ]; then FH_FLAG="--fh-only"; FH_SUFFIX="_fhonly"; fi
+OUTPUT=${OUTPUT_DIR}/${CONDITION}_${YEAR}_llama70b${FH_SUFFIX}.jsonl
 
 # ── Environment ────────────────────────────────────────────────────────────────
 source ~/miniforge3/etc/profile.d/conda.sh
@@ -81,12 +87,13 @@ echo "vLLM ready (pid $VLLM_PID)"
 
 # ── Run coding batch ───────────────────────────────────────────────────────────
 ulimit -n 65536
-echo "Running $CONDITION coding for year $YEAR..."
+echo "Running $CONDITION coding for year $YEAR${FH_SUFFIX:+ (FH-only)}..."
 python3 -m pipeline.run_coding_batch \
     --year      "$YEAR" \
     --condition "$CONDITION" \
     --models    "$MODEL_KEY" \
     --workers   16 \
+    $FH_FLAG \
     --output    "$OUTPUT"
 
 # ── Cleanup ────────────────────────────────────────────────────────────────────

@@ -46,6 +46,10 @@ ADAPTER_NAME=llama-70b-vdem-ft-${VARIANT}    # must match vdem_config.py
 ADAPTER_PATH=$HOME/panel-member-archive/adapters/${ADAPTER_NAME}
 VLLM_PORT=8000
 OUTPUT_DIR=${OUTPUT_DIR:-data/output/runs}
+# FH_ONLY=1 restricts sources to Freedom House (R3 2024 holdout + 2023 companion). The
+# runner tags FH-only output files with _fhonly, so they stay separate from full-source runs.
+FH_ONLY=${FH_ONLY:-0}
+FH_FLAG=""; if [ "$FH_ONLY" = "1" ]; then FH_FLAG="--fh-only"; fi
 
 # ── Environment ────────────────────────────────────────────────────────────────
 source ~/miniforge3/etc/profile.d/conda.sh
@@ -107,6 +111,7 @@ python3 -m pipeline.run_finetuned_batch \
     --variant    "$VARIANT" \
     --conditions $CONDITIONS \
     --workers    16 \
+    $FH_FLAG \
     --output-dir "$OUTPUT_DIR"
 
 # ── Cleanup ────────────────────────────────────────────────────────────────────

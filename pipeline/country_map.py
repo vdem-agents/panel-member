@@ -97,23 +97,30 @@ def name_variants(name: str) -> set[str]:
     return {name_lower, short} | COUNTRY_ALIASES.get(name_lower, set())
 
 
-def build_country_map(year: int) -> dict[str, tuple[str, str]]:
+def build_country_map(year: int, fh_only: bool = False) -> dict[str, tuple[str, str]]:
     """
-    Return {iso: (slug, country_name)} for all countries with a processed State
-    Dept text file for the given year.
+    Return {iso: (slug, country_name)} for all countries with a processed text file
+    for the given year.
+
+    Normally scans state-dept/{year}/ (State Dept is the fuller-coverage source). With
+    fh_only=True it scans freedom-house/{year}/ instead — required for the R3 2024 holdout,
+    where the State Dept report is excluded by design so there is no state-dept/2024/ dir to
+    scan, and for the 2023 FH-only companion. Freedom House slugs can differ from State Dept
+    slugs; unrecognized ones warn and skip (add to SLUG_OVERRIDES as they surface at staging).
 
     Slugs in SLUG_OVERRIDES with a None value are silently skipped. Slugs that
     are neither in SLUG_OVERRIDES nor resolvable by pycountry fuzzy match emit a
     warning and are skipped.
     """
-    sd_dir = PROCESSED_TEXT_DIR / "state-dept" / str(year)
-    if not sd_dir.exists():
+    source = "freedom-house" if fh_only else "state-dept"
+    scan_dir = PROCESSED_TEXT_DIR / source / str(year)
+    if not scan_dir.exists():
         raise FileNotFoundError(
-            f"No processed State Dept text for {year} at {sd_dir}.\n"
+            f"No processed {source} text for {year} at {scan_dir}.\n"
             "Run pipeline/ingest.py first."
         )
     country_map: dict[str, tuple[str, str]] = {}
-    for path in sorted(sd_dir.glob("*.txt")):
+    for path in sorted(scan_dir.glob("*.txt")):
         slug = path.stem
         if slug in SLUG_OVERRIDES:
             val = SLUG_OVERRIDES[slug]
