@@ -125,14 +125,14 @@ def load_done(output_path: Path) -> set[tuple]:
 def _backoff_call(
     iso: str, slug: str, name: str, year: int, indicator: str,
     condition: str, model_key: str, raw_mean: float | None = None,
-    max_attempts: int = 3,
+    max_attempts: int = 3, fh_only: bool = False,
 ) -> dict:
     delay = 1.0
     last_exc: Exception | None = None
     for attempt in range(1, max_attempts + 1):
         try:
             return code_country_year(iso, slug, name, year, indicator, condition, model_key,
-                                     raw_mean=raw_mean)
+                                     raw_mean=raw_mean, fh_only=fh_only)
         except Exception as e:
             last_exc = e
             retryable = any(
@@ -158,12 +158,14 @@ def run_batch(
     models: list[str],
     output_path: Path,
     workers: int = 1,
+    fh_only: bool = False,
 ) -> None:
     output_path.parent.mkdir(parents=True, exist_ok=True)
     configure_extraction_log(output_path.with_suffix(".extraction.log"))
 
-    print(f"Building country map for {year}...", file=sys.stderr)
-    country_map = build_country_map(year)
+    print(f"Building country map for {year}"
+          f"{' (FH-only)' if fh_only else ''}...", file=sys.stderr)
+    country_map = build_country_map(year, fh_only=fh_only)
     for iso, (slug, name) in FH_ONLY_ENTITIES.items():
         if iso not in country_map:
             country_map[iso] = (slug, name)
@@ -205,7 +207,7 @@ def run_batch(
         label = f"{iso} {yr} {indicator} {cond} {model_key}"
         try:
             record = _backoff_call(iso, slug, name, yr, indicator, cond, model_key,
-                                   raw_mean=raw_mean)
+                                   raw_mean=raw_mean, fh_only=fh_only)
             return record, None, label
         except Exception as e:
             return None, e, label
@@ -275,7 +277,13 @@ if __name__ == "__main__":
         "--workers", type=int, default=1,
         help="Number of concurrent inference requests (default: 1). Use 4-8 for vLLM."
     )
+    parser.add_argument(
+        "--fh-only", dest="fh_only", action="store_true",
+        help="Freedom-House-only source restriction: scan freedom-house/{year}/ for the "
+             "country list and drop the State Dept block from raw evidence prompts "
+             "(R3 2024 holdout + 2023 companion)."
+    )
     args = parser.parse_args()
 
     run_batch(args.year, args.indicators, args.condition, args.models, Path(args.output),
-              workers=args.workers)
+              workers=args.workers, fh_only=args.fh_only)

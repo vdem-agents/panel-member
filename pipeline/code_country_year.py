@@ -145,6 +145,7 @@ def code_country_year(
     model_key: str,
     raw_mean: float | None = None,
     source_iso: str | None = None,
+    fh_only: bool = False,
 ) -> dict:
     """
     Code one country-year on one indicator and return the output record.
@@ -182,7 +183,8 @@ def code_country_year(
         raise EnvironmentError(f"API key not set. Export {cfg['api_key_env']}.")
 
     system_text, user_text = assemble_prompt(
-        slug, country_name, year, indicator, condition, iso=iso, source_iso=source_iso
+        slug, country_name, year, indicator, condition, iso=iso, source_iso=source_iso,
+        fh_only=fh_only,
     )
 
     config = _load_config()
@@ -251,10 +253,15 @@ def code_country_year(
         "signed_dev": signed_dev,
         "abs_dev": abs_dev,
         "justification": justification,
-        "sources": [s for s in ("state-dept", "freedom-house") if ind_cfg.get(s)],
+        # fh_only drops State Dept, so record only the sources actually shown to the model.
+        "fh_only": fh_only,
+        "sources": [
+            s for s in (("freedom-house",) if fh_only else ("state-dept", "freedom-house"))
+            if ind_cfg.get(s)
+        ],
         "section_keys": {
             s: ind_cfg[s]
-            for s in ("state-dept", "freedom-house")
+            for s in (("freedom-house",) if fh_only else ("state-dept", "freedom-house"))
             if ind_cfg.get(s)
         },
         "tokens": tokens,
@@ -285,10 +292,12 @@ if __name__ == "__main__":
                                  "evidence-zeroshot", "anonymized-zeroshot", "summarized-zeroshot"],
                         default="evidence")
     parser.add_argument("--model", default="llama-70b", choices=list(LLM_CONFIGS))
+    parser.add_argument("--fh-only", dest="fh_only", action="store_true",
+                        help="Drop the State Department block (R3 FH-only holdout / companion)")
     args = parser.parse_args()
 
     record = code_country_year(
         args.iso, args.slug, args.name, args.year,
-        args.indicator, args.condition, args.model
+        args.indicator, args.condition, args.model, fh_only=args.fh_only,
     )
     print(json.dumps(record, indent=2))

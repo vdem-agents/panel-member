@@ -109,6 +109,11 @@ def main() -> None:
         "--workers", type=int, default=4,
         help="Concurrent requests to the vLLM server (default: 4)",
     )
+    parser.add_argument(
+        "--fh-only", dest="fh_only", action="store_true",
+        help="Freedom-House-only source restriction (R3 2024 holdout + 2023 companion). "
+             "Applies to raw evidence-zeroshot; no-op for codebook.",
+    )
     args = parser.parse_args()
 
     model_key = FT_MODEL_KEYS[args.variant]
@@ -120,9 +125,10 @@ def main() -> None:
 
     output_dir = Path(args.output_dir)
     ts = datetime.now().strftime("%Y%m%d_%H%M")
+    fh_tag = "_fhonly" if args.fh_only else ""   # keep FH-only runs distinct from full-source
 
     for condition in args.conditions:
-        output_path = output_dir / f"ft_{args.variant}_{condition}_{args.year}_{ts}.jsonl"
+        output_path = output_dir / f"ft_{args.variant}_{condition}_{args.year}{fh_tag}_{ts}.jsonl"
         print(f"\n{'=' * 60}")
         print(f"Variant: FT-{args.variant} | Condition: {condition} | Year: {args.year}")
         print(f"Model key: {model_key} | Output: {output_path}")
@@ -134,6 +140,7 @@ def main() -> None:
             models=[model_key],
             output_path=output_path,
             workers=args.workers,
+            fh_only=args.fh_only,
         )
 
 

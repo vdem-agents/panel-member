@@ -68,6 +68,15 @@ PROMPT_TEMPLATE_PATH = (
     Path(__file__).parent.parent / "prompts" / "panel-member-coding-prompt.md"
 )
 
+# fh_only: physically remove the State Department block from the evidence layout — its
+# header, the {STATE_DEPT_EVIDENCE} placeholder, and the trailing horizontal rule with the
+# surrounding blank lines — leaving only the Freedom House block. Used for the R3 2024
+# post-cutoff holdout (the 2024 State Dept report is excluded by design) and its 2023
+# FH-only companion baseline. \s* around the parts keeps it robust to template whitespace.
+_SD_BLOCK_RE = re.compile(
+    r"\*\*State Department Human Rights Report\*\*\s*\{STATE_DEPT_EVIDENCE\}\s*-{3,}\s*"
+)
+
 _config_cache: dict | None = None
 _fewshot_cache: dict | None = None
 _fewshot_anon_cache: dict | None = None
@@ -230,6 +239,7 @@ def assemble_prompt(
     condition: str,
     iso: str | None = None,
     source_iso: str | None = None,
+    fh_only: bool = False,
 ) -> tuple[str, str]:
     """
     Assemble (system_text, user_text) for one LLM coding call.
@@ -248,6 +258,12 @@ def assemble_prompt(
                        revealed in the framing — overriding the usual "the focal country"
                        blanking, because the injected name is the swap's treatment. Set
                        source_iso == iso for the correct-name (name = source) arm.
+        fh_only:       Freedom-House-only source restriction (R3 2024 holdout + 2023
+                       companion). Drops the State Department block from the raw evidence
+                       conditions (evidence / evidence-zeroshot / finetuned-raw) so only the
+                       Freedom House report is shown. No-op for `codebook` (no evidence). For
+                       anon/summ the restriction is carried by the cache content instead (only
+                       FH sections are anonymized/summarized), so it is not applied here.
 
     Returns:
         (system_text, user_text) ready for the API messages list
@@ -282,10 +298,19 @@ def assemble_prompt(
     )
 
     if condition in ("evidence", "evidence-zeroshot", "finetuned-raw"):
-        sd_raw = get_evidence(country_slug, year, indicator, "state-dept")
         fh_raw = get_evidence(country_slug, year, indicator, "freedom-house")
+        # fh_only drops State Dept entirely; its block is stripped from the template below,
+        # so state_ev is left empty (its .replace() becomes a no-op).
+        sd_raw = None if fh_only else get_evidence(country_slug, year, indicator, "state-dept")
 
-        if condition == "finetuned-raw" and sd_raw is None and fh_raw is None:
+        if fh_only:
+            if condition == "finetuned-raw" and fh_raw is None:
+                raise FileNotFoundError(
+                    f"No Freedom House document for {country_slug} {year} {indicator} (fh_only)."
+                )
+            state_ev = ""
+            fh_ev = fh_raw or "[No source document available for this country-year.]"
+        elif condition == "finetuned-raw" and sd_raw is None and fh_raw is None:
             raise FileNotFoundError(
                 f"No source documents for {country_slug} {year} {indicator}."
             )
@@ -379,6 +404,12 @@ def assemble_prompt(
     focal_country = "the focal country" if hide_identity else country_name
     focal_year    = "the focal year"    if hide_identity else str(year)
 
+    # fh_only: drop the State Department block from the raw evidence layout. Scoped to the
+    # raw conditions — anon/summ place their (cache-driven, already FH-only) text under the
+    # SD header, so stripping there would delete the evidence itself.
+    if fh_only and condition in ("evidence", "evidence-zeroshot", "finetuned-raw"):
+        user_raw = _SD_BLOCK_RE.sub("", user_raw)
+
     user_text = (
         user_raw
         .replace("{FOCAL_COUNTRY}", focal_country)
@@ -413,13 +444,15 @@ if __name__ == "__main__":
                  "summarized", "summarized-zeroshot", "finetuned-summ"],
         default="evidence",
     )
+    parser.add_argument("--fh-only", dest="fh_only", action="store_true",
+                        help="Drop the State Department block (R3 FH-only holdout / companion)")
     parser.add_argument("--chars", type=int, default=4000,
                         help="Characters of user message to preview")
     args = parser.parse_args()
 
     system, user = assemble_prompt(
         args.slug, args.name, args.year, args.indicator, args.condition,
-        iso=args.iso, source_iso=args.source_iso,
+        iso=args.iso, source_iso=args.source_iso, fh_only=args.fh_only,
     )
     print(f"=== SYSTEM ({len(system):,} chars) ===\n{system}")
     print(f"\n=== USER ({len(user):,} chars) ===\n{user[:args.chars]}")
