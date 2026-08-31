@@ -36,7 +36,12 @@ mkdir -p logs
 # ── Configuration (mirrors run_finetune.sh) ────────────────────────────────────
 VARIANT=${VARIANT:-anon}
 N_EXAMPLES=${N_EXAMPLES:-2000}
-MODEL_PATH=/scratch/ejtgrp/models/llama-3.3-70b-instruct
+BASE=${BASE:-llama}                 # llama (default) | qwen | gemma
+case "$BASE" in
+    qwen)  MODEL_PATH=/scratch/ejtgrp/models/qwen2.5-72b-instruct ;;
+    gemma) MODEL_PATH=/scratch/ejtgrp/models/gemma-3-27b-it ;;
+    *)     MODEL_PATH=/scratch/ejtgrp/models/llama-3.3-70b-instruct ;;
+esac
 if [ "$VARIANT" = "raw" ]; then
     FULL_DATA=data/processed/finetune_train_raw.jsonl
     MAX_SEQ_LEN=8192
@@ -54,7 +59,7 @@ else
     GRAD_ACCUM=16
 fi
 SMOKE_DATA=data/processed/finetune_smoke_${VARIANT}.jsonl
-OUTPUT_DIR=data/output/adapters/smoke-${VARIANT}
+OUTPUT_DIR=data/output/adapters/smoke-${BASE}-${VARIANT}   # per-base dir: no llama/gemma checkpoint collision
 
 # ── Environment ────────────────────────────────────────────────────────────────
 source ~/miniforge3/etc/profile.d/conda.sh

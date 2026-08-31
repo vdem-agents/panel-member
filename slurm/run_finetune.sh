@@ -44,10 +44,13 @@ mkdir -p logs
 
 # ── Configuration ──────────────────────────────────────────────────────────────
 VARIANT=${VARIANT:-raw}
-BASE=${BASE:-llama}                 # llama (default, 70B) | qwen (2.5-72B)
+BASE=${BASE:-llama}                 # llama (default, 70B) | qwen (2.5-72B) | gemma (3-27B)
 if [ "$BASE" = "qwen" ]; then
     MODEL_PATH=/scratch/ejtgrp/models/qwen2.5-72b-instruct
     ADAPTER_PREFIX=qwen-72b         # -> adapter name qwen-72b-vdem-ft-* (matches vdem_config)
+elif [ "$BASE" = "gemma" ]; then
+    MODEL_PATH=/scratch/ejtgrp/models/gemma-3-27b-it
+    ADAPTER_PREFIX=gemma-27b        # -> adapter name gemma-27b-vdem-ft-* (matches vdem_config)
 else
     MODEL_PATH=/scratch/ejtgrp/models/llama-3.3-70b-instruct
     ADAPTER_PREFIX=llama-70b

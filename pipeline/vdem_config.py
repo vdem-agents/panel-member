@@ -114,6 +114,24 @@ LLM_CONFIGS = {
         "api_key_env": "VLLM_API_KEY",
         "supports_logprobs": True,
     },
+
+    # ── Exploratory extension: Gemma 3 27B (different family/architecture) ───────
+    # Multimodal checkpoint; finetune_llama.py loads the text-only Gemma3ForCausalLM.
+    # System role is folded by Gemma's own chat template (verify_tokenizer: "native"),
+    # so no shim. Single-token rating digits confirmed. Raw variant only, to match
+    # the Qwen extension.
+    "gemma-27b-local": {  # GW Pegasus vLLM (production)
+        "base_url": _VLLM_URL,
+        "model": "google/gemma-3-27b-it",
+        "api_key_env": "VLLM_API_KEY",
+        "supports_logprobs": True,
+    },
+    "gemma-27b-ft-raw": {
+        "base_url": _VLLM_URL,
+        "model": "gemma-27b-vdem-ft-raw",
+        "api_key_env": "VLLM_API_KEY",
+        "supports_logprobs": True,
+    },
 }
 
 # Valid prompt conditions for the 4-condition primary experiment.
