@@ -82,10 +82,9 @@ def check_digit_tokens(tokenizer, max_rating: int) -> bool:
     return ok
 
 
-def check_system_role(tokenizer, sample: dict) -> None:
+def check_system_role(tokenizer, msgs: list) -> None:
     """Report whether the chat template accepts a native system turn or needs folding."""
     print("── System-role support " + "─" * 44)
-    msgs = sample["messages"]
     has_system = any(m["role"] == "system" for m in msgs)
     if not has_system:
         print("  (sample has no system turn; skipping)\n")
@@ -129,8 +128,10 @@ def main() -> None:
     parser = argparse.ArgumentParser(description="Tokenizer pre-flight for a new base model")
     parser.add_argument("--model-path", required=True,
                         help="HF id or local path to the base model (tokenizer is loaded from here)")
-    parser.add_argument("--train-data", required=True,
-                        help="A finetune_train_{variant}.jsonl to measure against")
+    parser.add_argument("--train-data", default=None,
+                        help="A finetune_train_{variant}.jsonl to measure against. "
+                             "Omit to run only Gate 1 + the system-role check (e.g. a "
+                             "quick local run with no JSONL present).")
     parser.add_argument("--max-rating", type=int, default=4,
                         help="Highest rating value on the widest indicator scale (default: 4)")
     parser.add_argument("--max-seq-len", type=int, default=8192)
@@ -144,11 +145,22 @@ def main() -> None:
         model_path if model_path.exists() else args.model_path
     )
 
-    records = _load_sample(Path(args.train_data), args.sample)
+    # Gate 2 needs the JSONL; Gate 1 + system-role do not. A local run with no
+    # training data present can still clear the hard blocker (digit tokenization).
+    records = _load_sample(Path(args.train_data), args.sample) if args.train_data else None
+    sample_msgs = records[0]["messages"] if records else [
+        {"role": "system",    "content": "You are a V-Dem expert coder."},
+        {"role": "user",      "content": "Rate this country-year."},
+        {"role": "assistant", "content": json.dumps({"rating": 3})},
+    ]
 
     g1 = check_digit_tokens(tokenizer, args.max_rating)
-    check_system_role(tokenizer, records[0])
-    measure_lengths(tokenizer, records, args.max_seq_len)
+    check_system_role(tokenizer, sample_msgs)
+    if records:
+        measure_lengths(tokenizer, records, args.max_seq_len)
+    else:
+        print("── Gate 2: token-length preflight " + "─" * 33)
+        print("  SKIPPED — no --train-data (run on the cluster where the JSONL lives).\n")
 
     if not g1:
         print("Gate 1 FAILED — do not launch training until the digit-token issue is resolved.",
