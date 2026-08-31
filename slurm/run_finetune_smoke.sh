@@ -66,6 +66,7 @@ source ~/miniforge3/etc/profile.d/conda.sh
 module load cuda/13
 conda activate finetune
 export PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True
+export PYTHONUNBUFFERED=1   # real-time .out logging (eval_loss appears immediately)
 
 # ── 1. Build the smoke subset (fresh output dir each run) ─────────────────────
 rm -rf "$OUTPUT_DIR"
