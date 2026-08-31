@@ -18,7 +18,7 @@
 #SBATCH --partition=superChip
 #SBATCH --cpus-per-task=8
 #SBATCH --mem=32G
-#SBATCH --time=08:00:00
+#SBATCH --time=01:00:00
 #SBATCH --output=logs/download_%j.out
 #SBATCH --error=logs/download_%j.err
 

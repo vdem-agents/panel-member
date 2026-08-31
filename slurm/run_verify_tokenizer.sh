@@ -31,7 +31,7 @@
 #SBATCH --partition=superChip
 #SBATCH --cpus-per-task=8
 #SBATCH --mem=32G
-#SBATCH --time=00:30:00
+#SBATCH --time=00:20:00
 # NOTE: CPU-only — verify_tokenizer loads no model weights, so no --gres=gpu here.
 # Requesting a gh200 GPU would queue this behind the (saturated) H100 training jobs
 # for no reason. Still lands on a Grace/ARM node via the superChip partition, so the
