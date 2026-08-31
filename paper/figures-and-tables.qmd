@@ -1,0 +1,62 @@
+---
+title: "Paper figures & tables — draft gallery"
+format:
+  html:
+    toc: true
+    toc-depth: 2
+    embed-resources: true
+    fig-width: 8
+    fig-height: 5
+execute:
+  echo: false
+  warning: false
+  message: false
+---
+
+**Reminder**: Yihui has released a fig.note option for `knitr`. https://github.com/yihui/knitr/pull/2453. Install development version and try it when you build the PDF.
+
+```{r setup}
+library(tidyverse)
+library(gt)
+library(glue)
+
+proj_root <- rprojroot::find_root(rprojroot::is_git_root)
+source(file.path(proj_root, "helpers", "bootstrap_helpers.R"))
+source(file.path(proj_root, "helpers", "paper_figures.R"))
+derived <- file.path(proj_root, "data", "derived")
+
+boot_bundle <- readRDS(file.path(derived, "bootstrap_2019.rds"))
+exp_bundle  <- readRDS(file.path(derived, "expectation_2019.rds"))
+```
+
+## 1. Synthetic-coder performance
+
+```{r}
+#| label: fig-landscape
+#| fig-cap: "Synthetic coder performance: greedy (mode) vs expectation (mean) readout."
+#| fig-width: 8
+#| fig-height: 5.2
+fig_readout_landscape(exp_bundle, boot_bundle, band = "human_loo")
+```
+
+# Appendix
+
+## A1. B and F hypothesis tests
+
+```{r}
+#| label: fig-bf
+#| fig-cap: "Paired ΔMAE for the registered B and F contrasts, with the zero line and ±SESOI band."
+#| fig-width: 8
+#| fig-height: 4.8
+fig_bf(boot_bundle)
+```
+
+## A2. Full model × input grid
+
+```{r}
+#| label: fig-grid
+#| fig-cap: "Every model on every input (the off-diagonal expansion of Figure 1). Greedy (mode) vs expectation (mean) MAE with country-clustered 95% CIs. Rings mark each fine-tuned model's own training input (the diagonal). Dashed line = naive persistence model; long-dash line = human reference; grey band = ±SESOI around the human reference."
+#| fig-width: 8
+#| fig-height: 9
+fig_readout_grid(exp_bundle, boot_bundle, band = "human_loo")
+```
