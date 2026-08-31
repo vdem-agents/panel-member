@@ -25,14 +25,14 @@ mkdir -p "$MODEL_DIR"
 
 # ── Llama 3.1 8B ───────────────────────────────────────────────────────────────
 echo "Downloading Llama 3.1 8B..."
-huggingface-cli download \
+hf download \
     meta-llama/Llama-3.1-8B-Instruct \
     --local-dir "$MODEL_DIR/llama-3.1-8b-instruct" \
     --token "$HF_TOKEN"
 
 # ── Llama 3.3 70B ──────────────────────────────────────────────────────────────
 echo "Downloading Llama 3.3 70B..."
-huggingface-cli download \
+hf download \
     meta-llama/Llama-3.3-70B-Instruct \
     --local-dir "$MODEL_DIR/llama-3.3-70b-instruct" \
     --token "$HF_TOKEN"
@@ -42,7 +42,7 @@ huggingface-cli download \
 # (unlike meta-llama). --token is passed only for rate-limit headroom and is
 # harmless if HF_TOKEN is unset. ~145 GB bfloat16.
 echo "Downloading Qwen2.5 72B..."
-huggingface-cli download \
+hf download \
     Qwen/Qwen2.5-72B-Instruct \
     --local-dir "$MODEL_DIR/qwen2.5-72b-instruct" \
     ${HF_TOKEN:+--token "$HF_TOKEN"}
@@ -50,7 +50,7 @@ huggingface-cli download \
 # ── Llama 3.1 405B ─────────────────────────────────────────────────────────────
 # Comment out if not needed yet — 810GB is a large allocation.
 # echo "Downloading Llama 3.1 405B..."
-# huggingface-cli download \
+# hf download \
 #     meta-llama/Meta-Llama-3.1-405B-Instruct \
 #     --local-dir "$MODEL_DIR/llama-3.1-405b-instruct" \
 #     --token "$HF_TOKEN"
