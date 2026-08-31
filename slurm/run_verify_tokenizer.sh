@@ -9,7 +9,7 @@
 # never have to touch the login-node terminal. That download step only works if
 # the gh200 node has outbound internet. If it fails with a network/SSL error,
 # download on the LOGIN node instead:
-#     huggingface-cli download Qwen/Qwen2.5-72B-Instruct \
+#     hf download Qwen/Qwen2.5-72B-Instruct \
 #         --local-dir /scratch/ejtgrp/models/qwen2.5-72b-instruct \
 #         --include "*.json" "tokenizer*" "*.txt" "*.model"
 # then re-submit this job with DOWNLOAD=0.
@@ -68,10 +68,10 @@ echo ""
 # ── Step 1: tokenizer/config files only (a few MB, not the ~145GB weights) ──────
 if [ "$DOWNLOAD" = "1" ]; then
     echo "Downloading tokenizer/config files for $MODEL_REPO ..."
-    huggingface-cli download "$MODEL_REPO" \
+    hf download "$MODEL_REPO" \
         --local-dir "$MODEL_DIR" \
         --include "*.json" "tokenizer*" "*.txt" "*.model" \
-        ${HF_TOKEN:+--token "$HF_TOKEN"}
+        ${HF_TOKEN:+--token "$HF_TOKEN"}   # `hf`, not the retired `huggingface-cli`
     echo ""
 fi
 
