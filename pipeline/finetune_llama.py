@@ -37,6 +37,7 @@ import torch
 from datasets import Dataset
 from peft import LoraConfig, TaskType, get_peft_model, prepare_model_for_kbit_training
 from transformers import (
+    AutoConfig,
     AutoModelForCausalLM,
     AutoTokenizer,
     BitsAndBytesConfig,
@@ -243,8 +244,21 @@ def main() -> None:
         bnb_4bit_compute_dtype=torch.bfloat16,
         bnb_4bit_use_double_quant=True,
     )
+    # Gemma 3 ships as a multimodal checkpoint (Gemma3ForConditionalGeneration, with a
+    # vision tower + a `text_config`). For text-only QLoRA we load just the language
+    # tower via Gemma3ForCausalLM; every other model (Llama, Qwen) loads through
+    # AutoModelForCausalLM unchanged. The LoRA target modules (q/k/v/o/gate/up/down)
+    # are identical either way.
+    cfg = AutoConfig.from_pretrained(model_path)
+    if getattr(cfg, "model_type", "") == "gemma3" and hasattr(cfg, "text_config"):
+        from transformers import Gemma3ForCausalLM
+        model_cls = Gemma3ForCausalLM
+        print("Detected Gemma 3 multimodal config — loading text-only Gemma3ForCausalLM")
+    else:
+        model_cls = AutoModelForCausalLM
+
     print(f"Loading base model from {model_path} (attn=sdpa)...")
-    model = AutoModelForCausalLM.from_pretrained(
+    model = model_cls.from_pretrained(
         model_path,
         quantization_config=bnb_config,
         device_map="auto",
