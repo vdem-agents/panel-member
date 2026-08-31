@@ -91,6 +91,9 @@ set -a; source .env; set +a
 conda activate finetune
 # Reclaim reserved-but-unallocated GPU memory (job 73469097 showed 10.5GB fragmentation)
 export PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True
+# Real-time stdout: without this, .out is block-buffered and eval_loss lines lag
+# the .out log by hours (they still land in each checkpoint's trainer_state.json).
+export PYTHONUNBUFFERED=1
 
 # ── Checkpoint detection ───────────────────────────────────────────────────────
 RESUME_ARG=""
