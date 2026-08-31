@@ -34,7 +34,7 @@ library(glue)
 proj_root <- rprojroot::find_root(rprojroot::is_git_root)
 
 # Static vocabulary + paired-delta machinery (single source of truth).
-source(file.path(proj_root, "R", "bootstrap_helpers.R"))
+source(file.path(proj_root, "helpers", "bootstrap_helpers.R"))
 
 # Unpack the precomputed results into this environment: boot_ci, boot_results, human_ref,
 # persist_ref, sesoi, rounding_floor, movement_bins. paired_delta()/cell_series() read

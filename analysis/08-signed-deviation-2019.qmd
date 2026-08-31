@@ -91,7 +91,7 @@ find_panel_member_root <- function() {
   stop("Could not locate the panel-member project root from working dir: ", getwd())
 }
 proj_root   <- find_panel_member_root()
-source(file.path(proj_root, "R", "bootstrap_helpers.R"))
+source(file.path(proj_root, "helpers", "bootstrap_helpers.R"))
 data_dir    <- file.path(proj_root, "data", "processed")
 runs_dir    <- file.path(proj_root, "data", "output", "runs")
 derived_dir <- file.path(proj_root, "data", "derived")
@@ -127,13 +127,21 @@ Signed deviation `s_c = AI_rating − panel_mean`, joined to the two regime cuts
 CYI in the year with a panel mean and a model output — the same population MAE is scored on.
 
 ```{r metrics}
+# IRT (v15 _ord) reference, joined alongside the raw panel mean. Read here (not in the cached
+# load-data chunk) so it does not bust the expensive JSONL cache. s_ord is the signed deviation
+# from V-Dem's measurement-model ordinal estimate — the Weidmann et al. (2025) calibration target.
+vdem_ord <- read_csv(file.path(data_dir, "vdem_ord.csv"), show_col_types = FALSE) |>
+  select(country_text_id, year, indicator, ord)
+
 ai_metrics <- ai_raw |>
   filter(year == params$year) |>
   rename(country_text_id = country) |>
   inner_join(select(panel_means, country_text_id, year, indicator,
                     raw_mean, theta_quintile, v2x_regime),
              by = c("country_text_id", "year", "indicator")) |>
-  mutate(s    = rating - raw_mean,               # SIGNED — direction kept
+  left_join(vdem_ord, by = c("country_text_id", "year", "indicator")) |>
+  mutate(s     = rating - raw_mean,              # SIGNED — vs raw panel mean (panel-member target)
+         s_ord = rating - ord,                    # SIGNED — vs V-Dem IRT ordinal (calibration target)
          cell = paste(model_key, condition, sep = "|"),
          qi   = ifelse(theta_quintile >= 1, as.integer(theta_quintile), NA_integer_),
          ri   = ifelse(!is.na(v2x_regime), as.integer(v2x_regime) + 1L, NA_integer_))  # 0..3 -> 1..4
@@ -433,6 +441,177 @@ bind_rows(
   fmt_number(columns = c(`Δ gap`, `P(Δ>0)`), decimals = 3)
 ```
 
+## IRT-referenced signed deviation (calibration view)
+
+Everything above measures signed deviation against the raw human panel mean, the right reference
+for the panel-member question. This section repeats the identical statistic against V-Dem's
+measurement-model ordinal estimate (`_ord`, v15) — the reference Weidmann et al. (2025) use. Zero
+now means agreement with V-Dem's IRT-corrected score rather than with the raw panel: a positive
+pooled shift is an **optimistic** attitude (the model rates *above* V-Dem), a negative shift is
+**pessimistic**. Because `_ord` is integer-valued, there is no rounding floor on this axis. The pool
+is every CYI carrying a v15 `_ord` estimate. This is exploratory and Weidmann-facing; the
+panel-member reading above remains primary.
+
+```{r bootstrap-ord}
+#| cache: true
+#| cache.lazy: false
+# Same country-clustered draws (seed 42) as the raw-mean engine; self-contained (rebuilds W and its
+# own scatter/wmean) so this chunk caches independently of §4.
+o  <- ai7 |> filter(!is.na(s_ord))
+qo <- o |> filter(!is.na(qi)); ro <- o |> filter(!is.na(ri))
+cyi_qo <- qo$cyi; s_qo <- qo$s_ord; cell_qo <- as.integer(qo$cell); g_qo <- (cell_qo - 1L) * nq + qo$qi
+cyi_ro <- ro$cyi; s_ro <- ro$s_ord; cell_ro <- as.integer(ro$cell); g_ro <- (cell_ro - 1L) * nr + ro$ri
+
+scat <- function(tab, len) { v <- numeric(len); v[as.integer(rownames(tab))] <- tab; v }
+wm   <- function(w, x, g, len)
+  scat(rowsum(w * x, g, reorder = FALSE), len) / scat(rowsum(w, g, reorder = FALSE), len)
+lo_i <- ((1:ncell) - 1L)
+
+draw_ord <- function(w) {
+  qm <- wm(w[cyi_qo], s_qo, g_qo, ncell * nq)
+  rm <- wm(w[cyi_ro], s_ro, g_ro, ncell * nr)
+  ov <- wm(w[cyi_qo], s_qo, cell_qo, ncell)
+  list(qm = qm, rm = rm, ov = ov,
+       eg_q = qm[lo_i * nq + nq] - qm[lo_i * nq + 1L],
+       eg_r = rm[lo_i * nr + nr] - rm[lo_i * nr + 1L])
+}
+Wo      <- country_boot_weights(cyi_pool$country_text_id, params$n_boot, seed = 42)
+draws_o <- map(colnames(Wo), function(dr) draw_ord(unname(Wo[, dr][cyi_pool$country_text_id])))
+ido     <- colnames(Wo); appo <- which(ido == "Apparent")
+
+ord_cov <- c(n_cyi_ord = dplyr::n_distinct(o$cyi), n_cyi_all = nrow(cyi_pool))
+```
+
+```{r aggregate-ord}
+mat_o <- function(field) do.call(rbind, map(draws_o, field))
+ci_o  <- function(field, labels) {
+  M <- mat_o(field); br <- setdiff(seq_len(nrow(M)), appo)
+  tibble(item = labels, est = M[appo, ],
+         lo = apply(M[br, , drop = FALSE], 2, quantile, 0.025),
+         hi = apply(M[br, , drop = FALSE], 2, quantile, 0.975))
+}
+eg_q_ord_draws <- mat_o("eg_q"); colnames(eg_q_ord_draws) <- cell_lbl
+eg_r_ord_draws <- mat_o("eg_r"); colnames(eg_r_ord_draws) <- cell_lbl
+ov_ord_draws   <- mat_o("ov");   colnames(ov_ord_draws)   <- cell_lbl
+
+q_names <- paste(rep(cell_lbl, each = nq), 1:nq, sep = "|")
+r_names <- paste(rep(cell_lbl, each = nr), 0:3, sep = "|")
+dm_q_ord <- ci_o("qm", q_names) |> separate(item, c("cell", "quintile"), sep = "\\|", convert = TRUE) |>
+  mutate(cell = factor(cell, levels = cell_lbl))
+dm_r_ord <- ci_o("rm", r_names) |> separate(item, c("cell", "regime"), sep = "\\|", convert = TRUE) |>
+  mutate(cell = factor(cell, levels = cell_lbl))
+dm_ov_ord   <- ci_o("ov",   cell_lbl) |> rename(cell = item)
+dm_eg_q_ord <- ci_o("eg_q", cell_lbl) |> rename(cell = item)
+dm_eg_r_ord <- ci_o("eg_r", cell_lbl) |> rename(cell = item)
+```
+
+Pool coverage: `r ord_cov["n_cyi_ord"]` of `r ord_cov["n_cyi_all"]` CYIs carry a v15 `_ord` estimate.
+
+### Attitude and exaggeration gap vs the IRT score
+
+The **attitude** is the pooled signed deviation from V-Dem's ordinal estimate (Weidmann's quantity:
+positive = optimistic, negative = pessimistic). The **exaggeration gap** (Q5 − Q1) is the same tilt
+measure as above, now referenced to the IRT score.
+
+```{r fig-summary-ord}
+#| fig-height: 3.6
+band <- tibble(xmin = -sesoi, xmax = sesoi)
+sum_ord <- bind_rows(
+  dm_ov_ord   |> mutate(measure = "Attitude (pooled vs IRT)"),
+  dm_eg_q_ord |> mutate(measure = "Exaggeration gap (Q5 − Q1 vs IRT)")
+) |>
+  mutate(family  = factor(if_else(str_starts(cell, "FT"), "Fine-tuned", "Base"),
+                          levels = c("Base", "Fine-tuned")),
+         cell    = factor(cell, levels = rev(cell_lbl)),
+         measure = factor(measure, levels = c("Attitude (pooled vs IRT)",
+                                              "Exaggeration gap (Q5 − Q1 vs IRT)")))
+
+ggplot(sum_ord, aes(est, cell, color = family)) +
+  geom_rect(data = band, inherit.aes = FALSE,
+            aes(xmin = xmin, xmax = xmax, ymin = -Inf, ymax = Inf), fill = "grey85", alpha = 0.55) +
+  geom_vline(xintercept = 0, linetype = "dashed", color = "grey40") +
+  geom_errorbar(aes(xmin = lo, xmax = hi), orientation = "y", width = 0.2, linewidth = 0.7) +
+  geom_point(size = 2.6) +
+  facet_wrap(~ measure, scales = "free_x") +
+  scale_color_manual(values = family_pal, name = NULL) +
+  labs(x = "rating points · 0 = matches V-Dem IRT · grey band = ±SESOI", y = NULL,
+       title = "Signed deviation vs V-Dem IRT ordinal score (_ord, v15)",
+       subtitle = glue("attitude >0 = optimistic, <0 = pessimistic · gap = Q5−Q1 · ",
+                       "±SESOI = {round(sesoi,3)}")) +
+  theme_minimal(base_size = 11) +
+  theme(legend.position = "top", legend.justification = "left",
+        panel.grid.major.y = element_blank(), plot.title.position = "plot",
+        plot.title = element_text(face = "bold"))
+```
+
+### Signed deviation vs IRT — regime cut (the Weidmann view)
+
+```{r fig-regime-ord}
+#| fig-height: 5.0
+band    <- tibble(ymin = -sesoi, ymax = sesoi)
+reg_lbl <- c("0\nClosed\nautoc", "1\nElectoral\nautoc", "2\nElectoral\ndem", "3\nLiberal\ndem")
+ggplot(dm_r_ord, aes(regime, est)) +
+  geom_rect(data = band, inherit.aes = FALSE,
+            aes(xmin = -Inf, xmax = Inf, ymin = ymin, ymax = ymax), fill = "grey85", alpha = 0.5) +
+  geom_hline(yintercept = 0, linetype = "dotted", linewidth = 0.4, color = "grey30") +
+  geom_line(color = "#E69F00", linewidth = 0.6) +
+  geom_pointrange(aes(ymin = lo, ymax = hi), color = "#E69F00", size = 0.3) +
+  facet_wrap(~ cell, nrow = 2) +
+  scale_x_continuous(breaks = 0:3, labels = reg_lbl) +
+  labs(x = "Regime of the World (v2x_regime)",
+       y = "mean signed deviation (AI − V-Dem IRT ord)",
+       title = "Signed deviation vs V-Dem IRT score, by regime — the calibration view",
+       subtitle = "dotted 0 = V-Dem IRT ordinal target · band = ±SESOI · above 0 = optimistic, below = pessimistic") +
+  theme_minimal(base_size = 11) +
+  theme(legend.position = "none", panel.grid.minor = element_blank())
+```
+
+### Signed deviation vs IRT — democracy quintile cut
+
+```{r fig-quintile-ord}
+#| fig-height: 5.0
+ggplot(dm_q_ord, aes(quintile, est)) +
+  geom_rect(data = band, inherit.aes = FALSE,
+            aes(xmin = -Inf, xmax = Inf, ymin = ymin, ymax = ymax), fill = "grey85", alpha = 0.5) +
+  geom_hline(yintercept = 0, linetype = "dotted", linewidth = 0.4, color = "grey30") +
+  geom_line(color = "#0072B2", linewidth = 0.6) +
+  geom_pointrange(aes(ymin = lo, ymax = hi), color = "#0072B2", size = 0.3) +
+  facet_wrap(~ cell, nrow = 2) +
+  scale_x_continuous(breaks = 1:5) +
+  labs(x = "democracy quintile (1 = most autocratic → 5 = most democratic)",
+       y = "mean signed deviation (AI − V-Dem IRT ord)",
+       title = "Signed deviation vs V-Dem IRT score, by democracy quintile",
+       subtitle = "dotted 0 = V-Dem IRT ordinal target · band = ±SESOI · upward = optimistic tilt toward the democratic end") +
+  theme_minimal(base_size = 11) +
+  theme(legend.position = "none", panel.grid.minor = element_blank())
+```
+
+### Paired IRT-reference deltas (within-draw)
+
+Does fine-tuning on raw evidence shrink the base model's attitude? The contrasts center FT-raw:Ev
+against the base cells on the pooled attitude, and repeat the exaggeration-gap contrast on the IRT
+axis. Read the attitude deltas together with the summary table (a delta says FT-raw moved relative
+to the comparator, not whether either is well-calibrated in absolute terms).
+
+```{r paired-ord}
+dd <- function(M, a, b, label) {
+  d <- M[, a] - M[, b]; boot <- d[ido != "Apparent"]
+  tibble(Contrast = label, est = d[ido == "Apparent"],
+         lo = quantile(boot, 0.025), hi = quantile(boot, 0.975), p_gt = mean(boot > 0))
+}
+bind_rows(
+  dd(ov_ord_draws,   "FT-raw:Ev", "Base:Ev", "attitude: FT-raw − Base:Ev"),
+  dd(ov_ord_draws,   "FT-raw:Ev", "Base:Cb", "attitude: FT-raw − Base:Cb"),
+  dd(eg_q_ord_draws, "FT-raw:Ev", "Base:Ev", "gap: FT-raw − Base:Ev")
+) |>
+  transmute(Contrast, Δ = est, `95% CI` = glue("[{round(lo, 3)}, {round(hi, 3)}]"),
+            `P(Δ>0)` = p_gt, `CI excl. 0` = if_else(lo > 0 | hi < 0, "yes", "no")) |>
+  gt() |>
+  tab_header(title = "Paired IRT-reference deltas (within-draw)",
+             subtitle = "Δ = FT-raw minus comparator · read attitude rows with the summary table") |>
+  fmt_number(columns = c(Δ, `P(Δ>0)`), decimals = 3)
+```
+
 ### Reading (prototype)
 
 The paper-facing narrative lives in the exploratory deliverable; this is the working readout. Three
@@ -470,6 +649,11 @@ saveRDS(
        # per-draw matrices [draw x cell] — analog of 06/07's boot_results, for paired deltas
        eg_q_draws = eg_q_draws, eg_r_draws = eg_r_draws,
        rn_gap_q_v = rn_gap_q_v, rn_gap_r_v = rn_gap_r_v, draw_id = draw_id,
+       # IRT-referenced (_ord, v15) parallel bundle — the Weidmann calibration view
+       dm_q_ord = dm_q_ord, dm_r_ord = dm_r_ord, dm_ov_ord = dm_ov_ord,
+       dm_eg_q_ord = dm_eg_q_ord, dm_eg_r_ord = dm_eg_r_ord,
+       eg_q_ord_draws = eg_q_ord_draws, eg_r_ord_draws = eg_r_ord_draws,
+       ov_ord_draws = ov_ord_draws, draw_id_ord = ido, ord_cov = ord_cov,
        # metadata
        cell_lbl = cell_lbl, sesoi = sesoi, n_boot = params$n_boot),
   file.path(derived_dir, "signeddev_2019.rds")

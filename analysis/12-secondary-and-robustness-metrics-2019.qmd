@@ -63,7 +63,7 @@ find_panel_member_root <- function() {
   stop("Could not locate the panel-member project root from working dir: ", getwd())
 }
 proj_root   <- find_panel_member_root()
-source(file.path(proj_root, "R", "bootstrap_helpers.R"))  # model_labels, col_labels, canon_col, country_boot_weights, ...
+source(file.path(proj_root, "helpers", "bootstrap_helpers.R"))  # model_labels, col_labels, canon_col, country_boot_weights, ...
 data_dir    <- file.path(proj_root, "data", "processed")
 runs_dir    <- file.path(proj_root, "data", "output", "runs")
 derived_dir <- file.path(proj_root, "data", "derived")

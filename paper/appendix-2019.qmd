@@ -26,7 +26,7 @@ library(gt)
 library(glue)
 
 proj_root <- rprojroot::find_root(rprojroot::is_git_root)
-source(file.path(proj_root, "R", "bootstrap_helpers.R"))
+source(file.path(proj_root, "helpers", "bootstrap_helpers.R"))
 list2env(readRDS(file.path(proj_root, "data", "derived", "bootstrap_2019.rds")),
          environment())
 

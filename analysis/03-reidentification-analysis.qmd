@@ -631,7 +631,7 @@ Guessed countries are resolved to ISO codes with `countrycode`. Raw re-identific
 used for both conditions (the four anonymized corrections in §2 shift these by well under a point).
 
 ```{r inregion}
-source(here("R", "region_map.R"))   # region_map9: 9-region ISO3 lookup (shared with the pairing)
+source(here("helpers", "region_map.R"))   # region_map9: 9-region ISO3 lookup (shared with the pairing)
 
 # Pull the country named on each ranked line ("1." / "2." / "3.").
 parse_guesses <- function(resp) {

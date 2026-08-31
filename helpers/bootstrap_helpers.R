@@ -37,8 +37,15 @@ col_labels <- c(
   "summarized" = "Su"
 )
 
-# Okabe–Ito (CVD-safe by construction) for the base-vs-FT distinction.
-family_pal <- c("Base" = "#0072B2", "Fine-tuned" = "#E69F00")
+# Paper palette — Okabe-Ito (CVD-safe by construction; validated with the dataviz
+# skill's checker). Two categorical dimensions, colors keyed to the ENTITY (never by
+# palette position, so a dropped/reordered series never repaints). The blue = the
+# plain/registered role (Base; greedy readout); the warm hue = the enhanced role.
+#   family_pal  — model identity (base-vs-FT figures + the human-coder reference)
+#   readout_pal — greedy (mode) vs expectation (mean); vermillion, kept distinct from
+#                 family orange so the two dimensions never look identical.
+family_pal  <- c("Base" = "#0072B2", "Fine-tuned" = "#E69F00", "Human coder" = "grey25")
+readout_pal <- c("Greedy (mode)" = "#0072B2", "Expectation (mean)" = "#D55E00")
 
 canon_col <- function(condition) sub("-zeroshot$", "", condition)
 

@@ -69,7 +69,7 @@ proj_root <- find_panel_member_root()
 # Shared vocabulary + paired-delta machinery (model_labels, family_pal, canon_col,
 # ft_diag, cell_series(), paired_delta()). Single source of truth for both this
 # compute doc and the paper deliverables.
-source(file.path(proj_root, "R", "bootstrap_helpers.R"))
+source(file.path(proj_root, "helpers", "bootstrap_helpers.R"))
 
 data_dir    <- file.path(proj_root, "data", "processed")
 runs_dir    <- file.path(proj_root, "data", "output", "runs")
