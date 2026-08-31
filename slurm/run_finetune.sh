@@ -33,7 +33,7 @@
 # 200G OOM-killed the summ run at step 679 (host RAM, not GPU — MaxRSS hit the
 # cgroup ceiling). The node has ~572GB actually available, so 400G gives real
 # headroom without touching eval batch size or the paged optimizer.
-#SBATCH --time=1-03:00:00
+#SBATCH --time=1-12:00:00
 #SBATCH --requeue
 #SBATCH --open-mode=append
 #SBATCH --output=logs/finetune_%j.out
