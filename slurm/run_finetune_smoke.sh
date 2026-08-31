@@ -84,12 +84,19 @@ with open(smoke_data) as f:
     messages = json.loads(f.readline())["messages"]
 
 ids = tokenizer.apply_chat_template(messages, tokenize=True, return_dict=False)
-bos_id = tokenizer.convert_tokens_to_ids("<|begin_of_text|>")
-n_bos = ids.count(bos_id)
+# Model-agnostic BOS check: use the tokenizer's own BOS id, not a hardcoded
+# Llama token. Llama's BOS is <|begin_of_text|>, Gemma's is <bos>, and Qwen has
+# no BOS at all (bos_token_id is None). The bug this guards against is a *double*
+# BOS (chat template + tokenizer both prepend one), which shows as n_bos >= 2.
+bos_id = tokenizer.bos_token_id
+n_bos = ids.count(bos_id) if bos_id is not None else 0
 completion_ids = tokenizer(messages[-1]["content"], add_special_tokens=False)["input_ids"]
-print(f"Templated length: {len(ids)} tokens | BOS count: {n_bos}")
+print(f"Templated length: {len(ids)} tokens | BOS id: {bos_id} | BOS count: {n_bos}")
 print(f"Completion: {messages[-1]['content']!r} -> {len(completion_ids)} tokens")
-assert n_bos == 1, f"FAIL: expected exactly 1 BOS token, found {n_bos}"
+if bos_id is not None:
+    assert n_bos == 1, f"FAIL: expected exactly 1 BOS token, found {n_bos}"
+else:
+    assert n_bos == 0, f"FAIL: model has no BOS but found {n_bos}"
 assert messages[-1]["role"] == "assistant", "FAIL: last message is not the assistant turn"
 print("Tokenization sanity: OK")
 PYEOF
