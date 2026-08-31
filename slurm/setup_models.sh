@@ -37,6 +37,16 @@ huggingface-cli download \
     --local-dir "$MODEL_DIR/llama-3.3-70b-instruct" \
     --token "$HF_TOKEN"
 
+# ── Qwen2.5 72B (exploratory extension) ────────────────────────────────────────
+# NOT gated: no access request, no license click-through, no token required
+# (unlike meta-llama). --token is passed only for rate-limit headroom and is
+# harmless if HF_TOKEN is unset. ~145 GB bfloat16.
+echo "Downloading Qwen2.5 72B..."
+huggingface-cli download \
+    Qwen/Qwen2.5-72B-Instruct \
+    --local-dir "$MODEL_DIR/qwen2.5-72b-instruct" \
+    ${HF_TOKEN:+--token "$HF_TOKEN"}
+
 # ── Llama 3.1 405B ─────────────────────────────────────────────────────────────
 # Comment out if not needed yet — 810GB is a large allocation.
 # echo "Downloading Llama 3.1 405B..."

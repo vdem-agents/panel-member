@@ -79,6 +79,41 @@ LLM_CONFIGS = {
         "api_key_env": "VLLM_API_KEY",
         "supports_logprobs": True,
     },
+
+    # ── Exploratory extension: Qwen2.5-72B (cross-family robustness) ─────────────
+    # Same block recipe as Llama (RMSNorm/RoPE/GQA/SwiGLU, same 7 LoRA projections),
+    # so finetune_llama.py and the LoRA target modules are reused unchanged. Qwen adds
+    # attention bias, but bias="none" leaves it frozen. Native system role. Verify
+    # single-token rating digits + token-length p99 with verify_tokenizer.py first.
+    "qwen-72b": {  # Together.xyz (dev / smoke)
+        "base_url": "https://api.together.xyz/v1",
+        "model": "Qwen/Qwen2.5-72B-Instruct-Turbo",
+        "api_key_env": "TOGETHER_API_KEY",
+    },
+    "qwen-72b-local": {  # GW Pegasus vLLM (production)
+        "base_url": _VLLM_URL,
+        "model": "Qwen/Qwen2.5-72B-Instruct",
+        "api_key_env": "VLLM_API_KEY",
+        "supports_logprobs": True,
+    },
+    "qwen-72b-ft-raw": {
+        "base_url": _VLLM_URL,
+        "model": "qwen-72b-vdem-ft-raw",
+        "api_key_env": "VLLM_API_KEY",
+        "supports_logprobs": True,
+    },
+    "qwen-72b-ft-anon": {
+        "base_url": _VLLM_URL,
+        "model": "qwen-72b-vdem-ft-anon",
+        "api_key_env": "VLLM_API_KEY",
+        "supports_logprobs": True,
+    },
+    "qwen-72b-ft-summ": {
+        "base_url": _VLLM_URL,
+        "model": "qwen-72b-vdem-ft-summ",
+        "api_key_env": "VLLM_API_KEY",
+        "supports_logprobs": True,
+    },
 }
 
 # Valid prompt conditions for the 4-condition primary experiment.
