@@ -29,10 +29,14 @@
 #
 #SBATCH --job-name=pm-verify-tok
 #SBATCH --partition=superChip
-#SBATCH --gres=gpu:gh200:1
 #SBATCH --cpus-per-task=8
 #SBATCH --mem=32G
 #SBATCH --time=00:30:00
+# NOTE: CPU-only — verify_tokenizer loads no model weights, so no --gres=gpu here.
+# Requesting a gh200 GPU would queue this behind the (saturated) H100 training jobs
+# for no reason. Still lands on a Grace/ARM node via the superChip partition, so the
+# ARM conda works. If this partition rejects a GPU-less job, re-add:
+#   #SBATCH --gres=gpu:gh200:1
 #SBATCH --output=logs/verify_tok_%j.out
 #SBATCH --error=logs/verify_tok_%j.err
 
