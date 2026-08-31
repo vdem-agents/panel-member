@@ -44,20 +44,27 @@ mkdir -p logs
 
 # ── Configuration ──────────────────────────────────────────────────────────────
 VARIANT=${VARIANT:-raw}
-MODEL_PATH=/scratch/ejtgrp/models/llama-3.3-70b-instruct
+BASE=${BASE:-llama}                 # llama (default, 70B) | qwen (2.5-72B)
+if [ "$BASE" = "qwen" ]; then
+    MODEL_PATH=/scratch/ejtgrp/models/qwen2.5-72b-instruct
+    ADAPTER_PREFIX=qwen-72b         # -> adapter name qwen-72b-vdem-ft-* (matches vdem_config)
+else
+    MODEL_PATH=/scratch/ejtgrp/models/llama-3.3-70b-instruct
+    ADAPTER_PREFIX=llama-70b
+fi
 # Batch size / grad-accum keep the effective batch at 16. Activation memory
 # scales with batch × seq: on the 95GB GH200, batch 8 OOMed instantly and
 # batch 2 hit 93.8GB and OOMed at step 2 (jobs 73469097, 73469098) at seq 8192,
 # so the 8192 variants run micro-batch 1.
 if [ "$VARIANT" = "raw" ]; then
     TRAIN_DATA=data/processed/finetune_train_raw_sub.jsonl
-    OUTPUT_DIR=data/output/adapters/llama-70b-vdem-ft-raw
+    OUTPUT_DIR=data/output/adapters/${ADAPTER_PREFIX}-vdem-ft-raw
     MAX_SEQ_LEN=8192   # p99=7,113 tokens; over-length cases dropped by subsampler
     BATCH_SIZE=1
     GRAD_ACCUM=16
 elif [ "$VARIANT" = "summ" ]; then
     TRAIN_DATA=data/processed/finetune_train_summ_sub.jsonl
-    OUTPUT_DIR=data/output/adapters/llama-70b-vdem-ft-summ
+    OUTPUT_DIR=data/output/adapters/${ADAPTER_PREFIX}-vdem-ft-summ
     MAX_SEQ_LEN=4096   # p99=1,943 tokens; over-length cases dropped by subsampler
     # Micro-batch 1, like the other variants. Batch 2 / grad-accum 8 ran ~2.75x
     # SLOWER per example (110s vs 40s/step, ~171h ETA > the 6-day wall limit):
@@ -67,7 +74,7 @@ elif [ "$VARIANT" = "summ" ]; then
     GRAD_ACCUM=16
 else
     TRAIN_DATA=data/processed/finetune_train_anon_sub.jsonl
-    OUTPUT_DIR=data/output/adapters/llama-70b-vdem-ft-anon
+    OUTPUT_DIR=data/output/adapters/${ADAPTER_PREFIX}-vdem-ft-anon
     MAX_SEQ_LEN=8192   # p99=5,909 tokens; over-length cases dropped by subsampler
     BATCH_SIZE=1
     GRAD_ACCUM=16
