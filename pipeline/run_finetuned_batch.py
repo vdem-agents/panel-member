@@ -69,10 +69,27 @@ from pipeline.vdem_config import LLM_CONFIGS, FT_CONDITIONS
 
 CONFIG_PATH = Path(__file__).parent.parent / "config" / "indicator_sections.yaml"
 
+# Adapter model keys, indexed by base model then *training variant* (raw/anon/summ).
+# The base extension (Qwen2.5-72B, Gemma 3 27B) reuses this runner unchanged — only
+# the key prefix changes. NB: variant is which text the adapter was trained on, NOT
+# the inference condition. Every adapter here runs under all four FT_CONDITIONS
+# (codebook + the three zeroshot) regardless of its training variant — conditions are
+# selected per run, not baked into the adapter. Llama has all three variants; the
+# Qwen and Gemma extensions are raw-only exploratory additions (still run under all
+# four conditions). To add a variant later, train it, add the *-ft-{anon,summ} key to
+# vdem_config.LLM_CONFIGS, and mirror it here.
 FT_MODEL_KEYS = {
-    "raw":  "llama-70b-ft-raw",
-    "anon": "llama-70b-ft-anon",
-    "summ": "llama-70b-ft-summ",
+    "llama": {
+        "raw":  "llama-70b-ft-raw",
+        "anon": "llama-70b-ft-anon",
+        "summ": "llama-70b-ft-summ",
+    },
+    "qwen": {
+        "raw":  "qwen-72b-ft-raw",
+    },
+    "gemma": {
+        "raw":  "gemma-27b-ft-raw",
+    },
 }
 
 
@@ -82,6 +99,11 @@ def main() -> None:
 
     parser = argparse.ArgumentParser(
         description="Fine-tuned Llama 70B batch runner (FT-raw, FT-anon, or FT-summ)"
+    )
+    parser.add_argument(
+        "--base-model", choices=["llama", "qwen", "gemma"], default="llama",
+        help="Base model whose adapter to run (default: llama). qwen=Qwen2.5-72B, "
+             "gemma=Gemma 3 27B (raw only).",
     )
     parser.add_argument(
         "--variant", choices=["raw", "anon", "summ"], required=True,
@@ -116,7 +138,13 @@ def main() -> None:
     )
     args = parser.parse_args()
 
-    model_key = FT_MODEL_KEYS[args.variant]
+    base_keys = FT_MODEL_KEYS[args.base_model]
+    if args.variant not in base_keys:
+        raise KeyError(
+            f"base-model {args.base_model!r} has no {args.variant!r} adapter "
+            f"(available: {sorted(base_keys)})."
+        )
+    model_key = base_keys[args.variant]
     if model_key not in LLM_CONFIGS:
         raise KeyError(
             f"{model_key!r} not found in vdem_config.LLM_CONFIGS. "
@@ -126,9 +154,12 @@ def main() -> None:
     output_dir = Path(args.output_dir)
     ts = datetime.now().strftime("%Y%m%d_%H%M")
     fh_tag = "_fhonly" if args.fh_only else ""   # keep FH-only runs distinct from full-source
+    # Tag non-Llama output so it can't collide with the frozen Llama ft_ files;
+    # Llama stays bare for backward compatibility with existing analysis inputs.
+    base_tag = "" if args.base_model == "llama" else f"{args.base_model}_"
 
     for condition in args.conditions:
-        output_path = output_dir / f"ft_{args.variant}_{condition}_{args.year}{fh_tag}_{ts}.jsonl"
+        output_path = output_dir / f"ft_{base_tag}{args.variant}_{condition}_{args.year}{fh_tag}_{ts}.jsonl"
         print(f"\n{'=' * 60}")
         print(f"Variant: FT-{args.variant} | Condition: {condition} | Year: {args.year}")
         print(f"Model key: {model_key} | Output: {output_path}")

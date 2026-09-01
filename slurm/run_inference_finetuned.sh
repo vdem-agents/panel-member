@@ -1,21 +1,27 @@
 #!/bin/bash
-# SLURM job: inference with a fine-tuned Llama 70B adapter.
+# SLURM job: inference with a fine-tuned adapter (Llama 70B / Qwen 72B / Gemma 27B).
 #
 # Starts vLLM with the LoRA adapter loaded via --lora-modules, runs the batch,
 # then shuts vLLM down. The adapter name must match the model name in vdem_config.py.
 #
-# The base model weights (~140GB) must be on scratch before submitting (run
-# setup_models.sh). The adapter (~800MB) is read directly from the home-directory
-# archive (~/panel-member-archive/adapters/) written by run_finetune.sh — home
-# isn't purged like scratch, so there's no reason to stage a scratch copy too.
+# The base model weights (~140GB Llama/Qwen, ~55GB Gemma) must be on scratch before
+# submitting (run setup_models.sh / run_download_model.sh). The adapter (~800MB) is
+# read directly from the home-directory archive (~/panel-member-archive/adapters/)
+# written by run_finetune.sh — home isn't purged like scratch, so there's no reason
+# to stage a scratch copy too.
 #
-# Submit:
-#   VARIANT=raw  sbatch slurm/run_inference_finetuned.sh
-#   VARIANT=anon sbatch slurm/run_inference_finetuned.sh
-#   VARIANT=summ sbatch slurm/run_inference_finetuned.sh
+# BASE selects the base model (default llama). Submit:
+#              VARIANT=raw  sbatch slurm/run_inference_finetuned.sh   # Llama 70B
+#   BASE=qwen  VARIANT=raw  sbatch slurm/run_inference_finetuned.sh   # Qwen 72B
+#   BASE=gemma VARIANT=raw  sbatch slurm/run_inference_finetuned.sh   # Gemma 27B (raw only)
+#
+# To chain inference right after a still-running training job (holds queue position
+# and waits for the adapter to be archived before starting):
+#   BASE=qwen VARIANT=raw sbatch --dependency=afterok:<train_jobid> slurm/run_inference_finetuned.sh
 #
 # CONDITIONS defaults to all four FT conditions (codebook evidence-zeroshot
-# anonymized-zeroshot summarized-zeroshot); override to run a subset, e.g.:
+# anonymized-zeroshot summarized-zeroshot), run in a single vLLM startup; override
+# to run a subset, e.g.:
 #   VARIANT=raw CONDITIONS=codebook sbatch slurm/run_inference_finetuned.sh
 #
 # OUTPUT_DIR overrides where JSONL is written AND its archive subdir (default
@@ -40,10 +46,31 @@ mkdir -p logs
 # ── Configuration ──────────────────────────────────────────────────────────────
 YEAR=${YEAR:-2019}
 VARIANT=${VARIANT:-anon}    # raw | anon | summ
+BASE=${BASE:-llama}        # llama (default, 70B) | qwen (2.5-72B) | gemma (3-27B)
 CONDITIONS=${CONDITIONS:-"codebook evidence-zeroshot anonymized-zeroshot summarized-zeroshot"}
-MODEL_PATH=/scratch/ejtgrp/models/llama-3.3-70b-instruct
-ADAPTER_NAME=llama-70b-vdem-ft-${VARIANT}    # must match vdem_config.py
+# MODEL_PATH: base weights on scratch. SERVED_NAME: base alias vLLM advertises (must
+# match the *-local key's "model" in vdem_config). ADAPTER_PREFIX -> adapter name,
+# which must match the ft key's "model" in vdem_config and the run_finetune.sh archive.
+case "$BASE" in
+    qwen)
+        MODEL_PATH=/scratch/ejtgrp/models/qwen2.5-72b-instruct
+        SERVED_NAME=Qwen/Qwen2.5-72B-Instruct
+        ADAPTER_PREFIX=qwen-72b ;;
+    gemma)
+        MODEL_PATH=/scratch/ejtgrp/models/gemma-3-27b-it
+        SERVED_NAME=google/gemma-3-27b-it
+        ADAPTER_PREFIX=gemma-27b ;;
+    *)
+        MODEL_PATH=/scratch/ejtgrp/models/llama-3.3-70b-instruct
+        SERVED_NAME=meta-llama/Llama-3.3-70B-Instruct
+        ADAPTER_PREFIX=llama-70b ;;
+esac
+ADAPTER_NAME=${ADAPTER_PREFIX}-vdem-ft-${VARIANT}    # must match vdem_config.py
 ADAPTER_PATH=$HOME/panel-member-archive/adapters/${ADAPTER_NAME}
+if [ ! -d "$ADAPTER_PATH" ]; then
+    echo "ERROR: adapter not found at $ADAPTER_PATH — has the ${BASE} ${VARIANT} training job archived yet?" >&2
+    exit 1
+fi
 VLLM_PORT=8000
 OUTPUT_DIR=${OUTPUT_DIR:-data/output/runs}
 # FH_ONLY=1 restricts sources to Freedom House (R3 2024 holdout + 2023 companion). The
@@ -86,7 +113,7 @@ VLLM_PYTHON=~/miniforge3/envs/vllm/bin/python
 export PATH="$HOME/miniforge3/envs/vllm/bin:$PATH"
 "$VLLM_PYTHON" -m vllm.entrypoints.openai.api_server \
     --model "$MODEL_PATH" \
-    --served-model-name meta-llama/Llama-3.3-70B-Instruct \
+    --served-model-name "$SERVED_NAME" \
     --enable-lora \
     --lora-modules "${ADAPTER_NAME}=${ADAPTER_PATH}" \
     --dtype bfloat16 \
@@ -107,6 +134,7 @@ echo "vLLM ready (pid $VLLM_PID)"
 # ── Run inference batch ────────────────────────────────────────────────────────
 ulimit -n 65536
 python3 -m pipeline.run_finetuned_batch \
+    --base-model "$BASE" \
     --year       "$YEAR" \
     --variant    "$VARIANT" \
     --conditions $CONDITIONS \
@@ -120,7 +148,10 @@ kill "$VLLM_PID" && wait "$VLLM_PID" 2>/dev/null || true
 # ── Archive output to home (scratch purged after 30 days) ─────────────────────
 ARCHIVE_DIR="$HOME/panel-member-archive/$(basename "$OUTPUT_DIR")"
 mkdir -p "$ARCHIVE_DIR"
-rsync -av "${OUTPUT_DIR}"/ft_${VARIANT}_*_${YEAR}_*.jsonl "$ARCHIVE_DIR/"
-echo "Archived ft-${VARIANT} ${YEAR} runs to $ARCHIVE_DIR/"
+# Non-Llama runs carry a base tag in the filename (ft_qwen_raw_..., ft_gemma_raw_...);
+# Llama stays bare (ft_raw_...). Match both.
+BASE_TAG=""; [ "$BASE" != "llama" ] && BASE_TAG="${BASE}_"
+rsync -av "${OUTPUT_DIR}"/ft_${BASE_TAG}${VARIANT}_*_${YEAR}_*.jsonl "$ARCHIVE_DIR/"
+echo "Archived ft-${BASE}-${VARIANT} ${YEAR} runs to $ARCHIVE_DIR/"
 echo "Pull locally: rsync -avz <user>@pegasus.arc.gwu.edu:~/panel-member-archive/ data/output/"
 echo "Done."

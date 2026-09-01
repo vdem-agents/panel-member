@@ -96,21 +96,10 @@ LLM_CONFIGS = {
         "api_key_env": "VLLM_API_KEY",
         "supports_logprobs": True,
     },
+    # Raw-only exploratory extension (no anon/summ adapters planned), like Gemma below.
     "qwen-72b-ft-raw": {
         "base_url": _VLLM_URL,
         "model": "qwen-72b-vdem-ft-raw",
-        "api_key_env": "VLLM_API_KEY",
-        "supports_logprobs": True,
-    },
-    "qwen-72b-ft-anon": {
-        "base_url": _VLLM_URL,
-        "model": "qwen-72b-vdem-ft-anon",
-        "api_key_env": "VLLM_API_KEY",
-        "supports_logprobs": True,
-    },
-    "qwen-72b-ft-summ": {
-        "base_url": _VLLM_URL,
-        "model": "qwen-72b-vdem-ft-summ",
         "api_key_env": "VLLM_API_KEY",
         "supports_logprobs": True,
     },
