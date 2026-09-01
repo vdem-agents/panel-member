@@ -36,7 +36,11 @@
 #SBATCH --mem=400G
 # See slurm/run_coding_llama70b.sh for the 200G->400G rationale (page-cache thrashing
 # under --safetensors-load-strategy prefetch); same base model load, same fix applies.
-#SBATCH --time=20:00:00
+# 24h: the four-condition sweep is dominated by long-context prefill — evidence
+# (raw) ~2,057 tok/rec and anonymized ~1,900 tok/rec are ~6x the codebook load
+# (~343 tok/rec) over ~34k records each. Codebook alone is ~a couple hours; the two
+# long conditions are the bulk. Right-size from sacct once a full run completes.
+#SBATCH --time=24:00:00
 #SBATCH --output=logs/ft_infer_%j.out
 #SBATCH --error=logs/ft_infer_%j.err
 
