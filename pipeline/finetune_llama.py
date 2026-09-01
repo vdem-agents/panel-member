@@ -244,16 +244,21 @@ def main() -> None:
         bnb_4bit_compute_dtype=torch.bfloat16,
         bnb_4bit_use_double_quant=True,
     )
-    # Gemma 3 ships as a multimodal checkpoint (Gemma3ForConditionalGeneration, with a
-    # vision tower + a `text_config`). For text-only QLoRA we load just the language
-    # tower via Gemma3ForCausalLM; every other model (Llama, Qwen) loads through
-    # AutoModelForCausalLM unchanged. The LoRA target modules (q/k/v/o/gate/up/down)
-    # are identical either way.
+    # Gemma 3 27B ships ONLY as a multimodal checkpoint: weights are namespaced under
+    # `language_model.*` (text tower) and `vision_tower.*` (SigLIP), and there is no
+    # text-only 27B repo. It must be loaded with Gemma3ForConditionalGeneration so those
+    # prefixed names map — loading the flat-named text-only Gemma3ForCausalLM silently
+    # randomly-initializes the whole model (every `model.layers.*` key MISSING) and then
+    # OOMs at 95GB because the random weights never take the 4-bit path. The vision tower
+    # loads too but is never called (text-only inputs, pixel_values=None); in 4-bit it
+    # costs <1GB. Llama and Qwen load through AutoModelForCausalLM unchanged.
     cfg = AutoConfig.from_pretrained(model_path)
-    if getattr(cfg, "model_type", "") == "gemma3" and hasattr(cfg, "text_config"):
-        from transformers import Gemma3ForCausalLM
-        model_cls = Gemma3ForCausalLM
-        print("Detected Gemma 3 multimodal config — loading text-only Gemma3ForCausalLM")
+    is_gemma3 = getattr(cfg, "model_type", "") == "gemma3" and hasattr(cfg, "text_config")
+    if is_gemma3:
+        from transformers import Gemma3ForConditionalGeneration
+        model_cls = Gemma3ForConditionalGeneration
+        print("Detected Gemma 3 multimodal checkpoint — loading Gemma3ForConditionalGeneration "
+              "(fine-tuning the text tower; vision tower loaded but unused)")
     else:
         model_cls = AutoModelForCausalLM
 
@@ -266,17 +271,37 @@ def main() -> None:
         attn_implementation="sdpa",
     )
     # No KV cache during training (incompatible with gradient checkpointing);
-    # pin it rather than rely on transformers disabling it
+    # pin it rather than rely on transformers disabling it. On the Gemma multimodal
+    # wrapper use_cache lives on the nested text_config, so set both.
     model.config.use_cache = False
+    if is_gemma3 and hasattr(model.config, "text_config"):
+        model.config.text_config.use_cache = False
     model = prepare_model_for_kbit_training(model)
 
     # ── LoRA ───────────────────────────────────────────────────────────────────
+    # For Gemma, scope the adapter to the language tower: the vision tower reuses
+    # q_proj/k_proj/v_proj module names, so a bare suffix list would attach dead
+    # adapters to SigLIP (never trained, and a downstream vLLM LoRA load hazard).
+    # Enumerate the exact Linear names under language_model instead.
+    if is_gemma3:
+        target_modules = sorted({
+            name for name, _ in model.named_modules()
+            if "language_model" in name and name.split(".")[-1] in LORA_TARGET_MODULES
+        })
+        if not target_modules:
+            raise RuntimeError(
+                "Gemma: no language_model projection modules matched — check the "
+                "checkpoint's module naming (expected language_model.*.{q,k,v,o,gate,up,down}_proj)."
+            )
+        print(f"Gemma LoRA scoped to {len(target_modules)} language-tower projections")
+    else:
+        target_modules = LORA_TARGET_MODULES
     lora_config = LoraConfig(
         task_type=TaskType.CAUSAL_LM,
         r=args.lora_rank,
         lora_alpha=args.lora_alpha,
         lora_dropout=args.lora_dropout,
-        target_modules=LORA_TARGET_MODULES,
+        target_modules=target_modules,
         bias="none",
     )
     model = get_peft_model(model, lora_config)
