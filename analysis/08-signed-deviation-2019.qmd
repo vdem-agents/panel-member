@@ -612,6 +612,71 @@ bind_rows(
   fmt_number(columns = c(Δ, `P(Δ>0)`), decimals = 3)
 ```
 
+## 2×2 mechanism decomposition — weights vs evidence (IRT reference)
+
+The same decomposition as 07, on the directional axis. Does calibration to V-Dem (attitude near 0,
+flat exaggeration gap) come from the fine-tuned weights, from evidence in the prompt, or both? Three
+cells already live in the IRT draws; the missing FT-raw:Codebook cell is computed here on the same
+seed-42 draws. Within each cell group = the effect of evidence; across models = the effect of
+fine-tuning.
+
+```{r mechanism-2x2-ord}
+#| fig-height: 3.6
+ftcb8 <- ai_metrics |> filter(cell == "llama-70b-ft-raw|codebook", !is.na(s_ord), !is.na(qi)) |>
+  mutate(cyi = cyi_pool$cyi[match(paste(country_text_id, indicator), cyi_pool$k)]) |>
+  filter(!is.na(cyi))
+Wm  <- country_boot_weights(cyi_pool$country_text_id, params$n_boot, seed = 42)
+qmean <- function(w, x, g, len) {
+  n <- numeric(len); tn <- rowsum(w * x, g, reorder = FALSE); n[as.integer(rownames(tn))] <- tn
+  d <- numeric(len); td <- rowsum(w,     g, reorder = FALSE); d[as.integer(rownames(td))] <- td
+  n / d
+}
+res_ftcb <- vapply(colnames(Wm), function(dr) {
+  w  <- unname(Wm[, dr][cyi_pool$country_text_id])[ftcb8$cyi]
+  qm <- qmean(w, ftcb8$s_ord, ftcb8$qi, nq)
+  c(att = sum(w * ftcb8$s_ord) / sum(w), gap = qm[nq] - qm[1])
+}, numeric(2))
+
+apM <- which(colnames(Wm) == "Apparent"); brM <- setdiff(seq_len(ncol(res_ftcb)), apM)
+build <- function(existing, ftcb_vec, measure) {
+  M <- cbind(existing[, c("Base:Cb", "Base:Ev", "FT-raw:Ev")], `FT-raw:Cb` = ftcb_vec)
+  tibble(cell = colnames(M), measure = measure, est = M[apM, ],
+         lo = apply(M[brM, , drop = FALSE], 2, quantile, 0.025),
+         hi = apply(M[brM, , drop = FALSE], 2, quantile, 0.975))
+}
+mech_ord <- bind_rows(
+  build(ov_ord_draws,   res_ftcb["att", ], "Attitude (pooled vs IRT)"),
+  build(eg_q_ord_draws, res_ftcb["gap", ], "Exaggeration gap (vs IRT)")
+) |>
+  mutate(model   = factor(if_else(str_starts(cell, "FT"), "Fine-tuned", "Base"),
+                          levels = c("Base", "Fine-tuned")),
+         cell    = factor(cell, levels = rev(c("Base:Cb", "Base:Ev", "FT-raw:Cb", "FT-raw:Ev"))),
+         measure = factor(measure, levels = c("Attitude (pooled vs IRT)", "Exaggeration gap (vs IRT)")))
+
+band <- tibble(xmin = -sesoi, xmax = sesoi)
+ggplot(mech_ord, aes(est, cell, color = model)) +
+  geom_rect(data = band, inherit.aes = FALSE,
+            aes(xmin = xmin, xmax = xmax, ymin = -Inf, ymax = Inf), fill = "grey85", alpha = 0.55) +
+  geom_vline(xintercept = 0, linetype = "dashed", color = "grey40") +
+  geom_errorbar(aes(xmin = lo, xmax = hi), orientation = "y", width = 0.2, linewidth = 0.7) +
+  geom_point(size = 2.8) +
+  facet_wrap(~ measure, scales = "free_x") +
+  scale_color_manual(values = family_pal, name = NULL) +
+  labs(x = "rating points · 0 = matches V-Dem IRT · grey band = ±SESOI", y = NULL,
+       title = "2×2 mechanism — does IRT calibration come from weights, evidence, or both?",
+       subtitle = "each Cb/Ev pair = effect of evidence · Base vs FT = effect of fine-tuning") +
+  theme_minimal(base_size = 11) +
+  theme(legend.position = "top", legend.justification = "left",
+        panel.grid.major.y = element_blank(), plot.title.position = "plot",
+        plot.title = element_text(face = "bold"))
+```
+
+```{r print-2x2-ord}
+mech_ord |> transmute(Measure = measure, Cell = cell, est = round(est, 3),
+                      `95% CI` = glue("[{round(lo,3)}, {round(hi,3)}]")) |>
+  arrange(Measure, Cell) |> gt()
+```
+
 ### Reading (prototype)
 
 The paper-facing narrative lives in the exploratory deliverable; this is the working readout. Three
@@ -654,6 +719,7 @@ saveRDS(
        dm_eg_q_ord = dm_eg_q_ord, dm_eg_r_ord = dm_eg_r_ord,
        eg_q_ord_draws = eg_q_ord_draws, eg_r_ord_draws = eg_r_ord_draws,
        ov_ord_draws = ov_ord_draws, draw_id_ord = ido, ord_cov = ord_cov,
+       mech_ord = mech_ord,   # 2x2 (Base/FT-raw x Codebook/Evidence) attitude + gap vs IRT
        # metadata
        cell_lbl = cell_lbl, sesoi = sesoi, n_boot = params$n_boot),
   file.path(derived_dir, "signeddev_2019.rds")
