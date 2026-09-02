@@ -96,6 +96,104 @@ fig_readout_landscape <- function(exp_bundle, greedy_bundle,
           panel.grid.major.y = element_blank(), plot.title.position = "plot")
 }
 
+# Fig 1 (cross-family) — synthetic-coder MAE across three model families, both readouts on one
+# axis. Rows = 8: the base few-shot ladder (Cb/Ev/An/Su) on top, the FT-raw ladder (raw-text
+# adapter under the same four conditions) on the bottom. Color = model family (model_pal);
+# shape = readout (open ○ greedy, filled ● mean). Models are dodged within each condition row so
+# their CIs share one x-axis and overlap is read directly — the design point of this figure.
+# Qwen/Gemma are raw-only, so the FT block is FT-raw for all three families (no anon/summ
+# adapters here; those stay in the Llama-only A2 grid). Rails and ±SESOI band as in
+# fig_readout_landscape.
+#
+#   exp_bundle    <- readRDS("data/derived/expectation_2019.rds")  # greedy_ci_rerun + exp_ci
+#   greedy_bundle <- readRDS("data/derived/bootstrap_2019.rds")    # rails: human/persist
+#
+# NB: requires the bundles to carry qwen-72b / gemma-27b (base) and qwen-72b-ft-raw /
+# gemma-27b-ft-raw cells. Until analysis/06 + 13 ingest those runs the function renders the
+# Llama rows only (the filters simply return fewer models) — no error, just a partial figure.
+# Call once per year (pass the 2019 bundles for the main figure, the 2023 bundles for the
+# appendix replication).
+fig_crossmodel_landscape <- function(exp_bundle, greedy_bundle,
+                                     band = c("human_loo", "none")) {
+  band        <- match.arg(band)
+  sesoi       <- exp_bundle$sesoi
+  human_mae   <- greedy_bundle$human_ref$human_mae
+  persist_mae <- greedy_bundle$persist_ref$persist_mae
+
+  base_models <- c("llama-70b", "qwen-72b", "gemma-27b")
+  ft_models   <- c("llama-70b-ft-raw", "qwen-72b-ft-raw", "gemma-27b-ft-raw")
+  base_conds  <- c("codebook", "evidence", "anonymized", "summarized")
+  ft_conds    <- c("codebook", "evidence-zeroshot", "anonymized-zeroshot", "summarized-zeroshot")
+  cond_disp   <- c(codebook = "Codebook", evidence = "Raw Text",
+                   anonymized = "Anonymized", summarized = "Summarized")
+
+  # bottom-to-top: FT block below, base block on top (matches fig_readout_landscape's idiom)
+  row_lv <- c("FT · Summarized", "FT · Anonymized", "FT · Raw Text", "FT · Codebook",
+              "Summarized", "Anonymized", "Raw Text", "Codebook")
+
+  family_of <- function(mk) dplyr::case_when(
+    grepl("^llama", mk) ~ "Llama 70B",
+    grepl("^qwen",  mk) ~ "Qwen 72B",
+    grepl("^gemma", mk) ~ "Gemma 27B",
+    TRUE ~ NA_character_)
+
+  # base ladder + FT-raw ladder for one readout's per-cell CI table
+  pick <- function(ci, readout) {
+    base <- ci |>
+      dplyr::filter(model_key %in% base_models, condition %in% base_conds) |>
+      dplyr::mutate(row = unname(cond_disp[condition]))
+    ft <- ci |>
+      dplyr::filter(model_key %in% ft_models, condition %in% ft_conds) |>
+      dplyr::mutate(row = paste("FT ·", unname(cond_disp[canon_col(condition)])))
+    dplyr::bind_rows(base, ft) |> dplyr::mutate(readout = readout)
+  }
+
+  cells <- dplyr::bind_rows(
+    pick(exp_bundle$greedy_ci_rerun, "Greedy (mode)"),
+    pick(exp_bundle$exp_ci,          "Expectation (mean)")
+  ) |>
+    dplyr::mutate(
+      model   = factor(family_of(model_key), levels = names(model_pal)),
+      row     = factor(row, levels = row_lv),
+      readout = factor(readout, levels = c("Greedy (mode)", "Expectation (mean)"))
+    )
+
+  n_row <- length(row_lv)
+  ycap  <- n_row + 0.3
+  # dodge by MODEL (group = model), so each model's two readout points share a sub-row and
+  # separate only in x. Default grouping would be model×shape (6 slots) — force 3.
+  dodge <- position_dodge(width = 0.6)
+
+  p <- ggplot(cells, aes(ai_mae, row, color = model, shape = readout, group = model))
+  if (band == "human_loo") {
+    p <- p +
+      annotate("rect", xmin = human_mae - sesoi, xmax = human_mae + sesoi,
+               ymin = -Inf, ymax = ycap, fill = "grey85", alpha = 0.55) +
+      annotate("text", x = human_mae, y = ycap + 0.25, label = "±SESOI of human reference",
+               color = "grey40", size = 2.9, hjust = 0.5)
+  }
+  p +
+    annotate("segment", x = persist_mae, xend = persist_mae, y = -Inf, yend = ycap,
+             linetype = "dashed", color = "grey40") +
+    annotate("segment", x = human_mae, xend = human_mae, y = -Inf, yend = ycap,
+             linetype = "longdash", color = "grey40") +
+    annotate("text", x = persist_mae, y = n_row - 0.2, label = "Naive model",
+             color = "grey40", size = 2.9, hjust = -0.07) +
+    # separator between the base block (top 4) and the FT block (bottom 4)
+    geom_hline(yintercept = 4.5, color = "grey85", linewidth = 0.4) +
+    geom_errorbar(aes(xmin = ai_lo, xmax = ai_hi), orientation = "y",
+                  width = 0.2, linewidth = 0.5, alpha = 0.7, position = dodge) +
+    geom_point(size = 2.3, stroke = 0.9, position = dodge) +
+    scale_color_manual(values = model_pal, name = NULL) +
+    scale_shape_manual(values = c("Greedy (mode)" = 1, "Expectation (mean)" = 16), name = NULL) +
+    scale_y_discrete() +   # let numeric rail/label y-positions coexist with the factor rows
+    coord_cartesian(clip = "off") +
+    labs(x = "AI Mean Absolute Error", y = NULL) +
+    theme_minimal(base_size = 12) +
+    theme(legend.position = "top", legend.justification = "left", legend.box = "horizontal",
+          panel.grid.major.y = element_blank(), plot.title.position = "plot")
+}
+
 # Fig A2 — full 4×4 readout grid: every model on every input, the off-diagonal
 # expansion of Figure 1. Same greedy-vs-expectation grammar, faceted by model, with
 # each fine-tuned model's own training input (the diagonal cell) ringed. Exploratory:

@@ -47,6 +47,12 @@ col_labels <- c(
 family_pal  <- c("Base" = "#0072B2", "Fine-tuned" = "#E69F00", "Human coder" = "grey25")
 readout_pal <- c("Greedy (mode)" = "#0072B2", "Expectation (mean)" = "#D55E00")
 
+# model_pal — model-FAMILY identity for the cross-family Fig 1 (Llama/Qwen/Gemma). Okabe-Ito,
+# keyed to entity; validated with the dataviz checker (worst-pair CVD ΔE 11.4, both modes). In
+# that figure color encodes MODEL only — base-vs-FT is the row block and greedy-vs-mean is the
+# point shape — so the blue/orange reuse from family_pal/readout_pal never collides within it.
+model_pal <- c("Llama 70B" = "#0072B2", "Qwen 72B" = "#E69F00", "Gemma 27B" = "#009E73")
+
 canon_col <- function(condition) sub("-zeroshot$", "", condition)
 
 # The fine-tuned diagonal (each FT model on the input it was built for), shared by every figure.
