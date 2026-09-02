@@ -1,26 +1,32 @@
 #!/bin/bash
-# SLURM job: base-model coding for one year across ALL FOUR primary conditions
-# (codebook, evidence, anonymized, summarized) on a single GH200.
+# SLURM job: base-model coding for ONE condition of ONE year on a single GH200.
 #
-# Generalizes run_coding_llama70b.sh across model families via a BASE selector, and
-# — like run_inference_finetuned.sh — spins vLLM up ONCE and loops the conditions,
-# so a single ~140GB (Llama/Qwen) / ~55GB (Gemma) model load covers all four. This
-# is the base-model companion to the FT wrapper: no adapter, no --lora-modules; the
-# few-shot calibration block lives in the prompt (primary conditions), not the weights.
+# Generalizes run_coding_llama70b.sh across model families via a BASE selector. Unlike the
+# FT wrapper (run_inference_finetuned.sh), which chains all four conditions in one vLLM
+# startup, this runs ONE CONDITION PER JOB — deliberately. The base conditions carry the
+# few-shot calibration block, so each prompt is ~5x longer than the FT zeroshot prompts and
+# the leave-one-out few-shot block can't be prefix-cached; a long condition (evidence /
+# anonymized) takes ~15-17h for a 72B model. Chaining all four would overflow any wall-clock,
+# so we split them and let them run in parallel across nodes instead.
 #
-# BASE selects the base model (default llama). Submit:
-#              YEAR=2019 sbatch slurm/run_coding_base.sh   # Llama 70B, all 4 conditions
-#   BASE=qwen  YEAR=2019 sbatch slurm/run_coding_base.sh   # Qwen 72B
-#   BASE=gemma YEAR=2023 sbatch slurm/run_coding_base.sh   # Gemma 27B
+# BASE selects the base model (default llama). CONDITION selects which one (default evidence).
+# Submit ONE per condition; the long conditions use the liberal default wall-clock, the fast
+# ones (codebook, summarized) lower it via --time so they backfill into shorter gaps:
 #
-# CONDITIONS defaults to the four PRIMARY (few-shot) conditions, to match the Base
-# block of the model×input figure. Override to run a subset, e.g.:
-#   BASE=qwen YEAR=2019 CONDITIONS=codebook sbatch slurm/run_coding_base.sh
+#   BASE=qwen YEAR=2019 CONDITION=codebook   sbatch --time=04:00:00 slurm/run_coding_base.sh
+#   BASE=qwen YEAR=2019 CONDITION=evidence   sbatch                 slurm/run_coding_base.sh
+#   BASE=qwen YEAR=2019 CONDITION=anonymized sbatch                 slurm/run_coding_base.sh
+#   BASE=qwen YEAR=2019 CONDITION=summarized sbatch --time=12:00:00 slurm/run_coding_base.sh
+#
+# The four PRIMARY (few-shot) conditions {codebook, evidence, anonymized, summarized} match
+# the Base block of the model×input figure. run_coding_batch checkpoints per record, so a
+# resubmit (or a requeue after timeout) resumes where the JSONL left off — no work is lost.
 #
 # OUTPUT_DIR overrides where JSONL is written AND its archive subdir (default
 # data/output/runs -> ~/panel-member-archive/runs). Use it to keep a logprob-capturing
 # re-run off the frozen greedy files (expectation/mean sensitivity analysis):
-#   OUTPUT_DIR=data/output/runs/expectation BASE=qwen YEAR=2019 sbatch slurm/run_coding_base.sh
+#   OUTPUT_DIR=data/output/runs/expectation BASE=qwen YEAR=2019 CONDITION=codebook \
+#       sbatch --time=04:00:00 slurm/run_coding_base.sh
 #
 #SBATCH --job-name=pm-base-code
 #SBATCH --partition=superChip
@@ -31,9 +37,11 @@
 # cgroup ceiling (job 73491302). Same root cause / fix as run_coding_llama70b.sh and the
 # summ fine-tune OOM; see notes/finetune-eval-oom-diagnosis.md.
 #SBATCH --time=24:00:00
-# 24h: one vLLM startup covers all four conditions over ~34k records each. The two long
-# conditions (evidence ~2,057 tok/rec, anonymized ~1,900) dominate; codebook (~343) and
-# summarized are lighter. Right-size from sacct once a full run completes.
+# Liberal DEFAULT sized for the long conditions: base evidence/anonymized run ~15-17h for a
+# 72B (measured — Llama 2019 evidence ~16h, Qwen ~17h; Gemma 27B is a bit faster), so 24h
+# clears them with margin. LOWER it per submit for the fast conditions rather than raising it
+# for the slow ones: codebook ~2h -> --time=04:00:00, summarized ~8h -> --time=12:00:00. A
+# command-line `sbatch --time=...` overrides this directive; a lower ceiling backfills sooner.
 #SBATCH --output=logs/base_code_%j.out
 #SBATCH --error=logs/base_code_%j.err
 
@@ -42,8 +50,8 @@ mkdir -p logs
 
 # ── Configuration ──────────────────────────────────────────────────────────────
 YEAR=${YEAR:-2019}
-BASE=${BASE:-llama}        # llama (default, 70B) | qwen (2.5-72B) | gemma (3-27B)
-CONDITIONS=${CONDITIONS:-"codebook evidence anonymized summarized"}
+BASE=${BASE:-llama}             # llama (default, 70B) | qwen (2.5-72B) | gemma (3-27B)
+CONDITION=${CONDITION:-evidence}  # codebook | evidence | anonymized | summarized (one per job)
 # MODEL_PATH: base weights on scratch. SERVED_NAME: alias vLLM advertises (must match
 # the *-local key's "model" in vdem_config). MODEL_KEY: the vdem_config key the runner
 # uses. MODEL_TAG: filename tag, matching the existing Llama pattern (_llama70b).
@@ -76,6 +84,7 @@ OUTPUT_DIR=${OUTPUT_DIR:-data/output/runs}
 FH_ONLY=${FH_ONLY:-0}
 FH_FLAG=""; FH_SUFFIX=""
 if [ "$FH_ONLY" = "1" ]; then FH_FLAG="--fh-only"; FH_SUFFIX="_fhonly"; fi
+OUTPUT=${OUTPUT_DIR}/${CONDITION}_${YEAR}_${MODEL_TAG}${FH_SUFFIX}.jsonl
 
 # ── Environment ────────────────────────────────────────────────────────────────
 source ~/miniforge3/etc/profile.d/conda.sh
@@ -114,22 +123,19 @@ until curl -sf "http://localhost:${VLLM_PORT}/health" > /dev/null 2>&1; do
 done
 echo "vLLM ready (pid $VLLM_PID) — base ${BASE} (${MODEL_KEY})"
 
-# ── Run coding batch, once per condition under the single vLLM ──────────────────
+# ── Run the coding batch for this one condition ─────────────────────────────────
 ulimit -n 65536
-for CONDITION in $CONDITIONS; do
-    OUTPUT=${OUTPUT_DIR}/${CONDITION}_${YEAR}_${MODEL_TAG}${FH_SUFFIX}.jsonl
-    echo "=============================================================="
-    echo "Base: ${BASE} | Condition: ${CONDITION} | Year: ${YEAR}${FH_SUFFIX:+ (FH-only)}"
-    echo "Model key: ${MODEL_KEY} | Output: ${OUTPUT}"
-    echo "=============================================================="
-    python3 -m pipeline.run_coding_batch \
-        --year      "$YEAR" \
-        --condition "$CONDITION" \
-        --models    "$MODEL_KEY" \
-        --workers   16 \
-        $FH_FLAG \
-        --output    "$OUTPUT"
-done
+echo "=============================================================="
+echo "Base: ${BASE} | Condition: ${CONDITION} | Year: ${YEAR}${FH_SUFFIX:+ (FH-only)}"
+echo "Model key: ${MODEL_KEY} | Output: ${OUTPUT}"
+echo "=============================================================="
+python3 -m pipeline.run_coding_batch \
+    --year      "$YEAR" \
+    --condition "$CONDITION" \
+    --models    "$MODEL_KEY" \
+    --workers   16 \
+    $FH_FLAG \
+    --output    "$OUTPUT"
 
 # ── Cleanup ────────────────────────────────────────────────────────────────────
 kill "$VLLM_PID" && wait "$VLLM_PID" 2>/dev/null || true
@@ -137,7 +143,7 @@ kill "$VLLM_PID" && wait "$VLLM_PID" 2>/dev/null || true
 # ── Archive output to home (scratch purged after 30 days) ─────────────────────
 ARCHIVE_DIR="$HOME/panel-member-archive/$(basename "$OUTPUT_DIR")"
 mkdir -p "$ARCHIVE_DIR"
-rsync -av "${OUTPUT_DIR}"/*_${YEAR}_${MODEL_TAG}${FH_SUFFIX}.jsonl "$ARCHIVE_DIR/"
-echo "Archived base-${BASE} ${YEAR} runs to $ARCHIVE_DIR/"
+rsync -av "$OUTPUT" "$ARCHIVE_DIR/"
+echo "Archived base-${BASE} ${YEAR} ${CONDITION} to $ARCHIVE_DIR/$(basename "$OUTPUT")"
 echo "Pull locally: rsync -avz <user>@pegasus.arc.gwu.edu:~/panel-member-archive/ data/output/"
 echo "Done."

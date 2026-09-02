@@ -36,11 +36,12 @@
 #SBATCH --mem=400G
 # See slurm/run_coding_llama70b.sh for the 200G->400G rationale (page-cache thrashing
 # under --safetensors-load-strategy prefetch); same base model load, same fix applies.
-# 24h: the four-condition sweep is dominated by long-context prefill — evidence
-# (raw) ~2,057 tok/rec and anonymized ~1,900 tok/rec are ~6x the codebook load
-# (~343 tok/rec) over ~34k records each. Codebook alone is ~a couple hours; the two
-# long conditions are the bulk. Right-size from sacct once a full run completes.
-#SBATCH --time=24:00:00
+# 12h: right-sized from sacct. A full four-condition sweep runs ~4h for Gemma 27B and
+# ~8.5h for Qwen 72B (job 73619763, 2019 all-source) — the long-context conditions
+# (evidence ~2,057 tok/rec, anonymized ~1,900 vs codebook ~343) are the bulk. 12h clears
+# the worst (72B) case with ~40% margin; 8h would risk killing a Qwen run mid-sweep. A
+# lower ceiling also backfills into shorter gaps and stops over-inflating queue estimates.
+#SBATCH --time=12:00:00
 #SBATCH --output=logs/ft_infer_%j.out
 #SBATCH --error=logs/ft_infer_%j.err
 
