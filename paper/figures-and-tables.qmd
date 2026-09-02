@@ -29,7 +29,17 @@ boot_bundle <- readRDS(file.path(derived, "bootstrap_2019.rds"))
 exp_bundle  <- readRDS(file.path(derived, "expectation_2019.rds"))
 ```
 
+Broader question: how does information help an AI become a synthetic coder? 
+
+Thesis: information helps the AI to emulate human coders, but there is a risk of data leakage. Since the AI may have prior knowledge of the country case that could bias its rating, anonymized and summarized texts will help to ensure that the model is taking into account relevant context and not simply applying a memorized score or relying entirely on prior country knowledge. Finetuning should help the model to learn more precisely the specific context relevant for generating human-like country scores. 
+
+We therefore predict that as the AI receives evidence, its MAE relative to human panel consensus should decrease relative to the base model codebook-only condition. We also anticipate that the MAE will drop further as information becomes progressively more abstracted away from named entities related to the country in question, i.e. that the model will learn more from anonymized and summarized text than from raw text.^[finetune-note] Finally we anticipate that finetuning will magnify these effects, with finetuned models showing lower MAE than base models. 
+
+[^finetune-note]:(Drop this in if we decide to relegate the FT-summ and FT-anon models to the appendix) We also tested models that were finetuned on anonymized and summarized evidence. The results suggested that... We explore these results further in the online appendix. 
+
 ## 1. Synthetic-coder performance
+
+We hypothesize that more evidence should improve the synthetic coder's ability to emulate expert coder behavior because it will 
 
 ```{r}
 #| label: fig-landscape
@@ -38,6 +48,17 @@ exp_bundle  <- readRDS(file.path(derived, "expectation_2019.rds"))
 #| fig-height: 5.2
 fig_readout_landscape(exp_bundle, boot_bundle, band = "human_loo")
 ```
+
+We will highlight here how the B hypotheses were either null or confirmed the alternative hypotheses. The most surprising finding is that evidence appears to push the models further away from consensus. It is not beyond the SESOI, but it is striking that evidence appears to increase MAE of the models rather than reduce it. The models are paying attention to the evidence but it is making them disagree as much as or more than individual human coders rather than pushing them towards the consensus view.  
+
+The F hypotheses were supported if we look at the expectation readout rather than greedy decoding. But the greedy decoding results are suggestive of something we did not anticipate which is that greedy mode induces the model to better emulate the human coder. However we cannot assess how human-like the AI is by looking at MAE alone. But rather we have to look at the distribution of the AI codings relative to human coders. (transition to results in QMD 07 and 08)
+
+Difficulty slope, attitude, exaggeration gap analysis suggest that the finetuned model is the most human-like and, further, that it is the weights more than the information in the text that does the heavy lifting. The 2x2 suggests that the fine-tuned raw evidence model can perform as well or better without the evidence in the prompt. 
+
+For QMD 09, part I may be underpowered and does not use stale priors. Need to repeat on 2023. The Part II horse race suggests that of the seven models, FT-Raw Text performs the best in terms of mimicking human coders. This is an underpowered version of QMD 07s distributional analysis.
+
+
+
 
 # Appendix
 

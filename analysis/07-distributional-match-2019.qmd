@@ -529,6 +529,61 @@ ggplot() +
   theme(legend.position = "top", panel.grid.minor = element_blank())
 ```
 
+### 2×2 mechanism decomposition — weights vs evidence
+
+Does the coder-like difficulty tracking come from the fine-tuned weights, from having evidence in
+the prompt, or from the two together? The 2×2 crosses {Base, FT-raw} × {Codebook, Evidence}. Three
+of the four cells already live in `slope_draws`; the missing FT-raw:Codebook slope is computed here
+on the identical seed-42 country-clustered draws so the four are directly comparable. Reading:
+*within* each panel is the effect of adding evidence to the prompt; *across* panels is the effect of
+fine-tuning. Codebook carries no case-specific text, so a cell with no way to react to
+case-specific difficulty should sit near a flat slope regardless of its weights.
+
+```{r mechanism-2x2-slope}
+#| fig-height: 3.4
+ftcb <- ai_metrics |> filter(cell == "llama-70b-ft-raw|codebook") |>
+  mutate(cyi = cyi_pool$cyi[match(paste(country_text_id, indicator), cyi_pool$k)]) |>
+  filter(!is.na(cyi), !is.na(h), !is.na(a))
+W2 <- country_boot_weights(cyi_pool$country_text_id, params$n_boot, seed = 42)
+sl_ftcb <- vapply(colnames(W2), function(dr) {
+  w <- unname(W2[, dr][cyi_pool$country_text_id])[ftcb$cyi]
+  sw <- sum(w); swh <- sum(w * ftcb$h); swa <- sum(w * ftcb$a)
+  swhh <- sum(w * ftcb$h^2); swha <- sum(w * ftcb$h * ftcb$a)
+  (swha - swh * swa / sw) / (swhh - swh * swh / sw)
+}, numeric(1))
+
+sl4 <- cbind(slope_draws[, c("Base:Cb", "Base:Ev", "FT-raw:Ev")], `FT-raw:Cb` = sl_ftcb)
+ap2 <- which(colnames(W2) == "Apparent"); br2 <- setdiff(seq_len(nrow(sl4)), ap2)
+slope_2x2 <- tibble(cell = colnames(sl4), est = sl4[ap2, ],
+                    lo = apply(sl4[br2, , drop = FALSE], 2, quantile, 0.025),
+                    hi = apply(sl4[br2, , drop = FALSE], 2, quantile, 0.975)) |>
+  mutate(model = factor(if_else(str_starts(cell, "FT"), "Fine-tuned", "Base"),
+                        levels = c("Base", "Fine-tuned")),
+         input = factor(if_else(str_detect(cell, "Ev$"), "Evidence", "Codebook"),
+                        levels = c("Codebook", "Evidence")))
+
+ggplot(slope_2x2, aes(est, input, color = model)) +
+  geom_vline(xintercept = 1, linetype = "longdash", color = "grey40") +
+  annotate("text", x = 1, y = Inf, label = "human = 1", color = "grey40",
+           size = 3, hjust = 1.1, vjust = 1.4) +
+  geom_errorbar(aes(xmin = lo, xmax = hi), orientation = "y", width = 0.2, linewidth = 0.7) +
+  geom_point(size = 3) +
+  facet_wrap(~ model, ncol = 1) +
+  scale_color_manual(values = family_pal, guide = "none") +
+  coord_cartesian(clip = "off") +
+  labs(x = "difficulty-tracking slope (human = 1; higher = more coder-like)", y = NULL,
+       title = "2×2 mechanism — does difficulty tracking come from weights, evidence, or both?",
+       subtitle = "within each panel = effect of evidence in the prompt · across panels = effect of fine-tuning") +
+  theme_minimal(base_size = 11) +
+  theme(panel.grid.major.y = element_blank(), plot.title.position = "plot",
+        plot.title = element_text(face = "bold"), strip.text = element_text(face = "bold", hjust = 0))
+```
+
+```{r print-2x2-slope}
+slope_2x2 |> transmute(Cell = cell, Slope = round(est, 3),
+                       `95% CI` = glue("[{round(lo,3)}, {round(hi,3)}]")) |> gt()
+```
+
 ### Confirmation — paired cell-vs-cell deltas (Tests 1 & 3)
 
 Marginal CIs already separate the cells, but the honest comparison is a **paired** within-draw
@@ -579,6 +634,8 @@ saveRDS(
        dm_marginal = dm_marginal,
        # fine-binned conditional-error curves (error vs h_c) + human reference, for the highlight view
        dm_fine = dm_fine, he_fine = he_fine,
+       # 2x2 mechanism decomposition (Base/FT-raw x Codebook/Evidence) difficulty slopes
+       slope_2x2 = slope_2x2,
        # per-draw matrices [draw x cell] — the analog of 06's boot_results, kept so the
        # paper doc can form paired cell-vs-cell deltas (see dm_delta / §5b).
        W1_draws = W1_draws, slope_draws = slope_draws,
