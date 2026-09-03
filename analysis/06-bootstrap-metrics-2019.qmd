@@ -15,6 +15,7 @@ params:
   n_boot: 2000
   year: 2019
   min_coders: 2
+  runs_subdir: ""
 ---
 
 This is the **2019 compute + prototype document**. Everything here is built on 2019 data;
@@ -49,7 +50,7 @@ library(patchwork)   # install.packages("patchwork") if missing — used for the
 # interactively there is no `params`, so define the same defaults when it's absent. At
 # render the guard is skipped (knitr has already set params), so the file works both ways.
 if (!exists("params")) {
-  params <- list(n_boot = 2000, year = 2019, min_coders = 2)
+  params <- list(n_boot = 2000, year = 2019, min_coders = 2, runs_subdir = "")
 }
 
 # Resolve the panel-member project root robustly, whatever the session's working dir is.
@@ -72,7 +73,7 @@ proj_root <- find_panel_member_root()
 source(file.path(proj_root, "helpers", "bootstrap_helpers.R"))
 
 data_dir    <- file.path(proj_root, "data", "processed")
-runs_dir    <- file.path(proj_root, "data", "output", "runs")
+runs_dir    <- file.path(proj_root, "data", "output", "runs", params$runs_subdir)
 derived_dir <- file.path(proj_root, "data", "derived")
 dir.create(derived_dir, showWarnings = FALSE, recursive = TRUE)
 ```
@@ -282,9 +283,11 @@ meaningful" per the prereg.
 #| cache: true
 #| cache.lazy: false
 
-# 2018 → 2019 copy-forward, over the same >=2-coder CYI pool used everywhere else.
+# Prior-year copy-forward (year-1 → year), over the same >=2-coder CYI pool used everywhere
+# else. Parametrized by params$year so the naive rail follows the analysis year (2018→2019,
+# 2022→2023, …); the `mean_2018` column name is kept for continuity with downstream code.
 pm18 <- panel_means |>
-  filter(year == 2018) |>
+  filter(year == params$year - 1) |>
   select(country_text_id, indicator, mean_2018 = raw_mean)
 
 persist_cyi <- cyi_pool |>
@@ -832,7 +835,7 @@ the bootstrap; the static vocabulary and `paired_delta()` come from `R/bootstrap
 which those docs source directly.
 
 ```{r serialize-bundle}
-bundle_path <- file.path(derived_dir, "bootstrap_2019.rds")
+bundle_path <- file.path(derived_dir, glue("bootstrap_{params$year}.rds"))
 
 saveRDS(
   list(

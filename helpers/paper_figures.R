@@ -10,6 +10,7 @@
 library(tidyverse)
 library(glue)
 library(gt)
+library(patchwork)   # side-by-side composite for the two-panel Figure 2
 
 # Categorical palette (family_pal, readout_pal) is defined once in R/bootstrap_helpers.R,
 # which the paper gallery sources before this file.
@@ -99,7 +100,7 @@ fig_readout_landscape <- function(exp_bundle, greedy_bundle,
 # Fig 1 (cross-family) — synthetic-coder MAE across three model families, both readouts on one
 # axis. Rows = 8: the base few-shot ladder (Cb/Ev/An/Su) on top, the FT-raw ladder (raw-text
 # adapter under the same four conditions) on the bottom. Color = model family (model_pal);
-# shape = readout (open ○ greedy, filled ● mean). Models are dodged within each condition row so
+# shape = readout (filled ● greedy, open ○ mean; see readout_shape). Models are dodged within each condition row so
 # their CIs share one x-axis and overlap is read directly — the design point of this figure.
 # Qwen/Gemma are raw-only, so the FT block is FT-raw for all three families (no anon/summ
 # adapters here; those stay in the Llama-only A2 grid). Rails and ±SESOI band as in
@@ -114,8 +115,10 @@ fig_readout_landscape <- function(exp_bundle, greedy_bundle,
 # Call once per year (pass the 2019 bundles for the main figure, the 2023 bundles for the
 # appendix replication).
 fig_crossmodel_landscape <- function(exp_bundle, greedy_bundle,
-                                     band = c("human_loo", "none")) {
-  band        <- match.arg(band)
+                                     band = c("human_loo", "none"),
+                                     base_readout = c("greedy", "both", "mean")) {
+  band         <- match.arg(band)
+  base_readout <- match.arg(base_readout)
   sesoi       <- exp_bundle$sesoi
   human_mae   <- greedy_bundle$human_ref$human_mae
   persist_mae <- greedy_bundle$persist_ref$persist_mae
@@ -127,9 +130,9 @@ fig_crossmodel_landscape <- function(exp_bundle, greedy_bundle,
   cond_disp   <- c(codebook = "Codebook", evidence = "Raw Text",
                    anonymized = "Anonymized", summarized = "Summarized")
 
-  # bottom-to-top: FT block below, base block on top (matches fig_readout_landscape's idiom)
-  row_lv <- c("FT · Summarized", "FT · Anonymized", "FT · Raw Text", "FT · Codebook",
-              "Summarized", "Anonymized", "Raw Text", "Codebook")
+  # Rows are the plain input names in BOTH blocks; the Base/Fine-tuned split becomes a facet
+  # strip (the meta-label) rather than an "FT" prefix on the fine-tuned rows.
+  cond_lv <- c("Summarized", "Anonymized", "Raw Text", "Codebook")  # first level plots at bottom
 
   family_of <- function(mk) dplyr::case_when(
     grepl("^llama", mk) ~ "Llama 70B",
@@ -141,10 +144,10 @@ fig_crossmodel_landscape <- function(exp_bundle, greedy_bundle,
   pick <- function(ci, readout) {
     base <- ci |>
       dplyr::filter(model_key %in% base_models, condition %in% base_conds) |>
-      dplyr::mutate(row = unname(cond_disp[condition]))
+      dplyr::mutate(row = unname(cond_disp[condition]), block = "Base")
     ft <- ci |>
       dplyr::filter(model_key %in% ft_models, condition %in% ft_conds) |>
-      dplyr::mutate(row = paste("FT ·", unname(cond_disp[canon_col(condition)])))
+      dplyr::mutate(row = unname(cond_disp[canon_col(condition)]), block = "Fine-tuned")
     dplyr::bind_rows(base, ft) |> dplyr::mutate(readout = readout)
   }
 
@@ -154,45 +157,292 @@ fig_crossmodel_landscape <- function(exp_bundle, greedy_bundle,
   ) |>
     dplyr::mutate(
       model   = factor(family_of(model_key), levels = names(model_pal)),
-      row     = factor(row, levels = row_lv),
+      row     = factor(row, levels = cond_lv),
+      block   = factor(block, levels = c("Base", "Fine-tuned")),
       readout = factor(readout, levels = c("Greedy (mode)", "Expectation (mean)"))
     )
 
-  n_row <- length(row_lv)
-  ycap  <- n_row + 0.3
-  # dodge by MODEL (group = model), so each model's two readout points share a sub-row and
-  # separate only in x. Default grouping would be model×shape (6 slots) — force 3.
+  # The greedy/mean split is the FT-block story; in the base block the two readouts differ by
+  # < 0.02 MAE (~1/9 SESOI), so plotting both there is clutter. Default base_readout = "greedy"
+  # keeps only the confirmatory readout in the Base block (the FT block always keeps both);
+  # "both" restores the overlay.
+  if (base_readout != "both") {
+    keep <- if (base_readout == "greedy") "Greedy (mode)" else "Expectation (mean)"
+    cells <- dplyr::filter(cells, !(block == "Base" & readout != keep))
+  }
+
+  # Reference labels appear once, pinned to the top (Base) facet so they don't repeat per panel.
+  ref_lab <- tibble::tibble(
+    block = factor("Base", levels = c("Base", "Fine-tuned")),
+    x     = c(persist_mae, human_mae),
+    label = c("Naive model", "±SESOI of human reference"),
+    hjust = c(-0.07, 0.5)
+  )
+
+  # Capless point-ranges (line + point, no end whiskers): minimal ornament, and a row holding a
+  # single model reads the same as a dodged trio. Shape still encodes the readout (greedy/mean).
   dodge <- position_dodge(width = 0.6)
 
   p <- ggplot(cells, aes(ai_mae, row, color = model, shape = readout, group = model))
   if (band == "human_loo") {
     p <- p +
       annotate("rect", xmin = human_mae - sesoi, xmax = human_mae + sesoi,
-               ymin = -Inf, ymax = ycap, fill = "grey85", alpha = 0.55) +
-      annotate("text", x = human_mae, y = ycap + 0.25, label = "±SESOI of human reference",
-               color = "grey40", size = 2.9, hjust = 0.5)
+               ymin = -Inf, ymax = Inf, fill = "grey85", alpha = 0.55)
   }
   p +
-    annotate("segment", x = persist_mae, xend = persist_mae, y = -Inf, yend = ycap,
-             linetype = "dashed", color = "grey40") +
-    annotate("segment", x = human_mae, xend = human_mae, y = -Inf, yend = ycap,
-             linetype = "longdash", color = "grey40") +
-    annotate("text", x = persist_mae, y = n_row - 0.2, label = "Naive model",
-             color = "grey40", size = 2.9, hjust = -0.07) +
-    # separator between the base block (top 4) and the FT block (bottom 4)
-    geom_hline(yintercept = 4.5, color = "grey85", linewidth = 0.4) +
-    geom_errorbar(aes(xmin = ai_lo, xmax = ai_hi), orientation = "y",
-                  width = 0.2, linewidth = 0.5, alpha = 0.7, position = dodge) +
+    geom_vline(xintercept = persist_mae, linetype = "dashed",  color = "grey40") +
+    geom_vline(xintercept = human_mae,   linetype = "longdash", color = "grey40") +
+    geom_text(data = ref_lab, aes(x = x, y = Inf, label = label, hjust = hjust),
+              vjust = -0.5, color = "grey40", size = 2.9, inherit.aes = FALSE) +
+    geom_linerange(aes(xmin = ai_lo, xmax = ai_hi), orientation = "y",
+                   linewidth = 0.5, alpha = 0.7, position = dodge) +
     geom_point(size = 2.3, stroke = 0.9, position = dodge) +
+    facet_grid(rows = vars(block), scales = "free_y", space = "free", switch = "y") +
     scale_color_manual(values = model_pal, name = NULL) +
-    scale_shape_manual(values = c("Greedy (mode)" = 1, "Expectation (mean)" = 16), name = NULL) +
-    scale_y_discrete() +   # let numeric rail/label y-positions coexist with the factor rows
+    scale_shape_manual(values = readout_shape, name = NULL) +
     coord_cartesian(clip = "off") +
     labs(x = "AI Mean Absolute Error", y = NULL) +
     theme_minimal(base_size = 12) +
-    theme(legend.position = "top", legend.justification = "left", legend.box = "horizontal",
-          panel.grid.major.y = element_blank(), plot.title.position = "plot")
+    theme(legend.position = "top", legend.justification = "left", legend.box = "vertical",
+          legend.box.just = "left", legend.margin = margin(b = 0),
+          panel.grid.major.y = element_blank(), plot.title.position = "plot",
+          panel.spacing.y = unit(0.9, "lines"),
+          strip.placement = "outside",
+          strip.background = element_blank(),
+          strip.text.y.left = element_text(angle = 0, face = "bold", hjust = 1),
+          plot.margin = margin(t = 16, r = 8, b = 6, l = 6))
 }
+
+# Fig 2 — the difficulty-tracking twin of Fig 1. Same rows (base block over FT-raw block, each
+# on the four inputs) and the same color = MODEL encoding, but the x-axis is the Test-3 slope of
+# AI error on case difficulty h_c instead of MAE, and the reference is the human self-reference
+# slope = 1 instead of the human MAE line. Fig 1's crowded column of CIs hugging the human MAE
+# line says "on average error they're all about equally close"; this figure cracks that column
+# open on the dimension MAE can't see — does the synthetic coder err on the same cases a human
+# finds hard (slope → 1) or lean on a prior (slope flat)? Greedy readout only, by design: the
+# slope is a panel-member question, so there is no shape channel here.
+#
+#   dm_bundle <- readRDS("data/derived/distmatch_slope_2019.rds")  # dm_slope: per-cell slope + CI
+fig_crossmodel_slope <- function(dm_bundle) {
+  cells0 <- dm_bundle$dm_slope
+
+  base_models <- c("llama-70b", "qwen-72b", "gemma-27b")
+  ft_models   <- c("llama-70b-ft-raw", "qwen-72b-ft-raw", "gemma-27b-ft-raw")
+  base_conds  <- c("codebook", "evidence", "anonymized", "summarized")
+  ft_conds    <- c("codebook", "evidence-zeroshot", "anonymized-zeroshot", "summarized-zeroshot")
+  cond_disp   <- c(codebook = "Codebook", evidence = "Raw Text",
+                   anonymized = "Anonymized", summarized = "Summarized")
+
+  # bottom-to-top: FT block below, base block on top — identical row order to Fig 1.
+  row_lv <- c("FT · Summarized", "FT · Anonymized", "FT · Raw Text", "FT · Codebook",
+              "Summarized", "Anonymized", "Raw Text", "Codebook")
+
+  family_of <- function(mk) dplyr::case_when(
+    grepl("^llama", mk) ~ "Llama 70B",
+    grepl("^qwen",  mk) ~ "Qwen 72B",
+    grepl("^gemma", mk) ~ "Gemma 27B",
+    TRUE ~ NA_character_)
+
+  # Rows are the plain input names in BOTH blocks; the Base/Fine-tuned distinction moves to a
+  # facet strip (the meta-label / bracket) instead of an "FT ·" prefix, so the two blocks read
+  # as the same four inputs under two headings.
+  cond_lv <- c("Summarized", "Anonymized", "Raw Text", "Codebook")  # first level plots at bottom
+  base <- cells0 |>
+    dplyr::filter(model_key %in% base_models, condition %in% base_conds) |>
+    dplyr::mutate(row = unname(cond_disp[condition]), block = "Base")
+  ft <- cells0 |>
+    dplyr::filter(model_key %in% ft_models, condition %in% ft_conds) |>
+    dplyr::mutate(row = unname(cond_disp[canon_col(condition)]), block = "Fine-tuned")
+  cells <- dplyr::bind_rows(base, ft) |>
+    dplyr::mutate(model = factor(family_of(model_key), levels = names(model_pal)),
+                  row   = factor(row, levels = cond_lv),
+                  block = factor(block, levels = c("Base", "Fine-tuned")))
+
+  # Capless point-ranges (point + line, no end whiskers): minimal ornament, and — unlike capped
+  # error bars — a row holding a single model (the base block until the Qwen/Gemma base runs land)
+  # reads the same as a dodged trio, so no lone "TIE fighter" bars.
+  dodge <- position_dodge(width = 0.6)
+
+  ggplot(cells, aes(est, row, color = model, group = model)) +
+    geom_vline(xintercept = 1, linetype = "longdash", color = "grey40") +
+    geom_pointrange(aes(xmin = lo, xmax = hi), orientation = "y",
+                    size = 0.45, linewidth = 0.5, position = dodge) +
+    facet_grid(rows = vars(block), scales = "free_y", space = "free", switch = "y") +
+    scale_color_manual(values = model_pal, name = NULL) +
+    scale_x_continuous(expand = expansion(mult = c(0.04, 0.02))) +
+    coord_cartesian(clip = "off") +
+    labs(x = expression("difficulty-tracking slope of AI error on  " * h[c]),
+         y = NULL) +
+    theme_minimal(base_size = 12) +
+    theme(legend.position = "top", legend.justification = "left",
+          panel.grid.major.y = element_blank(), plot.title.position = "plot",
+          panel.spacing.y = unit(0.9, "lines"),
+          strip.placement = "outside",
+          strip.background = element_blank(),
+          strip.text.y.left = element_text(angle = 0, face = "bold", hjust = 1))
+}
+
+# Fig 2 (left panel) — the difficulty slope drawn as a shape. Mean error vs case difficulty for a
+# steep exemplar and a flat exemplar, against the human reference curve — which lies on y = x
+# because difficulty h_c is *defined* as the human error on the case (so the human's error equals
+# the case's difficulty). x is a property of the case (how hard humans found it); y is whichever
+# coder's error we plot. `feature` = two "model_key|condition" cells to draw as curves (default:
+# the steepest and flattest cells, i.e. the top and bottom of the coefficient panel). Revisit the
+# defaults once the Qwen/Gemma base runs land and the flattest cell may change.
+#
+#   dm_bundle <- readRDS("data/derived/distmatch_slope_2019.rds")  # needs dm_fine + he_fine
+fig_slope_curve <- function(dm_bundle,
+                            feature = c("qwen-72b-ft-raw|codebook", "llama-70b|summarized"),
+                            xmax = 1.6) {
+  family_of <- function(mk) dplyr::case_when(
+    grepl("^llama", mk) ~ "Llama 70B", grepl("^qwen", mk) ~ "Qwen 72B",
+    grepl("^gemma", mk) ~ "Gemma 27B", TRUE ~ NA_character_)
+  cond_disp <- c(codebook = "Codebook", evidence = "Raw Text",
+                 anonymized = "Anonymized", summarized = "Summarized")
+  lab_of <- function(cell) {
+    mk <- sub("\\|.*$", "", cell); cond <- sub("^[^|]*\\|", "", cell)
+    block <- if (grepl("-ft-", mk)) "fine-tuned" else "base"
+    paste0(family_of(mk), " · ", block, " · ", unname(cond_disp[canon_col(cond)]))
+  }
+  he  <- dm_bundle$he_fine
+  sel <- dm_bundle$dm_fine |>
+    dplyr::filter(cell %in% feature) |>
+    dplyr::mutate(model = family_of(model_key), label = vapply(cell, lab_of, character(1)))
+  # each featured cell keeps its model's color (ties to panel B); human = grey
+  lab_levels <- unique(sel$label)
+  pal <- c(setNames(unname(model_pal[sel$model[match(lab_levels, sel$label)]]), lab_levels),
+           "Human coder" = "grey30")
+  sel$label <- factor(sel$label, levels = lab_levels)
+
+  ggplot() +
+    geom_ribbon(data = he,  aes(x, ymin = lo, ymax = hi), fill = "grey70", alpha = 0.30) +
+    geom_line(data = he,   aes(x, est, color = "Human coder"), linewidth = 1.0) +
+    geom_ribbon(data = sel, aes(x, ymin = lo, ymax = hi, fill = label), alpha = 0.18) +
+    geom_line(data = sel,  aes(x, est, color = label), linewidth = 1.0) +
+    scale_color_manual(values = pal, name = NULL) +
+    scale_fill_manual(values = pal, guide = "none") +
+    coord_cartesian(xlim = c(0, xmax), ylim = c(0, xmax)) +
+    labs(x = "Case difficulty — typical human error (rating points)",
+         y = "Mean absolute error (rating points)") +
+    theme_minimal(base_size = 12) +
+    theme(legend.position = "top", legend.justification = "left", legend.direction = "vertical",
+          panel.grid.minor = element_blank(), plot.title.position = "plot")
+}
+
+# Fig 2 (composite) — the two panels side by side: the curve (what the slope measures) and the
+# coefficient plot (every model ranked by that slope). Requires the curve fields in the bundle.
+fig_crossmodel_slope_2panel <- function(dm_bundle,
+                                        feature = c("qwen-72b-ft-raw|codebook",
+                                                    "llama-70b|summarized")) {
+  fig_slope_curve(dm_bundle, feature = feature) + fig_crossmodel_slope(dm_bundle) +
+    patchwork::plot_layout(widths = c(1, 1.05)) +
+    patchwork::plot_annotation(tag_levels = "A")
+}
+
+# Fig 3 (left panel) — signed deviation across the democracy gradient. y = AI rating minus the
+# human panel mean; the dotted zero line is the panel-member target (a real coder sums to 0 per
+# bin by construction), the dashed grey line is the V-Dem IRT target expressed on the same axis
+# (mean(ord - panel_mean) per bin), so featured cells can be read against BOTH references. An
+# upward slope = exaggerates the regime gradient; downward = compresses. `feature` = cells drawn
+# as curves (default: the gap extremes — flattest and steepest of the plotted cells). Uses dm_q +
+# irt_ref_q from build_signeddev.R.
+fig_signeddev_curve <- function(sd_bundle,
+                                feature = c("gemma-27b-ft-raw|anonymized-zeroshot",
+                                            "llama-70b|evidence")) {
+  sesoi <- sd_bundle$sesoi
+  family_of <- function(mk) dplyr::case_when(
+    grepl("^llama", mk) ~ "Llama 70B", grepl("^qwen", mk) ~ "Qwen 72B",
+    grepl("^gemma", mk) ~ "Gemma 27B", TRUE ~ NA_character_)
+  cond_disp <- c(codebook = "Codebook", evidence = "Raw Text",
+                 anonymized = "Anonymized", summarized = "Summarized")
+  lab_of <- function(cell) {
+    mk <- sub("\\|.*$", "", cell); cond <- sub("^[^|]*\\|", "", cell)
+    block <- if (grepl("-ft-", mk)) "fine-tuned" else "base"
+    paste0(family_of(mk), " · ", block, " · ", unname(cond_disp[canon_col(cond)]))
+  }
+  sel <- sd_bundle$dm_q |>
+    dplyr::filter(cell %in% feature) |>
+    dplyr::mutate(model = family_of(model_key), label = vapply(cell, lab_of, character(1)))
+  lab_levels <- unique(sel$label)
+  pal <- setNames(unname(model_pal[sel$model[match(lab_levels, sel$label)]]), lab_levels)
+  sel$label <- factor(sel$label, levels = lab_levels)
+  irt <- sd_bundle$irt_ref_q
+
+  ggplot() +
+    annotate("rect", xmin = -Inf, xmax = Inf, ymin = -sesoi, ymax = sesoi,
+             fill = "grey85", alpha = 0.55) +
+    geom_hline(yintercept = 0, linetype = "dotted", color = "grey30", linewidth = 0.4) +
+    geom_line(data = irt, aes(bin, est), linetype = "dashed", color = "grey45", linewidth = 0.7) +
+    annotate("text", x = 3, y = irt$est[irt$bin == 3], label = "V-Dem IRT",
+             color = "grey25", size = 2.9, hjust = 1, vjust = -0.9) +
+    geom_ribbon(data = sel, aes(bin, ymin = lo, ymax = hi, fill = label), alpha = 0.18) +
+    geom_line(data = sel, aes(bin, est, color = label), linewidth = 1.0) +
+    geom_pointrange(data = sel, aes(bin, est, ymin = lo, ymax = hi, color = label), size = 0.3) +
+    scale_color_manual(values = pal, name = NULL) +
+    scale_fill_manual(values = pal, guide = "none") +
+    scale_x_continuous(breaks = 1:5) +
+    labs(x = "democracy quintile (1 = most autocratic → 5 = most democratic)",
+         y = "signed deviation (AI − panel mean)") +
+    theme_minimal(base_size = 12) +
+    theme(legend.position = "top", legend.justification = "left", legend.direction = "vertical",
+          panel.grid.minor = element_blank(), plot.title.position = "plot")
+}
+
+# Fig 3 (right panel) — exaggeration gap (Q5 − Q1 signed deviation) per cell, the twin of Fig 2's
+# coefficient panel. Reference at 0 (no tilt); positive = exaggerates the gradient, negative =
+# compresses. Same Base/Fine-tuned strips, plain input rows, capless point-ranges, color = model.
+fig_signeddev_gap <- function(sd_bundle) {
+  cells0 <- sd_bundle$dm_eg_q
+  base_models <- c("llama-70b", "qwen-72b", "gemma-27b")
+  ft_models   <- c("llama-70b-ft-raw", "qwen-72b-ft-raw", "gemma-27b-ft-raw")
+  base_conds  <- c("codebook", "evidence", "anonymized", "summarized")
+  ft_conds    <- c("codebook", "evidence-zeroshot", "anonymized-zeroshot", "summarized-zeroshot")
+  cond_disp   <- c(codebook = "Codebook", evidence = "Raw Text",
+                   anonymized = "Anonymized", summarized = "Summarized")
+  cond_lv <- c("Summarized", "Anonymized", "Raw Text", "Codebook")
+  family_of <- function(mk) dplyr::case_when(
+    grepl("^llama", mk) ~ "Llama 70B", grepl("^qwen", mk) ~ "Qwen 72B",
+    grepl("^gemma", mk) ~ "Gemma 27B", TRUE ~ NA_character_)
+
+  base <- cells0 |> dplyr::filter(model_key %in% base_models, condition %in% base_conds) |>
+    dplyr::mutate(row = unname(cond_disp[condition]), block = "Base")
+  ft <- cells0 |> dplyr::filter(model_key %in% ft_models, condition %in% ft_conds) |>
+    dplyr::mutate(row = unname(cond_disp[canon_col(condition)]), block = "Fine-tuned")
+  cells <- dplyr::bind_rows(base, ft) |>
+    dplyr::mutate(model = factor(family_of(model_key), levels = names(model_pal)),
+                  row   = factor(row, levels = cond_lv),
+                  block = factor(block, levels = c("Base", "Fine-tuned")))
+  sesoi <- sd_bundle$sesoi
+  dodge <- position_dodge(width = 0.6)
+
+  ggplot(cells, aes(est, row, color = model, group = model)) +
+    annotate("rect", xmin = -sesoi, xmax = sesoi, ymin = -Inf, ymax = Inf,
+             fill = "grey85", alpha = 0.55) +
+    geom_vline(xintercept = 0, linetype = "dashed", color = "grey40") +
+    geom_pointrange(aes(xmin = lo, xmax = hi), orientation = "y",
+                    size = 0.45, linewidth = 0.5, position = dodge) +
+    facet_grid(rows = vars(block), scales = "free_y", space = "free", switch = "y") +
+    scale_color_manual(values = model_pal, name = NULL) +
+    coord_cartesian(clip = "off") +
+    labs(x = "exaggeration gap (Q5 − Q1 signed deviation)", y = NULL) +
+    theme_minimal(base_size = 12) +
+    theme(legend.position = "top", legend.justification = "left",
+          panel.grid.major.y = element_blank(), plot.title.position = "plot",
+          panel.spacing.y = unit(0.9, "lines"),
+          strip.placement = "outside", strip.background = element_blank(),
+          strip.text.y.left = element_text(angle = 0, face = "bold", hjust = 1))
+}
+
+# Fig 3 (composite) — the gradient curve (what the exaggeration gap measures) beside the gap
+# coefficient plot (every model ranked). Requires signeddev_xmodel_{year}.rds.
+fig_crossmodel_signeddev_2panel <- function(sd_bundle,
+                                            feature = c("gemma-27b-ft-raw|anonymized-zeroshot",
+                                                        "llama-70b|evidence")) {
+  fig_signeddev_curve(sd_bundle, feature = feature) + fig_signeddev_gap(sd_bundle) +
+    patchwork::plot_layout(widths = c(1, 1.05)) +
+    patchwork::plot_annotation(tag_levels = "A")
+}
+
 
 # Fig A2 — full 4×4 readout grid: every model on every input, the off-diagonal
 # expansion of Figure 1. Same greedy-vs-expectation grammar, faceted by model, with
@@ -216,6 +466,9 @@ fig_readout_grid <- function(exp_bundle, greedy_bundle,
   # base few-shot ladder + every FT model on all four inputs (drop the base zero-shot dups)
   prep <- function(ci, readout) {
     ci |>
+      # Llama-only grid (Base + its three FT variants); the cross-family models (qwen/gemma
+      # ft-raw) live in Fig 1, and without this filter they'd map to an NA facet here.
+      filter(model_key %in% names(model_disp)) |>
       filter(!(model_key == "llama-70b" & grepl("zeroshot$", condition))) |>
       mutate(
         readout = readout,
@@ -245,7 +498,12 @@ fig_readout_grid <- function(exp_bundle, greedy_bundle,
     hj    = c(-0.07, 1.05)
   )
 
-  p <- ggplot(cells, aes(ai_mae, cond, color = readout))
+  # readout = shape (solid ● greedy, open ○ mean), matching the cross-model Fig 1 convention
+  # (readout_shape). This grid is entirely Llama (Base + its three FT variants), so its marks
+  # carry the Llama blue from model_pal — keeping "Llama = blue" consistent with Fig 1 and the
+  # 2023 replication rather than rendering a lone monochrome figure.
+  ink <- unname(model_pal["Llama 70B"])
+  p <- ggplot(cells, aes(ai_mae, cond, shape = readout))
   if (band == "human_loo") {
     p <- p + annotate("rect", xmin = human_mae - sesoi, xmax = human_mae + sesoi,
                       ymin = -Inf, ymax = Inf, fill = "grey85", alpha = 0.55)
@@ -254,15 +512,17 @@ fig_readout_grid <- function(exp_bundle, greedy_bundle,
     geom_vline(xintercept = persist_mae, linetype = "dashed",  color = "grey40") +
     geom_vline(xintercept = human_mae,   linetype = "longdash", color = "grey40") +
     geom_errorbar(aes(xmin = ai_lo, xmax = ai_hi), orientation = "y",
-                  width = 0.25, linewidth = 0.6, position = position_dodge(width = 0.55)) +
-    geom_point(size = 2.2, position = position_dodge(width = 0.55)) +
+                  width = 0.25, linewidth = 0.6, color = ink, position = position_dodge(width = 0.55)) +
+    geom_point(size = 2.2, color = ink, position = position_dodge(width = 0.55)) +
+    # ring the diagonal (each FT model's own training input); a square keeps it distinct from the
+    # open-circle mean marker so a ringed mean point doesn't read as two concentric circles.
     geom_point(data = diag_pts, aes(group = readout), inherit.aes = TRUE,
-               shape = 1, size = 4.4, stroke = 0.7, color = "grey20",
+               shape = 0, size = 4.6, stroke = 0.7, color = "grey45",
                position = position_dodge(width = 0.55), show.legend = FALSE) +
     geom_text(data = rail_lab, aes(x = x, y = cond, label = label, hjust = hj),
               inherit.aes = FALSE, color = "grey40", size = 2.7, vjust = -1.2) +
     facet_wrap(~model, ncol = 1, strip.position = "top") +
-    scale_color_manual(values = readout_pal, name = NULL) +
+    scale_shape_manual(values = readout_shape, name = NULL) +
     coord_cartesian(clip = "off") +
     labs(x = "AI Mean Absolute Error", y = NULL) +
     theme_minimal(base_size = 12) +

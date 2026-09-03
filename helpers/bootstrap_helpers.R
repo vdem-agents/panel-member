@@ -53,6 +53,12 @@ readout_pal <- c("Greedy (mode)" = "#0072B2", "Expectation (mean)" = "#D55E00")
 # point shape — so the blue/orange reuse from family_pal/readout_pal never collides within it.
 model_pal <- c("Llama 70B" = "#0072B2", "Qwen 72B" = "#E69F00", "Gemma 27B" = "#009E73")
 
+# readout_shape — greedy vs mean when a figure spends COLOR on model (the cross-model Fig 1),
+# so readout has to ride the shape channel instead. SOLID (16) = greedy (mode), the panel-member
+# readout carried into the distribution tests; OPEN (1) = expectation (mean), the consensus
+# estimate. Single source of truth so the fill convention can't drift across figures.
+readout_shape <- c("Greedy (mode)" = 16, "Expectation (mean)" = 1)
+
 canon_col <- function(condition) sub("-zeroshot$", "", condition)
 
 # The fine-tuned diagonal (each FT model on the input it was built for), shared by every figure.
