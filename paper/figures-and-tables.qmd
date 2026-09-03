@@ -27,6 +27,27 @@ derived <- file.path(proj_root, "data", "derived")
 
 boot_bundle <- readRDS(file.path(derived, "bootstrap_2019.rds"))
 exp_bundle  <- readRDS(file.path(derived, "expectation_2019.rds"))
+dm_slope    <- readRDS(file.path(derived, "distmatch_slope_2019.rds"))  # Fig 2 (Test-3 slope)
+
+# 2023 holdout bundles (appendix replication of Figs 1 & 2). Guarded so the doc still renders if
+# they haven't been built yet:
+#   Rscript helpers/build_bundles.R    --year 2023 --runs-subdir 2023 --exp-subdir 2023
+#   Rscript helpers/build_distmatch.R  --year 2023 --runs-subdir 2023
+b23 <- file.path(derived, "bootstrap_2023.rds")
+e23 <- file.path(derived, "expectation_2023.rds")
+have_2023   <- file.exists(b23) && file.exists(e23)
+if (have_2023) {
+  boot_bundle_2023 <- readRDS(b23)
+  exp_bundle_2023  <- readRDS(e23)
+}
+ds23 <- file.path(derived, "distmatch_slope_2023.rds")
+have_2023_slope <- file.exists(ds23)
+if (have_2023_slope) dm_slope_2023 <- readRDS(ds23)
+
+sd_signed <- readRDS(file.path(derived, "signeddev_xmodel_2019.rds"))  # Fig 3 (signed deviation)
+sds23 <- file.path(derived, "signeddev_xmodel_2023.rds")
+have_2023_signed <- file.exists(sds23)
+if (have_2023_signed) sd_signed_2023 <- readRDS(sds23)
 ```
 
 Broader question: how does information help an AI become a synthetic coder? 
@@ -42,11 +63,11 @@ We therefore predict that as the AI receives evidence, its MAE relative to human
 We hypothesize that more evidence should improve the synthetic coder's ability to emulate expert coder behavior because it will 
 
 ```{r}
-#| label: fig-landscape
-#| fig-cap: "Synthetic coder performance: greedy (mode) vs expectation (mean) readout."
+#| label: fig-crossmodel
+#| fig-cap: "Synthetic coder performance across model families (Llama 70B / Qwen 72B / Gemma 27B). Base conditions (top) and fine-tuned raw-text adapters (bottom), each on the four text inputs. Color = model, with country-clustered 95% CIs. The base rows show the greedy (mode) readout only — greedy and mean differ by <0.02 MAE there (~1/9 SESOI); the fine-tuned rows show both greedy (open) and expectation/mean (filled), where the two readouts diverge by 0.16–0.30 MAE. Dashed line = naive persistence; long-dash = human reference; grey band = ±SESOI."
 #| fig-width: 8
 #| fig-height: 5.2
-fig_readout_landscape(exp_bundle, boot_bundle, band = "human_loo")
+fig_crossmodel_landscape(exp_bundle, boot_bundle, band = "human_loo", base_readout = "greedy")
 ```
 
 We will highlight here how the B hypotheses were either null or confirmed the alternative hypotheses. The most surprising finding is that evidence appears to push the models further away from consensus. It is not beyond the SESOI, but it is striking that evidence appears to increase MAE of the models rather than reduce it. The models are paying attention to the evidence but it is making them disagree as much as or more than individual human coders rather than pushing them towards the consensus view.  
@@ -57,12 +78,124 @@ Difficulty slope, attitude, exaggeration gap analysis suggest that the finetuned
 
 For QMD 09, part I may be underpowered and does not use stale priors. Need to repeat on 2023. The Part II horse race suggests that of the seven models, FT-Raw Text performs the best in terms of mimicking human coders. This is an underpowered version of QMD 07s distributional analysis.
 
+How frame the difference between expectation (mean) and greedy (mode) readouts: 
 
+- Mean readout → an estimator of the panel consensus (a central estimate).
+- Greedy readout → a draw from the panel's rating distribution (behaves like one more coder).
 
+## 2. Difficulty tracking
+
+A companion to Figure 1 on the same rows and greedy readout. **Case difficulty** `h_c` is the
+within-cell human leave-one-out MAE — how much the real coders disagreed on that country-year-
+indicator (the per-case version of Figure 1's human reference line). The **difficulty-tracking
+slope** is the weighted OLS slope of a cell's AI error `a_c` on `h_c`. Because `h_c` is defined
+as the human error, the human reference lies on the 45° line (slope 1) by construction; a slope
+below 1 is flatter than that reference.
+
+Panel A draws the relationship for two cells against the human reference (curves = mean error per
+difficulty bin, with country-clustered 95% CI bands). Panel B is the slope for every cell, with
+country-clustered 95% CIs, against the human reference at 1.
+
+```{r}
+#| label: fig-crossmodel-slope
+#| fig-cap: "Difficulty tracking (greedy readout). (A) Mean AI error vs case difficulty h_c for a flat and a steep exemplar, against the human reference (which lies on the 45° line because h_c is defined as human error); 20 equal-count difficulty bins, country-clustered 95% CI bands. (B) Weighted OLS slope of AI error on h_c for every cell, country-clustered 95% CIs, long-dash = human reference (slope 1). Base block shows Llama only pending the Qwen/Gemma base reruns; the FT-raw block covers all three models."
+#| fig-width: 12
+#| fig-height: 5.4
+fig_crossmodel_slope_2panel(dm_slope)
+```
+
+<!-- TODO (EJT): interpretation of the difficulty-tracking pattern. Robustness: slopes on the
+>=5-coder difficulty pool preserve the cross-model ordering and the FT-vs-base gap (see
+build_distmatch.R min_coders arg); the >=2-coder pool is used here for consistency with Fig 1. -->
+
+## 3. Directional bias — signed deviation
+
+The third axis keeps the *direction* MAE discards: `s_c = AI rating − panel mean`, averaged within
+democracy quintiles. Zero is the panel-member target (a real coder's signed deviations sum to zero
+per bin by construction). The scalar summary is the **exaggeration gap** = (Q5 − Q1): positive =
+the model spreads the regime gradient wider than the human panel (rates autocracies below /
+democracies above), negative = compresses toward the middle.
+
+Panel A draws the gradient for the flattest and steepest cells against two references: the dotted
+zero line (raw panel mean) and the dashed line (V-Dem's IRT `_ord` score expressed on the same
+axis, `mean(ord − panel_mean)` per bin). Panel B is the exaggeration gap for every cell.
+
+```{r}
+#| label: fig-crossmodel-signeddev
+#| fig-cap: "Directional bias (greedy readout). (A) Signed deviation (AI − panel mean) across democracy quintiles for the flattest and steepest cells; dotted 0 = panel mean, dashed = V-Dem IRT target on the same axis, grey band = ±SESOI, country-clustered 95% CI bands. (B) Exaggeration gap (Q5 − Q1 signed deviation) for every cell, country-clustered 95% CIs, dashed 0 = no tilt (positive = exaggerates the gradient, negative = compresses), grey band = ±SESOI. Base block shows Llama only pending the Qwen/Gemma base reruns; the FT-raw block covers all three models."
+#| fig-width: 12
+#| fig-height: 5.4
+fig_crossmodel_signeddev_2panel(sd_signed)
+```
+
+<!-- TODO (EJT): interpretation of the directional-bias pattern (base vs FT tilt; the IRT line's
+own slope; Qwen's calibration vs its Fig-2 slope). -->
+
+## 4. Continuous Movement
+
+**Runs:** No additional runs required.
+
+Test how the relevance of information changes with the staleness of the prior. 
+
+## 5. Re-identificaiton
+
+**Runs:** Re-identification per model (FT Llama: Ev; FT Qwen: Ev; FT Gemma: Ev) on...what condition? Anonymized, summarized or both? We did see that Llama FT-summ had a harder time re-identifying relative to the other models. Briefly dig into that more. However, fundamentally we are trying to explain patterns in the figures pertaining to the FT-evidence models and so our efforts should primarily focus on those. 
+
+## 6. Name swap
+
+**Runs:** Run name-swap on three models (FT Llama: Ev, FT Qwen: Ev; FT Gemma: Ev). Consider whether using the raw text adapter leaks the names. Perhaps do a trial run to see whether you get different results using the raw versus summarized adapters for Llama. 
+
+## 7. 2024 FH only
 
 # Appendix
 
-## A1. B and F hypothesis tests
+## A1. Synthetic-coder performance — 2023 holdout
+
+Replication of Figure 1 on the 2023 holdout year. Same design and readout convention. The
+base block (Llama) is complete; among the fine-tuned raw-text adapters, Qwen and Gemma cover
+all four inputs while Llama covers codebook and raw text only (the 2023 `anonymized-zeroshot`
+and `summarized-zeroshot` raw-adapter runs are pending).
+
+```{r}
+#| label: fig-crossmodel-2023
+#| fig-cap: "Synthetic coder performance across model families on the 2023 holdout (Llama 70B / Qwen 72B / Gemma 27B). Layout, readout convention (solid = greedy, open = mean; base rows greedy only), and reference lines match Figure 1. Country-clustered 95% CIs."
+#| fig-width: 8
+#| fig-height: 5.2
+#| eval: !expr have_2023
+fig_crossmodel_landscape(exp_bundle_2023, boot_bundle_2023, band = "human_loo", base_readout = "greedy")
+```
+
+## A2. Difficulty tracking — 2023 holdout
+
+Replication of Figure 2 on the 2023 holdout year. Same two-panel design, featured cells, reference
+(slope 1), and greedy readout. The base block (Llama) is complete; among the fine-tuned raw-text
+adapters, Qwen and Gemma cover all four inputs while Llama covers codebook and raw text only (the
+2023 `anonymized-zeroshot` and `summarized-zeroshot` raw-adapter runs are pending — same gap as A1).
+
+```{r}
+#| label: fig-crossmodel-slope-2023
+#| fig-cap: "Difficulty tracking on the 2023 holdout — replication of Figure 2. (A) AI error vs case difficulty for the same featured cells; (B) difficulty-tracking slope per cell, long-dash = human reference (slope 1). Greedy readout, country-clustered 95% CIs."
+#| fig-width: 12
+#| fig-height: 5.4
+#| eval: !expr have_2023_slope
+fig_crossmodel_slope_2panel(dm_slope_2023)
+```
+
+## A3. Directional bias — 2023 holdout
+
+Replication of Figure 3 on the 2023 holdout year. Same two-panel design, featured cells, references
+(panel mean at 0, V-Dem IRT dashed), and greedy readout. Same model/condition coverage as A1–A2.
+
+```{r}
+#| label: fig-crossmodel-signeddev-2023
+#| fig-cap: "Directional bias on the 2023 holdout — replication of Figure 3. (A) Signed deviation across democracy quintiles for the flattest and steepest cells, dotted 0 = panel mean, dashed = V-Dem IRT; (B) exaggeration gap per cell. Greedy readout, country-clustered 95% CIs, grey band = ±SESOI."
+#| fig-width: 12
+#| fig-height: 5.4
+#| eval: !expr have_2023_signed
+fig_crossmodel_signeddev_2panel(sd_signed_2023)
+```
+
+## A4. B and F hypothesis tests
 
 ```{r}
 #| label: fig-bf
@@ -72,7 +205,7 @@ For QMD 09, part I may be underpowered and does not use stale priors. Need to re
 fig_bf(boot_bundle)
 ```
 
-## A2. Full model × input grid
+## A5. Full model × input grid
 
 ```{r}
 #| label: fig-grid

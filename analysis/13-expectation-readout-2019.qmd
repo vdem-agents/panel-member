@@ -216,7 +216,7 @@ and the pool, not of the readout, so they are reused from the confirmatory bundl
 recomputed. If the bundle is absent, render doc 06 first.
 
 ```{r rails}
-bundle_path <- file.path(derived_dir, "bootstrap_2019.rds")
+bundle_path <- file.path(derived_dir, glue("bootstrap_{params$year}.rds"))
 if (!file.exists(bundle_path)) {
   stop("greedy bundle not found: ", bundle_path, "\nRender analysis/06-bootstrap-metrics-2019.qmd first.")
 }
@@ -581,7 +581,7 @@ gain_ci |>
 ## 11. Serialize the expectation bundle
 
 ```{r serialize}
-exp_bundle_path <- file.path(derived_dir, "expectation_2019.rds")
+exp_bundle_path <- file.path(derived_dir, glue("expectation_{params$year}.rds"))
 saveRDS(
   list(
     exp_ci              = exp_ci,               # per-cell expectation MAE + CIs
