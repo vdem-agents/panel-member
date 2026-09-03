@@ -3,16 +3,24 @@
 #
 # Serves the model once (base weights, or base + one LoRA adapter), then runs the
 # re-identification probe over the whole evaluation pool for BOTH the anonymized and
-# summarized de-identified text, back to back, before shutting vLLM down. Eight runs
-# total across the four models are produced by four submissions:
+# summarized de-identified text, back to back, before shutting vLLM down.
 #
-#   MODEL=base sbatch slurm/run_reid_batch.sh    # llama-70b-local -> salience labels
-#   MODEL=raw  sbatch slurm/run_reid_batch.sh    # FT-raw  adapter
-#   MODEL=anon sbatch slurm/run_reid_batch.sh    # FT-anon adapter
-#   MODEL=summ sbatch slurm/run_reid_batch.sh    # FT-summ adapter
+# BASE selects the model family (llama default 70B | qwen 72B | gemma 27B); MODEL
+# selects base weights or a fine-tuned adapter (base | raw | anon | summ). The four
+# Llama variants are produced by four submissions (base/raw/anon/summ); qwen/gemma
+# have the raw adapter only:
 #
+#   MODEL=base sbatch slurm/run_reid_batch.sh                 # llama-70b-local -> salience labels
+#   MODEL=raw  sbatch slurm/run_reid_batch.sh                 # llama FT-raw
+#   MODEL=anon sbatch slurm/run_reid_batch.sh                 # llama FT-anon
+#   MODEL=summ sbatch slurm/run_reid_batch.sh                 # llama FT-summ
+#   BASE=qwen  MODEL=raw sbatch slurm/run_reid_batch.sh       # qwen  FT-raw
+#   BASE=gemma MODEL=raw sbatch slurm/run_reid_batch.sh       # gemma FT-raw
+#
+# YEAR defaults to 2019; set YEAR=2023 for the holdout. Llama output files stay bare
+# (reid_ft-raw_anon_2023.jsonl); qwen/gemma carry a base tag (reid_qwen-ft-raw_...).
 # The base runs (reid_base_anon / reid_base_summ) are the fixed salience partition
-# for R5/A8; all four models feed the per-model prevalence diagnostic. Re-running a
+# for R5/A8; all models feed the per-model prevalence diagnostic. Re-running a
 # submission resumes from the JSONL checkpoint.
 #
 # TREATMENTS defaults to "anonymized summarized"; override to run one, e.g.:
@@ -35,18 +43,40 @@ mkdir -p logs
 
 # ── Configuration ──────────────────────────────────────────────────────────────
 YEAR=${YEAR:-2019}
-MODEL=${MODEL:-base}                       # base | raw | anon | summ
+BASE=${BASE:-llama}                         # llama (default, 70B) | qwen (72B) | gemma (27B)
+MODEL=${MODEL:-base}                        # base | raw | anon | summ
 TREATMENTS=${TREATMENTS:-"anonymized summarized"}
-MODEL_PATH=/scratch/ejtgrp/models/llama-3.3-70b-instruct
 VLLM_PORT=8000
 OUTPUT_DIR=${OUTPUT_DIR:-data/output/reid}
 
-# Map MODEL -> re-identifier model key + output tag. Base serves no adapter.
+# BASE -> base weights on scratch, base alias vLLM advertises, and adapter prefix.
+# Mirrors run_inference_finetuned.sh; anon/summ adapters exist for llama only.
+case "$BASE" in
+  qwen)
+    MODEL_PATH=/scratch/ejtgrp/models/qwen2.5-72b-instruct
+    SERVED_NAME=Qwen/Qwen2.5-72B-Instruct
+    ADAPTER_PREFIX=qwen-72b ;;
+  gemma)
+    MODEL_PATH=/scratch/ejtgrp/models/gemma-3-27b-it
+    SERVED_NAME=google/gemma-3-27b-it
+    ADAPTER_PREFIX=gemma-27b ;;
+  *)
+    MODEL_PATH=/scratch/ejtgrp/models/llama-3.3-70b-instruct
+    SERVED_NAME=meta-llama/Llama-3.3-70B-Instruct
+    ADAPTER_PREFIX=llama-70b ;;
+esac
+
+# Non-llama output files carry a base tag (reid_qwen-ft-raw_..., reid_gemma-ft-raw_...);
+# llama stays bare (reid_ft-raw_..., reid_base_...) so existing files are unaffected.
+BASE_TAG=""; [ "$BASE" != "llama" ] && BASE_TAG="${BASE}-"
+
+# Map MODEL -> re-identifier model key (must match vdem_config.py) + output tag.
+# Base serves no adapter. The ft key resolves to cfg["model"] = the LoRA adapter name.
 case "$MODEL" in
-  base) MODEL_KEY=llama-70b-local;   ADAPTER_NAME=""; TAG=base ;;
-  raw)  MODEL_KEY=llama-70b-ft-raw;  ADAPTER_NAME=llama-70b-vdem-ft-raw;  TAG=ft-raw ;;
-  anon) MODEL_KEY=llama-70b-ft-anon; ADAPTER_NAME=llama-70b-vdem-ft-anon; TAG=ft-anon ;;
-  summ) MODEL_KEY=llama-70b-ft-summ; ADAPTER_NAME=llama-70b-vdem-ft-summ; TAG=ft-summ ;;
+  base) MODEL_KEY=${ADAPTER_PREFIX}-local;   ADAPTER_NAME=""; TAG=${BASE_TAG}base ;;
+  raw)  MODEL_KEY=${ADAPTER_PREFIX}-ft-raw;  ADAPTER_NAME=${ADAPTER_PREFIX}-vdem-ft-raw;  TAG=${BASE_TAG}ft-raw ;;
+  anon) MODEL_KEY=${ADAPTER_PREFIX}-ft-anon; ADAPTER_NAME=${ADAPTER_PREFIX}-vdem-ft-anon; TAG=${BASE_TAG}ft-anon ;;
+  summ) MODEL_KEY=${ADAPTER_PREFIX}-ft-summ; ADAPTER_NAME=${ADAPTER_PREFIX}-vdem-ft-summ; TAG=${BASE_TAG}ft-summ ;;
   *) echo "Unknown MODEL=$MODEL (want base|raw|anon|summ)" >&2; exit 1 ;;
 esac
 
@@ -71,12 +101,16 @@ export PATH="$HOME/miniforge3/envs/vllm/bin:$PATH"
 LORA_ARGS=()
 if [ -n "$ADAPTER_NAME" ]; then
     ADAPTER_PATH=$HOME/panel-member-archive/adapters/${ADAPTER_NAME}
+    if [ ! -d "$ADAPTER_PATH" ]; then
+        echo "ERROR: adapter not found at $ADAPTER_PATH — has the ${BASE} ${MODEL} training job archived yet?" >&2
+        exit 1
+    fi
     LORA_ARGS=(--enable-lora --lora-modules "${ADAPTER_NAME}=${ADAPTER_PATH}")
 fi
 
 "$VLLM_PYTHON" -m vllm.entrypoints.openai.api_server \
     --model "$MODEL_PATH" \
-    --served-model-name meta-llama/Llama-3.3-70B-Instruct \
+    --served-model-name "$SERVED_NAME" \
     "${LORA_ARGS[@]}" \
     --dtype bfloat16 \
     --quantization fp8 \

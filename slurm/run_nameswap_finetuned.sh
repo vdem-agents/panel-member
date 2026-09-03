@@ -1,19 +1,25 @@
 #!/bin/bash
-# SLURM job: name-swap inference with the FT-summ Llama 70B adapter.
+# SLURM job: name-swap inference with a fine-tuned adapter on a single GH200.
 #
 # Runs both arms (swapped + correct-name) on the summarized substrate, under the
 # summarized-zeroshot condition (calibration lives in the adapter weights, no few-shot
 # block). Starts vLLM with the LoRA adapter, builds the pairing set as a preflight,
 # runs the batch, then shuts vLLM down.
 #
-# Only FT-summ is run for the name-swap (see notes/name-swap-design.md §Arms and models:
-# FT-raw/FT-anon are off-diagonal on the summarized substrate). The base model weights
-# (~140GB) must be on scratch (setup_models.sh); the adapter is read from the home archive.
+# BASE selects the family (llama 70B default | qwen 72B | gemma 27B); VARIANT selects
+# the adapter (raw default | summ | anon). The name-swap is run on FT-raw — the featured
+# fine-tuned model — across all three families. The swap substrate is summarized either
+# way (raw text names the source country, so it can't be swapped); feeding FT-raw
+# summarized text is fine because the name effect is a within-model, within-substrate
+# difference (swapped vs. correct arm) that cancels any substrate offset. The base model
+# weights must be on scratch (setup_models.sh); the adapter is read from the home archive.
 #
-# Submit:
-#   YEAR=2019 sbatch slurm/run_nameswap_finetuned.sh
-#   YEAR=2023 sbatch slurm/run_nameswap_finetuned.sh
-#   YEAR=2019 ARMS="swapped" sbatch slurm/run_nameswap_finetuned.sh   # one arm only
+# Submit (default = llama FT-raw):
+#   YEAR=2023 sbatch slurm/run_nameswap_finetuned.sh                       # llama FT-raw
+#   YEAR=2023 BASE=qwen  sbatch slurm/run_nameswap_finetuned.sh            # qwen  FT-raw
+#   YEAR=2023 BASE=gemma sbatch slurm/run_nameswap_finetuned.sh            # gemma FT-raw
+#   YEAR=2023 VARIANT=summ sbatch slurm/run_nameswap_finetuned.sh          # llama FT-summ (old default)
+#   YEAR=2023 ARMS="swapped" sbatch slurm/run_nameswap_finetuned.sh        # one arm only
 #
 #SBATCH --job-name=pm-ns-ft
 #SBATCH --partition=superChip
@@ -32,15 +38,33 @@ mkdir -p logs
 # ── Configuration ──────────────────────────────────────────────────────────────
 YEAR=${YEAR:-2019}
 ARMS=${ARMS:-"swapped correct"}
-VARIANT=summ                         # FT-summ only for the name-swap
-CONDITION=summarized-zeroshot        # calibration in the adapter weights, no few-shot
-MODEL_KEY=llama-70b-ft-${VARIANT}
-MODEL_PATH=/scratch/ejtgrp/models/llama-3.3-70b-instruct
-ADAPTER_NAME=llama-70b-vdem-ft-${VARIANT}    # must match vdem_config.py
-ADAPTER_PATH=$HOME/panel-member-archive/adapters/${ADAPTER_NAME}
+BASE=${BASE:-llama}                  # llama (default, 70B) | qwen (72B) | gemma (27B)
+VARIANT=${VARIANT:-raw}              # raw (default; the featured FT adapter) | summ | anon
+CONDITION=summarized-zeroshot        # swap substrate: summarized text, no few-shot block
 VLLM_PORT=8000
 OUTPUT_DIR=data/output/nameswap    # own dir: keys collide with the grid, so keep out of runs/
 PAIRS=data/derived/nameswap_pairs_${YEAR}.csv
+
+# BASE -> base weights on scratch, served alias vLLM advertises, and adapter prefix.
+# Mirrors run_reid_batch.sh / run_inference_finetuned.sh.
+case "$BASE" in
+  qwen)
+    MODEL_PATH=/scratch/ejtgrp/models/qwen2.5-72b-instruct
+    SERVED_NAME=Qwen/Qwen2.5-72B-Instruct
+    ADAPTER_PREFIX=qwen-72b ;;
+  gemma)
+    MODEL_PATH=/scratch/ejtgrp/models/gemma-3-27b-it
+    SERVED_NAME=google/gemma-3-27b-it
+    ADAPTER_PREFIX=gemma-27b ;;
+  *)
+    MODEL_PATH=/scratch/ejtgrp/models/llama-3.3-70b-instruct
+    SERVED_NAME=meta-llama/Llama-3.3-70B-Instruct
+    ADAPTER_PREFIX=llama-70b ;;
+esac
+
+MODEL_KEY=${ADAPTER_PREFIX}-ft-${VARIANT}
+ADAPTER_NAME=${ADAPTER_PREFIX}-vdem-ft-${VARIANT}    # must match vdem_config.py
+ADAPTER_PATH=$HOME/panel-member-archive/adapters/${ADAPTER_NAME}
 
 # ── Environment ────────────────────────────────────────────────────────────────
 source ~/miniforge3/etc/profile.d/conda.sh
@@ -61,19 +85,37 @@ export TRANSFORMERS_OFFLINE=1
 export VLLM_USE_FLASHINFER_SAMPLER=0
 
 # ── Preflight: build the pairing set (CPU only; needs the summarized cache) ──────
-if [ ! -f "$PAIRS" ]; then
+# Must run here on the ARM compute node — the login node is x86 and can't load the
+# ARM conda env. Race-safe so all three family jobs can be queued at once: the
+# derangement is deterministic (fixed seed), built once under an atomic mkdir lock;
+# concurrent jobs wait for the lock to clear rather than rebuild.
+mkdir -p data/derived
+LOCK="data/derived/.nameswap_pairs_${YEAR}.lock"
+if [ ! -f "$PAIRS" ] && mkdir "$LOCK" 2>/dev/null; then
     echo "Building pairing set for $YEAR..."
     python3 -m pipeline.build_nameswap_pairs --year "$YEAR"
-else
-    echo "Pairing set already present: $PAIRS"
+    rmdir "$LOCK"
+elif [ ! -f "$PAIRS" ]; then
+    echo "Another job is building the pairing set; waiting (up to 10 min)..."
+    for _ in $(seq 1 120); do { [ -f "$PAIRS" ] && [ ! -d "$LOCK" ]; } && break; sleep 5; done
 fi
+if [ ! -f "$PAIRS" ]; then
+    echo "ERROR: pairing set $PAIRS not available after preflight (stale lock? rmdir $LOCK and resubmit)" >&2
+    exit 1
+fi
+echo "Pairing set ready: $PAIRS"
 
 # ── Start vLLM with LoRA adapter ───────────────────────────────────────────────
+if [ ! -d "$ADAPTER_PATH" ]; then
+    echo "ERROR: adapter not found at $ADAPTER_PATH — has the ${BASE} ft-${VARIANT} training job archived yet?" >&2
+    exit 1
+fi
+
 VLLM_PYTHON=~/miniforge3/envs/vllm/bin/python
 export PATH="$HOME/miniforge3/envs/vllm/bin:$PATH"
 "$VLLM_PYTHON" -m vllm.entrypoints.openai.api_server \
     --model "$MODEL_PATH" \
-    --served-model-name meta-llama/Llama-3.3-70B-Instruct \
+    --served-model-name "$SERVED_NAME" \
     --enable-lora \
     --lora-modules "${ADAPTER_NAME}=${ADAPTER_PATH}" \
     --dtype bfloat16 \
