@@ -116,7 +116,9 @@ fig_readout_landscape <- function(exp_bundle, greedy_bundle,
 # appendix replication).
 fig_crossmodel_landscape <- function(exp_bundle, greedy_bundle,
                                      band = c("human_loo", "none"),
-                                     base_readout = c("greedy", "both", "mean")) {
+                                     base_readout = c("greedy", "both", "mean"),
+                                     ft_conds = c("codebook", "evidence-zeroshot",
+                                                  "anonymized-zeroshot", "summarized-zeroshot")) {
   band         <- match.arg(band)
   base_readout <- match.arg(base_readout)
   sesoi       <- exp_bundle$sesoi
@@ -126,7 +128,6 @@ fig_crossmodel_landscape <- function(exp_bundle, greedy_bundle,
   base_models <- c("llama-70b", "qwen-72b", "gemma-27b")
   ft_models   <- c("llama-70b-ft-raw", "qwen-72b-ft-raw", "gemma-27b-ft-raw")
   base_conds  <- c("codebook", "evidence", "anonymized", "summarized")
-  ft_conds    <- c("codebook", "evidence-zeroshot", "anonymized-zeroshot", "summarized-zeroshot")
   cond_disp   <- c(codebook = "Codebook", evidence = "Raw Text",
                    anonymized = "Anonymized", summarized = "Summarized")
 
@@ -223,13 +224,14 @@ fig_crossmodel_landscape <- function(exp_bundle, greedy_bundle,
 # slope is a panel-member question, so there is no shape channel here.
 #
 #   dm_bundle <- readRDS("data/derived/distmatch_slope_2019.rds")  # dm_slope: per-cell slope + CI
-fig_crossmodel_slope <- function(dm_bundle) {
+fig_crossmodel_slope <- function(dm_bundle,
+                                 ft_conds = c("codebook", "evidence-zeroshot",
+                                              "anonymized-zeroshot", "summarized-zeroshot")) {
   cells0 <- dm_bundle$dm_slope
 
   base_models <- c("llama-70b", "qwen-72b", "gemma-27b")
   ft_models   <- c("llama-70b-ft-raw", "qwen-72b-ft-raw", "gemma-27b-ft-raw")
   base_conds  <- c("codebook", "evidence", "anonymized", "summarized")
-  ft_conds    <- c("codebook", "evidence-zeroshot", "anonymized-zeroshot", "summarized-zeroshot")
   cond_disp   <- c(codebook = "Codebook", evidence = "Raw Text",
                    anonymized = "Anonymized", summarized = "Summarized")
 
@@ -333,8 +335,10 @@ fig_slope_curve <- function(dm_bundle,
 # coefficient plot (every model ranked by that slope). Requires the curve fields in the bundle.
 fig_crossmodel_slope_2panel <- function(dm_bundle,
                                         feature = c("qwen-72b-ft-raw|codebook",
-                                                    "llama-70b|summarized")) {
-  fig_slope_curve(dm_bundle, feature = feature) + fig_crossmodel_slope(dm_bundle) +
+                                                    "llama-70b|summarized"),
+                                        ft_conds = c("codebook", "evidence-zeroshot",
+                                                     "anonymized-zeroshot", "summarized-zeroshot")) {
+  fig_slope_curve(dm_bundle, feature = feature) + fig_crossmodel_slope(dm_bundle, ft_conds = ft_conds) +
     patchwork::plot_layout(widths = c(1, 1.05)) +
     patchwork::plot_annotation(tag_levels = "A")
 }
@@ -391,12 +395,13 @@ fig_signeddev_curve <- function(sd_bundle,
 # Fig 3 (right panel) — exaggeration gap (Q5 − Q1 signed deviation) per cell, the twin of Fig 2's
 # coefficient panel. Reference at 0 (no tilt); positive = exaggerates the gradient, negative =
 # compresses. Same Base/Fine-tuned strips, plain input rows, capless point-ranges, color = model.
-fig_signeddev_gap <- function(sd_bundle) {
+fig_signeddev_gap <- function(sd_bundle,
+                              ft_conds = c("codebook", "evidence-zeroshot",
+                                           "anonymized-zeroshot", "summarized-zeroshot")) {
   cells0 <- sd_bundle$dm_eg_q
   base_models <- c("llama-70b", "qwen-72b", "gemma-27b")
   ft_models   <- c("llama-70b-ft-raw", "qwen-72b-ft-raw", "gemma-27b-ft-raw")
   base_conds  <- c("codebook", "evidence", "anonymized", "summarized")
-  ft_conds    <- c("codebook", "evidence-zeroshot", "anonymized-zeroshot", "summarized-zeroshot")
   cond_disp   <- c(codebook = "Codebook", evidence = "Raw Text",
                    anonymized = "Anonymized", summarized = "Summarized")
   cond_lv <- c("Summarized", "Anonymized", "Raw Text", "Codebook")
@@ -437,8 +442,115 @@ fig_signeddev_gap <- function(sd_bundle) {
 # coefficient plot (every model ranked). Requires signeddev_xmodel_{year}.rds.
 fig_crossmodel_signeddev_2panel <- function(sd_bundle,
                                             feature = c("gemma-27b-ft-raw|anonymized-zeroshot",
-                                                        "llama-70b|evidence")) {
-  fig_signeddev_curve(sd_bundle, feature = feature) + fig_signeddev_gap(sd_bundle) +
+                                                        "llama-70b|evidence"),
+                                            ft_conds = c("codebook", "evidence-zeroshot",
+                                                         "anonymized-zeroshot", "summarized-zeroshot")) {
+  fig_signeddev_curve(sd_bundle, feature = feature) + fig_signeddev_gap(sd_bundle, ft_conds = ft_conds) +
+    patchwork::plot_layout(widths = c(1, 1.05)) +
+    patchwork::plot_annotation(tag_levels = "A")
+}
+
+# Fig 3 (regime variant, left panel) — signed deviation across V-Dem's Regimes of the World
+# (v2x_regime: 0 closed autocracy .. 3 liberal democracy, stored as ri = v2x_regime + 1 so bins run
+# 1..4). Same construction as fig_signeddev_curve but reads dm_r / irt_ref_r — the regime-type cut
+# build_signeddev.R computes alongside the democracy-quintile cut.
+fig_signeddev_curve_regime <- function(sd_bundle,
+                                       feature = c("gemma-27b-ft-raw|anonymized-zeroshot",
+                                                   "llama-70b|evidence")) {
+  sesoi <- sd_bundle$sesoi
+  family_of <- function(mk) dplyr::case_when(
+    grepl("^llama", mk) ~ "Llama 70B", grepl("^qwen", mk) ~ "Qwen 72B",
+    grepl("^gemma", mk) ~ "Gemma 27B", TRUE ~ NA_character_)
+  cond_disp <- c(codebook = "Codebook", evidence = "Raw Text",
+                 anonymized = "Anonymized", summarized = "Summarized")
+  lab_of <- function(cell) {
+    mk <- sub("\\|.*$", "", cell); cond <- sub("^[^|]*\\|", "", cell)
+    block <- if (grepl("-ft-", mk)) "fine-tuned" else "base"
+    paste0(family_of(mk), " · ", block, " · ", unname(cond_disp[canon_col(cond)]))
+  }
+  sel <- sd_bundle$dm_r |>
+    dplyr::filter(cell %in% feature) |>
+    dplyr::mutate(model = family_of(model_key), label = vapply(cell, lab_of, character(1)))
+  lab_levels <- unique(sel$label)
+  pal <- setNames(unname(model_pal[sel$model[match(lab_levels, sel$label)]]), lab_levels)
+  sel$label <- factor(sel$label, levels = lab_levels)
+  irt <- sd_bundle$irt_ref_r
+  regime_lv <- c("Closed\nautocracy", "Electoral\nautocracy", "Electoral\ndemocracy", "Liberal\ndemocracy")
+
+  ggplot() +
+    annotate("rect", xmin = -Inf, xmax = Inf, ymin = -sesoi, ymax = sesoi,
+             fill = "grey85", alpha = 0.55) +
+    geom_hline(yintercept = 0, linetype = "dotted", color = "grey30", linewidth = 0.4) +
+    geom_line(data = irt, aes(bin, est), linetype = "dashed", color = "grey45", linewidth = 0.7) +
+    annotate("text", x = 2, y = irt$est[irt$bin == 2], label = "V-Dem IRT",
+             color = "grey25", size = 2.9, hjust = 1, vjust = -0.9) +
+    geom_ribbon(data = sel, aes(bin, ymin = lo, ymax = hi, fill = label), alpha = 0.18) +
+    geom_line(data = sel, aes(bin, est, color = label), linewidth = 1.0) +
+    geom_pointrange(data = sel, aes(bin, est, ymin = lo, ymax = hi, color = label), size = 0.3) +
+    scale_color_manual(values = pal, name = NULL) +
+    scale_fill_manual(values = pal, guide = "none") +
+    scale_x_continuous(breaks = 1:4, labels = regime_lv) +
+    labs(x = "regime type (V-Dem Regimes of the World)",
+         y = "signed deviation (AI − panel mean)") +
+    theme_minimal(base_size = 12) +
+    theme(legend.position = "top", legend.justification = "left", legend.direction = "vertical",
+          panel.grid.minor = element_blank(), plot.title.position = "plot")
+}
+
+# Fig 3 (regime variant, right panel) — exaggeration gap (liberal democracy − closed autocracy
+# signed deviation) per cell, the regime-cut twin of fig_signeddev_gap. Reads dm_eg_r.
+fig_signeddev_gap_regime <- function(sd_bundle,
+                                     ft_conds = c("codebook", "evidence-zeroshot",
+                                                  "anonymized-zeroshot", "summarized-zeroshot")) {
+  cells0 <- sd_bundle$dm_eg_r
+  base_models <- c("llama-70b", "qwen-72b", "gemma-27b")
+  ft_models   <- c("llama-70b-ft-raw", "qwen-72b-ft-raw", "gemma-27b-ft-raw")
+  base_conds  <- c("codebook", "evidence", "anonymized", "summarized")
+  cond_disp   <- c(codebook = "Codebook", evidence = "Raw Text",
+                   anonymized = "Anonymized", summarized = "Summarized")
+  cond_lv <- c("Summarized", "Anonymized", "Raw Text", "Codebook")
+  family_of <- function(mk) dplyr::case_when(
+    grepl("^llama", mk) ~ "Llama 70B", grepl("^qwen", mk) ~ "Qwen 72B",
+    grepl("^gemma", mk) ~ "Gemma 27B", TRUE ~ NA_character_)
+
+  base <- cells0 |> dplyr::filter(model_key %in% base_models, condition %in% base_conds) |>
+    dplyr::mutate(row = unname(cond_disp[condition]), block = "Base")
+  ft <- cells0 |> dplyr::filter(model_key %in% ft_models, condition %in% ft_conds) |>
+    dplyr::mutate(row = unname(cond_disp[canon_col(condition)]), block = "Fine-tuned")
+  cells <- dplyr::bind_rows(base, ft) |>
+    dplyr::mutate(model = factor(family_of(model_key), levels = names(model_pal)),
+                  row   = factor(row, levels = cond_lv),
+                  block = factor(block, levels = c("Base", "Fine-tuned")))
+  sesoi <- sd_bundle$sesoi
+  dodge <- position_dodge(width = 0.6)
+
+  ggplot(cells, aes(est, row, color = model, group = model)) +
+    annotate("rect", xmin = -sesoi, xmax = sesoi, ymin = -Inf, ymax = Inf,
+             fill = "grey85", alpha = 0.55) +
+    geom_vline(xintercept = 0, linetype = "dashed", color = "grey40") +
+    geom_pointrange(aes(xmin = lo, xmax = hi), orientation = "y",
+                    size = 0.45, linewidth = 0.5, position = dodge) +
+    facet_grid(rows = vars(block), scales = "free_y", space = "free", switch = "y") +
+    scale_color_manual(values = model_pal, name = NULL) +
+    coord_cartesian(clip = "off") +
+    labs(x = "exaggeration gap (liberal democracy − closed autocracy signed deviation)", y = NULL) +
+    theme_minimal(base_size = 12) +
+    theme(legend.position = "top", legend.justification = "left",
+          panel.grid.major.y = element_blank(), plot.title.position = "plot",
+          panel.spacing.y = unit(0.9, "lines"),
+          strip.placement = "outside", strip.background = element_blank(),
+          strip.text.y.left = element_text(angle = 0, face = "bold", hjust = 1))
+}
+
+# Fig 3 (regime variant, composite) — the gradient curve beside the gap coefficient plot, using
+# V-Dem Regimes of the World instead of democracy quintiles. Requires signeddev_xmodel_{year}.rds.
+fig_crossmodel_signeddev_2panel_regime <- function(sd_bundle,
+                                                   feature = c("gemma-27b-ft-raw|anonymized-zeroshot",
+                                                               "llama-70b|evidence"),
+                                                   ft_conds = c("codebook", "evidence-zeroshot",
+                                                                "anonymized-zeroshot", "summarized-zeroshot")) {
+  fig_signeddev_curve_regime(sd_bundle, feature = feature) +
+    fig_signeddev_gap_regime(sd_bundle, ft_conds = ft_conds) +
     patchwork::plot_layout(widths = c(1, 1.05)) +
     patchwork::plot_annotation(tag_levels = "A")
 }
