@@ -93,8 +93,16 @@ mkdir -p data/derived
 LOCK="data/derived/.nameswap_pairs_${YEAR}.lock"
 if [ ! -f "$PAIRS" ] && mkdir "$LOCK" 2>/dev/null; then
     echo "Building pairing set for $YEAR..."
-    python3 -m pipeline.build_nameswap_pairs --year "$YEAR"
-    rmdir "$LOCK"
+    # Release the lock whether the build succeeds or fails, so a failed build never
+    # leaves a stale lock that deadlocks concurrent/resubmitted jobs. Kept in an
+    # if-condition so `set -e` doesn't abort before the lock is cleaned up.
+    if python3 -m pipeline.build_nameswap_pairs --year "$YEAR"; then
+        rmdir "$LOCK"
+    else
+        rmdir "$LOCK"
+        echo "ERROR: pairing build failed" >&2
+        exit 1
+    fi
 elif [ ! -f "$PAIRS" ]; then
     echo "Another job is building the pairing set; waiting (up to 10 min)..."
     for _ in $(seq 1 120); do { [ -f "$PAIRS" ] && [ ! -d "$LOCK" ]; } && break; sleep 5; done

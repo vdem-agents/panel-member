@@ -37,13 +37,13 @@ from pathlib import Path
 from pipeline.run_coding_batch import load_panel_means
 from pipeline.summarize_indicator import SUMM_DIR
 
-REGION_MAP_R = Path(__file__).parent.parent / "R" / "region_map.R"
+REGION_MAP_R = Path(__file__).parent.parent / "helpers" / "region_map.R"
 OUT_DIR = Path(__file__).parent.parent / "data" / "derived"
 SEED = 42
 
 
 def load_region_map() -> dict[str, str]:
-    """Parse the ISO3 -> region lookup from R/region_map.R (the single source of truth).
+    """Parse the ISO3 -> region lookup from helpers/region_map.R (the single source of truth).
 
     Matches the `ISO = "Region",` entries of region_map9 and ignores the bare
     `"Region",` lines of region_order9.
