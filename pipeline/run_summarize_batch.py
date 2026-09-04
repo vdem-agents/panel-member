@@ -177,6 +177,12 @@ def main() -> None:
                              "Requires --sample.")
     parser.add_argument("--reidentify-output", metavar="PATH",
                         help="Write per-CYI reidentification results to this JSON file.")
+    parser.add_argument(
+        "--fh-only", dest="fh_only", action="store_true",
+        help="Freedom-House-only source restriction: scan freedom-house/{year}/ for the "
+             "country list instead of state-dept (R3 2024 holdout + 2023 companion). "
+             "State Dept sections simply cache as 'no source text' when absent."
+    )
     args = parser.parse_args()
 
     if args.reidentify and args.sample is None:
@@ -184,8 +190,8 @@ def main() -> None:
     if args.reidentify_output and not args.reidentify:
         parser.error("--reidentify-output requires --reidentify")
 
-    print(f"Building country map for {args.year}...", file=sys.stderr)
-    country_map = build_country_map(args.year)
+    print(f"Building country map for {args.year}{' (FH-only)' if args.fh_only else ''}...", file=sys.stderr)
+    country_map = build_country_map(args.year, fh_only=args.fh_only)
     for iso, entry in FH_ONLY_ENTITIES.items():
         if iso not in country_map:
             country_map[iso] = entry
