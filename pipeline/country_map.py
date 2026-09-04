@@ -50,6 +50,8 @@ SLUG_OVERRIDES: dict[str, tuple[str, str] | None] = {
     "china-includes-tibet-hong-kong-and-macau-china": ("CHN", "China"),
     "democratic-peoples-republic-of-korea":           ("PRK", "North Korea"),
     "republic-of-korea":                              ("KOR", "South Korea"),
+    "democratic-republic-congo":                      ("COD", "Democratic Republic of the Congo"),
+    "republic-congo":                                 ("COG", "Congo"),
 
     # ── Combined / multi-territory reports — skip ─────────────────────────────
     # No clean single-country V-Dem mapping; excluded from all coding jobs.
