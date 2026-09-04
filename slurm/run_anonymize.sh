@@ -42,12 +42,22 @@ FH_FLAG=""; if [ "$FH_ONLY" = "1" ]; then FH_FLAG="--fh-only"; fi
 # ── Environment ────────────────────────────────────────────────────────────────
 source ~/miniforge3/etc/profile.d/conda.sh
 module load cuda/13
-NVCC_BIN=$(which nvcc 2>/dev/null || true); [ -n "$NVCC_BIN" ] && export CUDA_HOME="$(dirname "$(dirname "$NVCC_BIN")")"
+# GH200: module cuda/13 has no nvcc; point CUDA_HOME at the vllm env's bundled cu13 and
+# skip flashinfer's sampler JIT (see run_inference_finetuned.sh for the full rationale).
+# Previously used a `which nvcc` fallback here, which silently found nothing on these
+# nodes and left vLLM falling back to the nonexistent /usr/local/cuda -- caused job
+# 73636897 to crash at vLLM startup, then hang for hours in the health-check wait loop
+# (no timeout there) until the wall-clock killed it. Confirmed fixed 2026-09-04.
+export CUDA_HOME="$HOME/miniforge3/envs/vllm/lib/python3.11/site-packages/nvidia/cu13"
+export PATH="$CUDA_HOME/bin:$PATH"
 set -a; source .env; set +a
 conda activate panel-member
 
 export VLLM_BASE_URL="http://localhost:${VLLM_PORT}/v1"
 export VLLM_API_KEY="local"
+export HF_HUB_OFFLINE=1
+export TRANSFORMERS_OFFLINE=1
+export VLLM_USE_FLASHINFER_SAMPLER=0
 
 # ── Start vLLM ─────────────────────────────────────────────────────────────────
 VLLM_PYTHON=~/miniforge3/envs/vllm/bin/python
