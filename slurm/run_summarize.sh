@@ -13,6 +13,10 @@
 # For Condition 4 inference prerequisites:
 #   YEAR=2019 sbatch slurm/run_summarize.sh
 #
+# FH_ONLY=1 scans freedom-house/{year}/ for the country list instead of state-dept
+# (R3 2024 holdout, which has no State Dept text at all):
+#   FH_ONLY=1 YEAR=2024 sbatch slurm/run_summarize.sh
+#
 #SBATCH --job-name=pm-summarize
 #SBATCH --partition=superChip
 #SBATCH --gres=gpu:gh200:1
@@ -30,6 +34,8 @@ YEAR=${YEAR:-2019}
 MODEL_KEY=llama-70b-local
 MODEL_PATH=/scratch/ejtgrp/models/llama-3.3-70b-instruct
 VLLM_PORT=8000
+FH_ONLY=${FH_ONLY:-0}
+FH_FLAG=""; if [ "$FH_ONLY" = "1" ]; then FH_FLAG="--fh-only"; fi
 
 # ── Environment ────────────────────────────────────────────────────────────────
 source ~/miniforge3/etc/profile.d/conda.sh
@@ -65,8 +71,9 @@ echo "vLLM ready (pid $VLLM_PID)"
 python3 -m pipeline.run_summarize_batch \
     --year "$YEAR" \
     --model "$MODEL_KEY" \
-    --workers 8
+    --workers 8 \
+    $FH_FLAG
 
 # ── Cleanup ────────────────────────────────────────────────────────────────────
 kill "$VLLM_PID" && wait "$VLLM_PID" 2>/dev/null || true
-echo "Done — year $YEAR summarization complete."
+echo "Done — year $YEAR summarization complete${FH_FLAG:+ (FH-only)}."
