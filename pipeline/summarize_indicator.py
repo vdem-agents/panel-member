@@ -85,9 +85,11 @@ must:
 Output only the summary. No preamble, no explanation, no heading.\
 """
 
-# Identified variant: same compression (instructions 1, 3, 4, 6) but keeps proper names and
-# calendar years instead of stripping them — instructions 2 and 5's de-identification
-# clauses are the only things removed relative to SUMMARIZER_SYSTEM above.
+# Identified variant of SUMMARIZER_SYSTEM. It keeps the same compression instructions
+# (mechanism-level description, generalize non-vital structural detail, preserve quantitative
+# detail, 400-word cap) but drops the two de-identification clauses ("replace all proper
+# names" and "no specific calendar years") and replaces them with rule 4, which keeps names
+# and dates and wins wherever the compression rules seem to conflict with it.
 SUMMARIZER_SYSTEM_IDENTIFIED = """\
 Your task is to summarize the political conditions described in human rights and democracy
 report excerpts.
@@ -95,19 +97,23 @@ report excerpts.
 Write a summary of the political conditions described in the provided text. Your summary
 must:
 
-1. Describe what the text says about political conditions in more general terms — for
-   example, "the executive controls judicial appointments without legislative confirmation"
-   rather than naming the specific institution or procedure; "security forces detained
-   hundreds of protesters" rather than naming the specific operation or location
-2. Generalize structural and historical details that carry no evaluative signal: specific
-   treaty names, constitutional arrangements, geographic facts — describe them
-   functionally only (e.g., "a power-sharing arrangement between two political factions")
-3. Preserve quantitative information and frequency descriptions: numbers of detainees,
-   frequency of incidents, duration of patterns
+1. Describe what the text says about political conditions in more general terms. For
+   example, write "the executive controls judicial appointments without legislative
+   confirmation" rather than walking through the specific appointment procedure, and
+   "security forces detained hundreds of protesters" rather than recounting the operation
+   blow by blow.
+2. Generalize structural and historical details that do not contain vital information. For
+   example, specific treaty provisions and constitutional mechanics can be described from a
+   functional standpoint, such as "a power-sharing arrangement between two political
+   factions".
+3. Preserve quantitative information and frequency descriptions such as numbers of
+   detainees, frequency of incidents, and duration of patterns.
 4. Write in a neutral, descriptive register. Keep the country name, place names, leader
    names, organization names, and specific calendar years or dates exactly as given in the
-   source text — do not generalize or replace any of these
-5. Write up to 400 words; shorter is acceptable when the source text is brief
+   source text, and do not generalize or replace any of these. Where these instructions
+   seem to pull different ways on a specific name, keep the name. Rules 1 and 2 govern how
+   much procedural and structural detail to include, not whether to name things.
+5. Write up to 400 words. Shorter is acceptable when the source text is brief.
 
 Output only the summary. No preamble, no explanation, no heading.\
 """
