@@ -130,14 +130,20 @@ paired_delta <- function(a_mk, a_cond, b_mk, b_cond, label,
 # ── Model-coverage guard ──────────────────────────────────────────────────────
 # Every JSONL row is self-describing — model_key is set from whichever model actually served
 # the request, not from what a job was meant to run — so a row can't be silently mislabeled.
-# But a whole family CAN go missing if a job meant to produce it silently ran as a different
-# one instead (e.g. a dropped BASE= env var defaulting to Llama; see
-# notes/proposed-mechanism-tests.md, 2026-09-05). This catches that: pass the model_key values
-# the caller actually expects to find (post "-local" strip, e.g.
-# c("llama-70b","qwen-72b","gemma-27b")) and it stops loudly if any are entirely absent, rather
-# than silently building a bundle two-thirds the size it should be.
-check_model_coverage <- function(df, expect_models, label = "") {
+# But two things CAN slip through silently:
+#   1. A whole family goes missing — a job meant to produce it ran as a different one instead
+#      (e.g. a dropped BASE= env var defaulting to Llama; see notes/proposed-mechanism-tests.md,
+#      2026-09-05). Caught by comparing loaded model_keys against `expect_models`.
+#   2. A cell (model_key × condition) is present but SHORT — a run that timed out, was cancelled,
+#      or was pulled from the wrong archive folder half-finished. Every cell codes the same
+#      country-year-indicator grid, so row counts should cluster tightly (a few rows' spread from
+#      parse failures is normal); a cell far below its siblings is a partial run. Caught by
+#      flagging any cell under `min_frac` of the median cell row count.
+# Both checks are gated on `expect_models` being supplied (opt-in), so ad-hoc / single-model /
+# --verify builds don't false-positive. `min_frac` default 0.9.
+check_model_coverage <- function(df, expect_models, label = "", min_frac = 0.9) {
   if (is.null(expect_models)) return(invisible(df))
+
   present <- unique(df$model_key)
   missing <- setdiff(expect_models, present)
   if (length(missing) > 0) {
@@ -148,5 +154,23 @@ check_model_coverage <- function(df, expect_models, label = "") {
       "fall back to a default) before trusting this bundle."
     ))
   }
+
+  counts <- df |>
+    dplyr::count(model_key, condition, name = "n") |>
+    dplyr::filter(model_key %in% expect_models)
+  med <- stats::median(counts$n)
+  short <- dplyr::filter(counts, n < min_frac * med)
+  if (nrow(short) > 0) {
+    rows <- paste(sprintf("  %s / %s: %d rows (%.0f%% of median %d)",
+                          short$model_key, short$condition, short$n,
+                          100 * short$n / med, round(med)), collapse = "\n")
+    stop(glue::glue(
+      "{label}: cell(s) present but far shorter than the rest of the grid — likely a ",
+      "partial run (timeout / cancel / wrong-folder pull):\n{rows}\n",
+      "Median cell is {round(med)} rows. Resubmit or re-pull the short cell(s) before trusting ",
+      "this bundle, or lower min_frac if the imbalance is expected."
+    ))
+  }
+
   invisible(df)
 }
