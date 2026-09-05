@@ -157,7 +157,7 @@ def code_country_year(
         country_name: Display name in prompt, e.g. "Nigeria"
         year:         Target year, e.g. 2020
         indicator:    V-Dem indicator code, e.g. "v2csreprss"
-        condition:    "codebook" | "evidence" | "anonymized" | "summarized" | "evidence-zeroshot" | "anonymized-zeroshot" | "summarized-zeroshot"
+        condition:    "codebook" | "evidence" | "anonymized" | "summarized" | "evidence-zeroshot" | "anonymized-zeroshot" | "summarized-zeroshot" | "summarized-identified"
         model_key:    Key in LLM_CONFIGS, e.g. "llama-70b"
         raw_mean:     Panel mean rating for this country-year-indicator (from panel_means.csv).
                       When provided, signed_dev and abs_dev are computed and added to the record.
@@ -174,7 +174,8 @@ def code_country_year(
     if model_key not in LLM_CONFIGS:
         raise ValueError(f"Unknown model {model_key!r}. Choose from: {list(LLM_CONFIGS)}")
     if condition not in ("codebook", "evidence", "anonymized", "summarized",
-                         "evidence-zeroshot", "anonymized-zeroshot", "summarized-zeroshot"):
+                         "evidence-zeroshot", "anonymized-zeroshot", "summarized-zeroshot",
+                         "summarized-identified"):
         raise ValueError(f"Unknown condition {condition!r}")
 
     cfg = LLM_CONFIGS[model_key]
@@ -289,7 +290,8 @@ if __name__ == "__main__":
     parser.add_argument("--indicator", required=True)
     parser.add_argument("--condition",
                         choices=["codebook", "evidence", "anonymized", "summarized",
-                                 "evidence-zeroshot", "anonymized-zeroshot", "summarized-zeroshot"],
+                                 "evidence-zeroshot", "anonymized-zeroshot", "summarized-zeroshot",
+                                 "summarized-identified"],
                         default="evidence")
     parser.add_argument("--model", default="llama-70b", choices=list(LLM_CONFIGS))
     parser.add_argument("--fh-only", dest="fh_only", action="store_true",

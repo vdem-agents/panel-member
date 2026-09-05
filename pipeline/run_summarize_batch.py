@@ -114,6 +114,7 @@ def _summarize_with_backoff(
     section_id: str,
     force: bool,
     model_key: str,
+    identified: bool = False,
     max_attempts: int = 3,
 ) -> str | None:
     delay = 2.0
@@ -123,7 +124,7 @@ def _summarize_with_backoff(
             return summarize_one_section(
                 iso=iso, slug=slug, year=year,
                 source=source, section_id=section_id,
-                force=force, model_key=model_key,
+                force=force, model_key=model_key, identified=identified,
             )
         except Exception as e:
             last_exc = e
@@ -183,12 +184,20 @@ def main() -> None:
              "country list instead of state-dept (R3 2024 holdout + 2023 companion). "
              "State Dept sections simply cache as 'no source text' when absent."
     )
+    parser.add_argument(
+        "--identified", action="store_true",
+        help="Summarized-Identified variant: same compression, keeps names/dates instead "
+             "of stripping them. Cached separately under summarized-identified/."
+    )
     args = parser.parse_args()
 
     if args.reidentify and args.sample is None:
         parser.error("--reidentify requires --sample N")
     if args.reidentify_output and not args.reidentify:
         parser.error("--reidentify-output requires --reidentify")
+    if args.reidentify and args.identified:
+        parser.error("--reidentify doesn't make sense with --identified — the text "
+                      "keeps the real name, so re-identification is trivial by construction")
 
     print(f"Building country map for {args.year}{' (FH-only)' if args.fh_only else ''}...", file=sys.stderr)
     country_map = build_country_map(args.year, fh_only=args.fh_only)
@@ -228,9 +237,9 @@ def main() -> None:
                 for source, section_id in sorted(_ind_sections(ind, config)):
                     _summarize_with_backoff(
                         iso, slug, year, source, section_id,
-                        force=True, model_key=args.model,
+                        force=True, model_key=args.model, identified=args.identified,
                     )
-                text = load_summarized_for_indicator(iso, year, ind)
+                text = load_summarized_for_indicator(iso, year, ind, identified=args.identified)
                 if text:
                     print(text)
                 else:
@@ -291,7 +300,7 @@ def main() -> None:
     for iso, (slug, name) in sorted(country_map.items()):
         for source, section_id in sorted(unique_sections):
             total_sections += 1
-            out_path = _summ_section_path(iso, args.year, source, section_id)
+            out_path = _summ_section_path(iso, args.year, source, section_id, identified=args.identified)
             if not args.force and out_path.exists():
                 cached_sections += 1
                 continue
@@ -321,6 +330,7 @@ def main() -> None:
                 iso, slug, year, source, section_id,
                 force=True,
                 model_key=args.model,
+                identified=args.identified,
             )
             return job, text, None
         except Exception as e:
