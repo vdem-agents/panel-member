@@ -172,12 +172,20 @@ fig_crossmodel_landscape <- function(exp_bundle, greedy_bundle,
     cells <- dplyr::filter(cells, !(block == "Base" & readout != keep))
   }
 
-  # Reference labels appear once, pinned to the top (Base) facet so they don't repeat per panel.
-  ref_lab <- tibble::tibble(
+  # Reference labels appear once, pinned to the Base facet so they don't repeat per panel.
+  # Naive-model and human-reference labels sit just above the top (Codebook) row, right of
+  # their own lines — clear of the CIs and of the sightline from axis to data, still inside
+  # the panel. The SESOI-band label stays above the panel, centred on the band.
+  line_lab <- tibble::tibble(
     block = factor("Base", levels = c("Base", "Fine-tuned")),
-    x     = c(persist_mae, human_mae),
-    label = c("Naive model", "±SESOI of human reference"),
-    hjust = c(-0.07, 0.5)
+    x     = c(persist_mae + 0.012, human_mae + 0.012),
+    y     = "Codebook",
+    label = c("Naive model", "Human reference")
+  )
+  band_lab <- tibble::tibble(
+    block = factor("Base", levels = c("Base", "Fine-tuned")),
+    x     = human_mae,
+    label = "±SESOI band"
   )
 
   # Capless point-ranges (line + point, no end whiskers): minimal ornament, and a row holding a
@@ -193,8 +201,11 @@ fig_crossmodel_landscape <- function(exp_bundle, greedy_bundle,
   p +
     geom_vline(xintercept = persist_mae, linetype = "dashed",  color = "grey40") +
     geom_vline(xintercept = human_mae,   linetype = "longdash", color = "grey40") +
-    geom_text(data = ref_lab, aes(x = x, y = Inf, label = label, hjust = hjust),
-              vjust = -0.5, color = "grey40", size = 2.9, inherit.aes = FALSE) +
+    geom_text(data = line_lab, aes(x = x, y = y, label = label),
+              position = position_nudge(y = 0.4), hjust = 0, vjust = 0.5,
+              color = "grey40", size = 2.9, inherit.aes = FALSE) +
+    geom_text(data = band_lab, aes(x = x, y = Inf, label = label),
+              hjust = 0.5, vjust = -0.5, color = "grey40", size = 2.9, inherit.aes = FALSE) +
     geom_linerange(aes(xmin = ai_lo, xmax = ai_hi), orientation = "y",
                    linewidth = 0.5, alpha = 0.7, position = dodge) +
     geom_point(size = 2.3, stroke = 0.9, position = dodge) +
