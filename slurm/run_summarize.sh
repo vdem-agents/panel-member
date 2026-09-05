@@ -17,6 +17,11 @@
 # (R3 2024 holdout, which has no State Dept text at all):
 #   FH_ONLY=1 YEAR=2024 sbatch slurm/run_summarize.sh
 #
+# IDENTIFIED=1 generates the Summarized-Identified variant instead — same compression,
+# keeps names/dates rather than stripping them (Identity x Compression mechanism test,
+# see notes/proposed-mechanism-tests.md). Cached separately, under summarized-identified/:
+#   IDENTIFIED=1 YEAR=2019 sbatch slurm/run_summarize.sh
+#
 #SBATCH --job-name=pm-summarize
 #SBATCH --partition=superChip
 #SBATCH --gres=gpu:gh200:1
@@ -36,6 +41,8 @@ MODEL_PATH=/scratch/ejtgrp/models/llama-3.3-70b-instruct
 VLLM_PORT=8000
 FH_ONLY=${FH_ONLY:-0}
 FH_FLAG=""; if [ "$FH_ONLY" = "1" ]; then FH_FLAG="--fh-only"; fi
+IDENTIFIED=${IDENTIFIED:-0}
+IDENTIFIED_FLAG=""; if [ "$IDENTIFIED" = "1" ]; then IDENTIFIED_FLAG="--identified"; fi
 
 # ── Environment ────────────────────────────────────────────────────────────────
 source ~/miniforge3/etc/profile.d/conda.sh
@@ -77,13 +84,26 @@ until curl -sf "http://localhost:${VLLM_PORT}/health" > /dev/null 2>&1; do
 done
 echo "vLLM ready (pid $VLLM_PID)"
 
+# ── Spot-check the Identified prompt before committing to the full batch ───────
+# ARM64 login node can't run this interactively to preview it (conda env mismatch with
+# the x86 login node), and the spot-check needs vLLM running anyway (it's a real model
+# call, not a dry run) — so it runs here, inside the same job, before the full pass.
+# Check the .out log a few minutes in; scancel this job if the 5 samples look wrong
+# before it commits to the multi-hour full run below.
+if [ "$IDENTIFIED" = "1" ]; then
+    echo "=== Spot-check: 5 samples of the Identified variant — verify names/dates survive ==="
+    python3 -m pipeline.run_summarize_batch --year "$YEAR" --model "$MODEL_KEY" \
+        --sample 5 --identified
+    echo "=== End spot-check. Full batch starts now — scancel $SLURM_JOB_ID above this point to abort ==="
+fi
+
 # ── Run summarization batch ────────────────────────────────────────────────────
 python3 -m pipeline.run_summarize_batch \
     --year "$YEAR" \
     --model "$MODEL_KEY" \
     --workers 8 \
-    $FH_FLAG
+    $FH_FLAG $IDENTIFIED_FLAG
 
 # ── Cleanup ────────────────────────────────────────────────────────────────────
 kill "$VLLM_PID" && wait "$VLLM_PID" 2>/dev/null || true
-echo "Done — year $YEAR summarization complete${FH_FLAG:+ (FH-only)}."
+echo "Done — year $YEAR summarization complete${FH_FLAG:+ (FH-only)}${IDENTIFIED_FLAG:+ (Identified)}."

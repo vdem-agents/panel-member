@@ -260,7 +260,8 @@ if __name__ == "__main__":
     parser.add_argument(
         "--condition",
         choices=["codebook", "evidence", "anonymized", "summarized",
-                 "evidence-zeroshot", "anonymized-zeroshot", "summarized-zeroshot"],
+                 "evidence-zeroshot", "anonymized-zeroshot", "summarized-zeroshot",
+                 "summarized-identified"],
         default="evidence",
         help="Prompt condition (default: evidence)"
     )

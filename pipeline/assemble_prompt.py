@@ -43,6 +43,15 @@ Handles ten prompt conditions:
                           prepare_finetune_data.py to build FT-summ training records.
                           Calibration is in the model weights rather than the prompt.
 
+  "summarized-identified" — same compression as "summarized" but keeps real names/dates
+                          instead of stripping them, with identified few-shot examples
+                          (the "raw" variant, not the de-identified "summ" one — mixing
+                          anonymized calibration examples with identified evidence would
+                          defeat the point). Identity is shown in the framing, unlike every
+                          other summarized/anonymized condition. Isolates compression from
+                          de-identification for the Identity x Compression mechanism test;
+                          see notes/proposed-mechanism-tests.md.
+
 Usage:
     python3 -m pipeline.assemble_prompt \\
         --slug nigeria --name Nigeria --iso NGA --year 2020 \\
@@ -58,7 +67,7 @@ import yaml
 
 from pipeline.extract_sections import get_evidence
 from pipeline.anonymize_section import load_anonymized
-from pipeline.summarize_indicator import load_summarized
+from pipeline.summarize_indicator import load_summarized, load_summarized_identified
 
 CONFIG_PATH = Path(__file__).parent.parent / "config" / "indicator_sections.yaml"
 FEWSHOT_PATH = Path(__file__).parent.parent / "data" / "fewshot_examples.json"
@@ -271,7 +280,8 @@ def assemble_prompt(
     name_swap = source_iso is not None
     _VALID = ("codebook", "evidence", "evidence-zeroshot", "finetuned-raw",
               "anonymized", "anonymized-zeroshot", "finetuned-anon",
-              "summarized", "summarized-zeroshot", "finetuned-summ")
+              "summarized", "summarized-zeroshot", "finetuned-summ",
+              "summarized-identified")
     if condition not in _VALID:
         raise ValueError(
             f"Invalid condition {condition!r}. "
@@ -391,6 +401,29 @@ def assemble_prompt(
             else ""
         )
 
+    elif condition == "summarized-identified":
+        if iso is None:
+            raise ValueError(f"iso is required for condition='{condition}'")
+        # No name-swap support for this condition — it's a base-model-only mechanism test
+        # (see notes/proposed-mechanism-tests.md), not part of the name-swap battery.
+        summ_id_text = load_summarized_identified(iso, year, indicator)
+        if summ_id_text is None:
+            raise FileNotFoundError(
+                f"No Summarized-Identified text for {iso} {year} {indicator}. "
+                f"Run: python3 -m pipeline.summarize_indicator --identified "
+                f"--iso {iso} --slug {country_slug} --year {year} --indicators {indicator}"
+            )
+        state_ev = summ_id_text
+        fh_ev = "[Included in summary above]"
+        # Identified evidence needs identified (raw) few-shot examples, not the
+        # de-identified "summ" variant — mixing anonymized calibration examples with an
+        # identified main document would be an inconsistent prompt and would muddy the
+        # very comparison (compression alone, identity held constant) this condition exists
+        # to make.
+        calibration_section = _calibration_header(max_rating).format(
+            fewshot_block=_build_fewshot_block(indicator, variant="raw", exclude_iso=iso)
+        )
+
     # Anonymized and summarized conditions must not reveal the focal country or year —
     # the anonymizer strips both from the evidence text, so reinserting them here
     # would defeat the identity-blind comparison. Name-swap mode is the deliberate
@@ -441,7 +474,8 @@ if __name__ == "__main__":
         "--condition",
         choices=["codebook", "evidence", "evidence-zeroshot", "finetuned-raw",
                  "anonymized", "anonymized-zeroshot", "finetuned-anon",
-                 "summarized", "summarized-zeroshot", "finetuned-summ"],
+                 "summarized", "summarized-zeroshot", "finetuned-summ",
+                 "summarized-identified"],
         default="evidence",
     )
     parser.add_argument("--fh-only", dest="fh_only", action="store_true",

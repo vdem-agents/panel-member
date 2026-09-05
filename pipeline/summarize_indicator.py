@@ -43,6 +43,10 @@ from pipeline.vdem_config import LLM_CONFIGS
 
 CONFIG_PATH = Path(__file__).parent.parent / "config" / "indicator_sections.yaml"
 SUMM_DIR = Path(__file__).parent.parent / "data" / "processed-text" / "summarized"
+# Summarized-Identified: same compression as SUMM_DIR, but keeps real names/dates instead
+# of stripping them — isolates compression from de-identification for the Identity x
+# Compression mechanism test (see notes/proposed-mechanism-tests.md).
+SUMM_ID_DIR = Path(__file__).parent.parent / "data" / "processed-text" / "summarized-identified"
 
 SUMMARIZER_MODEL = "llama-70b-local"
 
@@ -78,6 +82,33 @@ must:
 Output only the summary. No preamble, no explanation, no heading.\
 """
 
+# Identified variant: same compression (instructions 1, 3, 4, 6) but keeps proper names and
+# calendar years instead of stripping them — instructions 2 and 5's de-identification
+# clauses are the only things removed relative to SUMMARIZER_SYSTEM above.
+SUMMARIZER_SYSTEM_IDENTIFIED = """\
+Your task is to summarize the political conditions described in human rights and democracy
+report excerpts.
+
+Write a summary of the political conditions described in the provided text. Your summary
+must:
+
+1. Describe what the text says about political conditions in more general terms — for
+   example, "the executive controls judicial appointments without legislative confirmation"
+   rather than naming the specific institution or procedure; "security forces detained
+   hundreds of protesters" rather than naming the specific operation or location
+2. Generalize structural and historical details that carry no evaluative signal: specific
+   treaty names, constitutional arrangements, geographic facts — describe them
+   functionally only (e.g., "a power-sharing arrangement between two political factions")
+3. Preserve quantitative information and frequency descriptions: numbers of detainees,
+   frequency of incidents, duration of patterns
+4. Write in a neutral, descriptive register. Keep the country name, place names, leader
+   names, organization names, and specific calendar years or dates exactly as given in the
+   source text — do not generalize or replace any of these
+5. Write up to 400 words; shorter is acceptable when the source text is brief
+
+Output only the summary. No preamble, no explanation, no heading.\
+"""
+
 _config_cache: dict | None = None
 
 
@@ -89,8 +120,10 @@ def _load_config() -> dict:
     return _config_cache
 
 
-def _summ_section_path(iso: str, year: int, source: str, section_id: str) -> Path:
-    return SUMM_DIR / str(year) / iso / f"{source}_{section_id}.txt"
+def _summ_section_path(iso: str, year: int, source: str, section_id: str,
+                        identified: bool = False) -> Path:
+    base_dir = SUMM_ID_DIR if identified else SUMM_DIR
+    return base_dir / str(year) / iso / f"{source}_{section_id}.txt"
 
 
 def _get_raw_section(slug: str, year: int, source: str, section_id: str) -> str | None:
@@ -117,7 +150,8 @@ def _get_raw_section(slug: str, year: int, source: str, section_id: str) -> str 
     return parsed.get(section_id)
 
 
-def summarize_text(text: str, source_label: str, model_key: str = SUMMARIZER_MODEL) -> str:
+def summarize_text(text: str, source_label: str, model_key: str = SUMMARIZER_MODEL,
+                    identified: bool = False) -> str:
     """Call the summarization LLM on one section of text."""
     cfg = LLM_CONFIGS[model_key]
     api_key = os.environ.get(cfg["api_key_env"])
@@ -130,11 +164,12 @@ def summarize_text(text: str, source_label: str, model_key: str = SUMMARIZER_MOD
         f"{text}"
     )
 
+    system_prompt = SUMMARIZER_SYSTEM_IDENTIFIED if identified else SUMMARIZER_SYSTEM
     client = OpenAI(base_url=cfg["base_url"], api_key=api_key)
     response = client.chat.completions.create(
         model=cfg["model"],
         messages=[
-            {"role": "system", "content": SUMMARIZER_SYSTEM},
+            {"role": "system", "content": system_prompt},
             {"role": "user", "content": user_msg},
         ],
         temperature=0,
@@ -151,12 +186,13 @@ def summarize_one_section(
     section_id: str,
     force: bool = False,
     model_key: str = SUMMARIZER_MODEL,
+    identified: bool = False,
 ) -> str | None:
     """
     Summarize one (country, year, source, section) and cache the result.
     Returns summarized text, or None if the source section doesn't exist.
     """
-    out_path = _summ_section_path(iso, year, source, section_id)
+    out_path = _summ_section_path(iso, year, source, section_id, identified=identified)
     if out_path.exists() and not force:
         return out_path.read_text(encoding="utf-8")
 
@@ -166,14 +202,15 @@ def summarize_one_section(
 
     raw_text = truncate_to_llm_budget(raw_text)
     label = SOURCE_LABELS.get(source, source)
-    summary = summarize_text(raw_text, label, model_key=model_key)
+    summary = summarize_text(raw_text, label, model_key=model_key, identified=identified)
 
     out_path.parent.mkdir(parents=True, exist_ok=True)
     out_path.write_text(summary, encoding="utf-8")
     return summary
 
 
-def load_summarized_for_indicator(iso: str, year: int, indicator: str) -> str | None:
+def load_summarized_for_indicator(iso: str, year: int, indicator: str,
+                                   identified: bool = False) -> str | None:
     """
     Assemble summarized evidence for one (country, year, indicator) from cached
     section files. Returns combined text in the same format as the raw evidence
@@ -193,7 +230,7 @@ def load_summarized_for_indicator(iso: str, year: int, indicator: str) -> str | 
             # No body sections mapped — fall back to exec_summary (mirrors get_evidence
             # in extract_sections.py, which reaches the same fallback via an empty
             # body_chunks list when section_keys is []).
-            exec_path = _summ_section_path(iso, year, source, "exec_summary")
+            exec_path = _summ_section_path(iso, year, source, "exec_summary", identified=identified)
             if exec_path.exists():
                 outer_chunks.append(
                     f"*{label}*\n\n" + exec_path.read_text(encoding="utf-8")
@@ -203,13 +240,13 @@ def load_summarized_for_indicator(iso: str, year: int, indicator: str) -> str | 
         body_chunks = []
         for key in keys:
             if source == "state-dept" and key == "2c":
-                p = _summ_section_path(iso, year, "state-dept", "irfr")
+                p = _summ_section_path(iso, year, "state-dept", "irfr", identified=identified)
             elif source == "state-dept" and key == "6":
                 subsec = ind_cfg.get("sec6_subsections")
                 sec_id = f"6_{subsec}" if subsec else "6"
-                p = _summ_section_path(iso, year, source, sec_id)
+                p = _summ_section_path(iso, year, source, sec_id, identified=identified)
             else:
-                p = _summ_section_path(iso, year, source, key)
+                p = _summ_section_path(iso, year, source, key, identified=identified)
             if p.exists():
                 body_chunks.append(p.read_text(encoding="utf-8"))
 
@@ -220,7 +257,7 @@ def load_summarized_for_indicator(iso: str, year: int, indicator: str) -> str | 
             # Skip SDHRR exec for 2c-only indicators (IRFR is a different report).
             only_2c = source == "state-dept" and all(k == "2c" for k in keys)
             if not only_2c:
-                exec_path = _summ_section_path(iso, year, source, "exec_summary")
+                exec_path = _summ_section_path(iso, year, source, "exec_summary", identified=identified)
                 inner_chunks = (
                     [exec_path.read_text(encoding="utf-8")] if exec_path.exists() else []
                 )
@@ -236,6 +273,11 @@ def load_summarized_for_indicator(iso: str, year: int, indicator: str) -> str | 
 def load_summarized(iso: str, year: int, indicator: str) -> str | None:
     """Load cached summarized text for an indicator. Assembles from section cache."""
     return load_summarized_for_indicator(iso, year, indicator)
+
+
+def load_summarized_identified(iso: str, year: int, indicator: str) -> str | None:
+    """Load cached Summarized-Identified text (compressed, names/dates kept) for an indicator."""
+    return load_summarized_for_indicator(iso, year, indicator, identified=True)
 
 
 if __name__ == "__main__":
@@ -254,6 +296,11 @@ if __name__ == "__main__":
     parser.add_argument(
         "--model", default=SUMMARIZER_MODEL, choices=list(LLM_CONFIGS),
         help=f"Model to use for summarization (default: {SUMMARIZER_MODEL})"
+    )
+    parser.add_argument(
+        "--identified", action="store_true",
+        help="Summarized-Identified variant: same compression, keeps names/dates instead "
+             "of stripping them. Cached separately under summarized-identified/."
     )
     args = parser.parse_args()
 
@@ -281,7 +328,7 @@ if __name__ == "__main__":
     for source, section_id in sorted(sections_needed):
         result = summarize_one_section(
             args.iso, args.slug, args.year, source, section_id,
-            force=args.force, model_key=args.model,
+            force=args.force, model_key=args.model, identified=args.identified,
         )
         if result:
             print(f"  {args.iso} {args.year} {source}/{section_id}: {len(result):,} chars")
