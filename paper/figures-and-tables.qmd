@@ -78,7 +78,7 @@ We hypothesize that more evidence should improve the synthetic coder's ability t
 
 ```{r}
 #| label: fig-crossmodel
-#| fig-cap: "Synthetic coder performance across model families (Llama 70B / Qwen 72B / Gemma 27B). Base conditions (top, all four text inputs) and fine-tuned raw-text adapters (bottom, Codebook and Raw Text only — the matched-format check on Anonymized/Summarized is Appendix A6). Color = model, with country-clustered 95% CIs. The base rows show the greedy (mode) readout only — greedy and mean differ by <0.02 MAE there (~1/9 SESOI); the fine-tuned rows show both greedy (open) and expectation/mean (filled), where the two readouts diverge by 0.16–0.30 MAE. Dashed line = naive persistence; long-dash = human reference; grey band = ±SESOI."
+#| fig-cap: "Synthetic coder performance across model families (Llama 70B / Qwen 72B / Gemma 27B). Base conditions (top, all four text inputs) and fine-tuned raw-text adapters (bottom, Codebook and Raw Text only — the matched-format check on Anonymized/Summarized is Appendix A7). Color = model, with country-clustered 95% CIs. The base rows show the greedy (mode) readout only — greedy and mean differ by <0.02 MAE there (~1/9 SESOI); the fine-tuned rows show both greedy (open) and expectation/mean (filled), where the two readouts diverge by 0.16–0.30 MAE. Dashed line = naive persistence; long-dash = human reference; grey band = ±SESOI."
 #| fig-width: 8
 #| fig-height: 5.2
 fig_crossmodel_landscape(exp_bundle, boot_bundle, band = "human_loo", base_readout = "greedy",
@@ -113,7 +113,7 @@ country-clustered 95% CIs, against the human reference at 1.
 
 ```{r}
 #| label: fig-crossmodel-slope
-#| fig-cap: "Difficulty tracking (greedy readout). (A) Mean AI error vs case difficulty h_c for a flat and a steep exemplar, against the human reference (which lies on the 45° line because h_c is defined as human error); 20 equal-count difficulty bins, country-clustered 95% CI bands. (B) Weighted OLS slope of AI error on h_c for every cell, country-clustered 95% CIs, long-dash = human reference (slope 1). Base block covers all four inputs; the FT-raw block shows Codebook and Raw Text only (the matched-format check on Anonymized/Summarized is Appendix A6)."
+#| fig-cap: "Difficulty tracking (greedy readout). (A) Mean AI error vs case difficulty h_c for a flat and a steep exemplar, against the human reference (which lies on the 45° line because h_c is defined as human error); 20 equal-count difficulty bins, country-clustered 95% CI bands. (B) Weighted OLS slope of AI error on h_c for every cell, country-clustered 95% CIs, long-dash = human reference (slope 1). Base block covers all four inputs; the FT-raw block shows Codebook and Raw Text only (the matched-format check on Anonymized/Summarized is Appendix A7)."
 #| fig-width: 12
 #| fig-height: 5.4
 fig_crossmodel_slope_2panel(dm_slope, ft_conds = c("codebook", "evidence-zeroshot"))
@@ -142,7 +142,7 @@ every cell.
 
 ```{r}
 #| label: fig-crossmodel-signeddev-regime
-#| fig-cap: "Directional bias by regime type (greedy readout). (A) Signed deviation (AI − panel mean) across V-Dem's Regimes of the World (closed autocracy → liberal democracy) for the flattest and steepest cells; dotted 0 = panel mean, dashed = V-Dem IRT target on the same axis, grey band = ±SESOI, country-clustered 95% CI bands. (B) Exaggeration gap (liberal democracy − closed autocracy signed deviation) for every cell, country-clustered 95% CIs, dashed 0 = no tilt, grey band = ±SESOI. Base block covers all four inputs; the FT-raw block shows Codebook and Raw Text only (the matched-format check on Anonymized/Summarized is Appendix A6)."
+#| fig-cap: "Directional bias by regime type (greedy readout). (A) Signed deviation (AI − panel mean) across V-Dem's Regimes of the World (closed autocracy → liberal democracy) for the flattest and steepest cells; dotted 0 = panel mean, dashed = V-Dem IRT target on the same axis, grey band = ±SESOI, country-clustered 95% CI bands. (B) Exaggeration gap (liberal democracy − closed autocracy signed deviation) for every cell, country-clustered 95% CIs, dashed 0 = no tilt, grey band = ±SESOI. Base block covers all four inputs; the FT-raw block shows Codebook and Raw Text only (the matched-format check on Anonymized/Summarized is Appendix A7)."
 #| fig-width: 12
 #| fig-height: 5.4
 fig_crossmodel_signeddev_2panel_regime(sd_signed, ft_conds = c("codebook", "evidence-zeroshot"))
@@ -152,7 +152,7 @@ fig_crossmodel_signeddev_2panel_regime(sd_signed, ft_conds = c("codebook", "evid
 
 ```{r}
 #| label: fig-crossmodel-signeddev
-#| fig-cap: "Directional bias by democracy quintile (greedy readout). (A) Signed deviation (AI − panel mean) across democracy quintiles for the flattest and steepest cells; dotted 0 = panel mean, dashed = V-Dem IRT target on the same axis, grey band = ±SESOI, country-clustered 95% CI bands. (B) Exaggeration gap (Q5 − Q1 signed deviation) for every cell, country-clustered 95% CIs, dashed 0 = no tilt (positive = exaggerates the gradient, negative = compresses), grey band = ±SESOI. Base block covers all four inputs; the FT-raw block shows Codebook and Raw Text only (the matched-format check on Anonymized/Summarized is Appendix A6)."
+#| fig-cap: "Directional bias by democracy quintile (greedy readout). (A) Signed deviation (AI − panel mean) across democracy quintiles for the flattest and steepest cells; dotted 0 = panel mean, dashed = V-Dem IRT target on the same axis, grey band = ±SESOI, country-clustered 95% CI bands. (B) Exaggeration gap (Q5 − Q1 signed deviation) for every cell, country-clustered 95% CIs, dashed 0 = no tilt (positive = exaggerates the gradient, negative = compresses), grey band = ±SESOI. Base block covers all four inputs; the FT-raw block shows Codebook and Raw Text only (the matched-format check on Anonymized/Summarized is Appendix A7)."
 #| fig-width: 12
 #| fig-height: 5.4
 fig_crossmodel_signeddev_2panel(sd_signed, ft_conds = c("codebook", "evidence-zeroshot"))
@@ -175,36 +175,12 @@ Test how the relevance of information changes with the staleness of the prior.
 
 **Runs:** Run name-swap on three models (FT Llama: Ev, FT Qwen: Ev; FT Gemma: Ev). Consider whether using the raw text adapter leaks the names. Perhaps do a trial run to see whether you get different results using the raw versus summarized adapters for Llama. 
 
-## 7. 2024 FH only
-
-**Runs:** Base ladder (codebook/evidence/anonymized/summarized) × 3 families (Llama 70B / Qwen
-72B / Gemma 27B) = 12 cells. FT-raw diagonal restricted to Codebook + Raw Text × 3 families = 6
-cells, matching the Figure 1 trim (no untrimmed 2024 companion is planned — Appendix A6 covers
-that check on 2019 only). FH-only: State Department country reports changed format enough for
-2024 that they aren't used, so every cell here rests on Freedom House evidence alone. See
-`notes/plan-2024-holdout.md` (private notes repo) for the staging/run plan.
-
-Loose out-of-sample replication of Figure 1 on the most recent year — data furthest from the
-fine-tuning window (through 2018) and not part of any earlier run. Within-2024 comparisons are
-valid (base vs. FT, condition ordering, AI vs. human reference); cross-year levels are confounded
-(FH-only vs. full-source drops one source), so this is not placed on a shared axis with 2019/2023.
-
-```{r}
-#| label: fig-crossmodel-2024
-#| fig-cap: "Synthetic coder performance across model families on the 2024 FH-only holdout (Llama 70B / Qwen 72B / Gemma 27B). Layout, readout convention (solid = greedy, open = mean; base rows greedy only), and reference lines match Figure 1. FT-raw block: Codebook and Raw Text only. Country-clustered 95% CIs."
-#| fig-width: 8
-#| fig-height: 5.2
-#| eval: !expr have_2024
-fig_crossmodel_landscape(exp_bundle_2024, boot_bundle_2024, band = "human_loo", base_readout = "greedy",
-                         ft_conds = c("codebook", "evidence-zeroshot"))
-```
-
 # Appendix
 
 ## A1. Synthetic-coder performance — 2023 holdout
 
 Replication of Figure 1 on the 2023 holdout year. Same design and readout convention, same
-Codebook + Raw Text trim on the FT-raw block as Figure 1 (the untrimmed grid is Appendix A6).
+Codebook + Raw Text trim on the FT-raw block as Figure 1 (the untrimmed grid is Appendix A7).
 Base block: Qwen and Gemma 2023 base runs on Evidence/Anonymized/Summarized are still in
 flight (Codebook and, for Qwen, Anonymized/Summarized are in). Llama's FT-raw 2023
 `anonymized-zeroshot`/`summarized-zeroshot` runs are pending regardless, which is moot for this
@@ -212,7 +188,7 @@ trimmed view since those two conditions aren't shown here.
 
 ```{r}
 #| label: fig-crossmodel-2023
-#| fig-cap: "Synthetic coder performance across model families on the 2023 holdout (Llama 70B / Qwen 72B / Gemma 27B). Layout, readout convention (solid = greedy, open = mean; base rows greedy only), and reference lines match Figure 1. FT-raw block: Codebook and Raw Text only (Appendix A6 has the untrimmed grid). Country-clustered 95% CIs."
+#| fig-cap: "Synthetic coder performance across model families on the 2023 holdout (Llama 70B / Qwen 72B / Gemma 27B). Layout, readout convention (solid = greedy, open = mean; base rows greedy only), and reference lines match Figure 1. FT-raw block: Codebook and Raw Text only (Appendix A7 has the untrimmed grid). Country-clustered 95% CIs."
 #| fig-width: 8
 #| fig-height: 5.2
 #| eval: !expr have_2023
@@ -228,7 +204,7 @@ model/condition coverage caveats as A1.
 
 ```{r}
 #| label: fig-crossmodel-slope-2023
-#| fig-cap: "Difficulty tracking on the 2023 holdout — replication of Figure 2. (A) AI error vs case difficulty for the same featured cells; (B) difficulty-tracking slope per cell, long-dash = human reference (slope 1). FT-raw block: Codebook and Raw Text only (Appendix A6 has the untrimmed grid). Greedy readout, country-clustered 95% CIs."
+#| fig-cap: "Difficulty tracking on the 2023 holdout — replication of Figure 2. (A) AI error vs case difficulty for the same featured cells; (B) difficulty-tracking slope per cell, long-dash = human reference (slope 1). FT-raw block: Codebook and Raw Text only (Appendix A7 has the untrimmed grid). Greedy readout, country-clustered 95% CIs."
 #| fig-width: 12
 #| fig-height: 5.4
 #| eval: !expr have_2023_slope
@@ -246,7 +222,7 @@ quintile directly below it — same pairing as Figure 3.
 
 ```{r}
 #| label: fig-crossmodel-signeddev-2023-regime
-#| fig-cap: "Directional bias by regime type on the 2023 holdout — replication of the regime-type panel of Figure 3. (A) Signed deviation across V-Dem's Regimes of the World (closed autocracy → liberal democracy) for the flattest and steepest cells, dotted 0 = panel mean, dashed = V-Dem IRT; (B) exaggeration gap (liberal democracy − closed autocracy signed deviation) per cell. FT-raw block: Codebook and Raw Text only (Appendix A6 has the untrimmed grid). Greedy readout, country-clustered 95% CIs, grey band = ±SESOI."
+#| fig-cap: "Directional bias by regime type on the 2023 holdout — replication of the regime-type panel of Figure 3. (A) Signed deviation across V-Dem's Regimes of the World (closed autocracy → liberal democracy) for the flattest and steepest cells, dotted 0 = panel mean, dashed = V-Dem IRT; (B) exaggeration gap (liberal democracy − closed autocracy signed deviation) per cell. FT-raw block: Codebook and Raw Text only (Appendix A7 has the untrimmed grid). Greedy readout, country-clustered 95% CIs, grey band = ±SESOI."
 #| fig-width: 12
 #| fig-height: 5.4
 #| eval: !expr have_2023_signed
@@ -257,14 +233,38 @@ fig_crossmodel_signeddev_2panel_regime(sd_signed_2023, ft_conds = c("codebook", 
 
 ```{r}
 #| label: fig-crossmodel-signeddev-2023
-#| fig-cap: "Directional bias by democracy quintile on the 2023 holdout — replication of Figure 3. (A) Signed deviation across democracy quintiles for the flattest and steepest cells, dotted 0 = panel mean, dashed = V-Dem IRT; (B) exaggeration gap per cell. FT-raw block: Codebook and Raw Text only (Appendix A6 has the untrimmed grid). Greedy readout, country-clustered 95% CIs, grey band = ±SESOI."
+#| fig-cap: "Directional bias by democracy quintile on the 2023 holdout — replication of Figure 3. (A) Signed deviation across democracy quintiles for the flattest and steepest cells, dotted 0 = panel mean, dashed = V-Dem IRT; (B) exaggeration gap per cell. FT-raw block: Codebook and Raw Text only (Appendix A7 has the untrimmed grid). Greedy readout, country-clustered 95% CIs, grey band = ±SESOI."
 #| fig-width: 12
 #| fig-height: 5.4
 #| eval: !expr have_2023_signed
 fig_crossmodel_signeddev_2panel(sd_signed_2023, ft_conds = c("codebook", "evidence-zeroshot"))
 ```
 
-## A4. B and F hypothesis tests
+## A4. Synthetic-coder performance — 2024 FH-only holdout
+
+Loose out-of-sample replication of Figure 1 on the most recent year — data furthest from the
+fine-tuning window (through 2018) and not part of any earlier run. Same design and readout
+convention, same Codebook + Raw Text trim on the FT-raw block as Figure 1 (no untrimmed 2024
+companion is planned — Appendix A7 covers that check on 2019 only). Base ladder (codebook/
+evidence/anonymized/summarized) × 3 families (Llama 70B / Qwen 72B / Gemma 27B) = 12 cells;
+FT-raw diagonal restricted to Codebook + Raw Text × 3 families = 6 cells. FH-only: State
+Department country reports changed format enough for 2024 that they aren't used, so every cell
+here rests on Freedom House evidence alone (see `notes/plan-2024-holdout.md`, private notes
+repo, for the staging/run plan). Within-2024 comparisons are valid (base vs. FT, condition
+ordering, AI vs. human reference); cross-year levels are confounded (FH-only vs. full-source
+drops one source), so this is not placed on a shared axis with 2019/2023.
+
+```{r}
+#| label: fig-crossmodel-2024
+#| fig-cap: "Synthetic coder performance across model families on the 2024 FH-only holdout (Llama 70B / Qwen 72B / Gemma 27B). Layout, readout convention (solid = greedy, open = mean; base rows greedy only), and reference lines match Figure 1. FT-raw block: Codebook and Raw Text only (Appendix A7 has the untrimmed grid on 2019). Country-clustered 95% CIs."
+#| fig-width: 8
+#| fig-height: 5.2
+#| eval: !expr have_2024
+fig_crossmodel_landscape(exp_bundle_2024, boot_bundle_2024, band = "human_loo", base_readout = "greedy",
+                         ft_conds = c("codebook", "evidence-zeroshot"))
+```
+
+## A5. B and F hypothesis tests
 
 ```{r}
 #| label: fig-bf
@@ -274,7 +274,7 @@ fig_crossmodel_signeddev_2panel(sd_signed_2023, ft_conds = c("codebook", "eviden
 fig_bf(boot_bundle)
 ```
 
-## A5. Full model × input grid
+## A6. Full model × input grid
 
 Llama only: Base plus all three Llama fine-tuned adapters (FT-raw, FT-anon, FT-summ), each run on
 all four inputs — Qwen and Gemma trained only the raw-text adapter, so there is no matched-vs-
@@ -294,7 +294,7 @@ format effect.
 fig_readout_grid(exp_bundle, boot_bundle, band = "human_loo")
 ```
 
-## A6. Untrimmed FT-raw evidence-format grid (2019, cross-model)
+## A7. Untrimmed FT-raw evidence-format grid (2019, cross-model)
 
 Figures 1–3's FT-raw block shows Codebook and Raw Text only — the one apples-to-apples comparison
 (does reading the matched-training-format evidence help beyond fine-tuning). This section restores
