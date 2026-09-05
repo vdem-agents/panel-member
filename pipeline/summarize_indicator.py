@@ -29,7 +29,10 @@ import sys
 import yaml
 from pathlib import Path
 
-from openai import OpenAI
+# `from openai import OpenAI` is deferred into summarize_text() — it pulls in pydantic-core
+# (a compiled extension), which fails to import on the x86 login node against an ARM64-built
+# conda env. Read-only consumers of this module (e.g. populate_fewshot_summarized_identified.py,
+# which only calls load_summarized_identified) then don't need the inference stack at all.
 
 from pipeline.extract_sections import (
     FH_SLUG_MAP,
@@ -165,6 +168,7 @@ def summarize_text(text: str, source_label: str, model_key: str = SUMMARIZER_MOD
     )
 
     system_prompt = SUMMARIZER_SYSTEM_IDENTIFIED if identified else SUMMARIZER_SYSTEM
+    from openai import OpenAI
     client = OpenAI(base_url=cfg["base_url"], api_key=api_key)
     response = client.chat.completions.create(
         model=cfg["model"],
