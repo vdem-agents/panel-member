@@ -73,6 +73,9 @@ CONFIG_PATH = Path(__file__).parent.parent / "config" / "indicator_sections.yaml
 FEWSHOT_PATH = Path(__file__).parent.parent / "data" / "fewshot_examples.json"
 FEWSHOT_ANON_PATH = Path(__file__).parent.parent / "data" / "fewshot_examples_anonymized.json"
 FEWSHOT_SUMM_PATH = Path(__file__).parent.parent / "data" / "fewshot_examples_summarized.json"
+FEWSHOT_SUMM_ID_PATH = (
+    Path(__file__).parent.parent / "data" / "fewshot_examples_summarized_identified.json"
+)
 PROMPT_TEMPLATE_PATH = (
     Path(__file__).parent.parent / "prompts" / "panel-member-coding-prompt.md"
 )
@@ -90,6 +93,7 @@ _config_cache: dict | None = None
 _fewshot_cache: dict | None = None
 _fewshot_anon_cache: dict | None = None
 _fewshot_summ_cache: dict | None = None
+_fewshot_summ_id_cache: dict | None = None
 _template_cache: tuple[str, str] | None = None
 
 
@@ -102,7 +106,7 @@ def _load_config() -> dict:
 
 
 def _load_fewshot(variant: str = "raw") -> dict:
-    global _fewshot_cache, _fewshot_anon_cache, _fewshot_summ_cache
+    global _fewshot_cache, _fewshot_anon_cache, _fewshot_summ_cache, _fewshot_summ_id_cache
     if variant == "anon":
         if _fewshot_anon_cache is None:
             if not FEWSHOT_ANON_PATH.exists():
@@ -125,6 +129,17 @@ def _load_fewshot(variant: str = "raw") -> dict:
             with open(FEWSHOT_SUMM_PATH) as f:
                 _fewshot_summ_cache = json.load(f)
         return _fewshot_summ_cache
+    elif variant == "summ_id":
+        if _fewshot_summ_id_cache is None:
+            if not FEWSHOT_SUMM_ID_PATH.exists():
+                raise FileNotFoundError(
+                    f"{FEWSHOT_SUMM_ID_PATH} not found.\n"
+                    "Run populate_fewshot_summarized_identified.py after "
+                    "run_summarize_batch.py --identified completes for the 2016–2018 example pool."
+                )
+            with open(FEWSHOT_SUMM_ID_PATH) as f:
+                _fewshot_summ_id_cache = json.load(f)
+        return _fewshot_summ_id_cache
     else:
         if _fewshot_cache is None:
             with open(FEWSHOT_PATH) as f:
@@ -175,6 +190,15 @@ def _build_fewshot_block(
         elif variant == "summ":
             ev_text = ex.get("summarized_text", "[Summarized evidence not available]")
             header = f"**Example {i}** (Panel mean: {raw_mean:.2f})"
+            blocks.append(f"{header}\n\n{ev_text}")
+        elif variant == "summ_id":
+            # Identity is kept in this variant, so the header names the country and year
+            # (like the raw variant) rather than the anonymous "Example i" header.
+            ev_text = ex.get("summarized_identified_text",
+                             "[Summarized-Identified evidence not available]")
+            name = ex["country_name"]
+            year = ex["year"]
+            header = f"**Example {i} — {name}, {year}** (Panel mean: {raw_mean:.2f})"
             blocks.append(f"{header}\n\n{ev_text}")
         else:
             slug = ex["slug"]
@@ -415,13 +439,15 @@ def assemble_prompt(
             )
         state_ev = summ_id_text
         fh_ev = "[Included in summary above]"
-        # Identified evidence needs identified (raw) few-shot examples, not the
-        # de-identified "summ" variant — mixing anonymized calibration examples with an
-        # identified main document would be an inconsistent prompt and would muddy the
-        # very comparison (compression alone, identity held constant) this condition exists
-        # to make.
+        # Few-shot examples in the "summ_id" variant: compressed the same way as the main
+        # document but with names/dates kept — a clean match to the identified target on BOTH
+        # axes (compression held constant vs. plain Summarized, identity revealed). The older
+        # "raw" variant matched only on identity: its examples carried full-length evidence,
+        # so Summarized vs. Summarized-Identified differed in the few-shot block on length as
+        # well as identity, and each call rebuilt ~6 full raw-evidence examples (evidence-class
+        # runtime). "summ_id" fixes both — see populate_fewshot_summarized_identified.py.
         calibration_section = _calibration_header(max_rating).format(
-            fewshot_block=_build_fewshot_block(indicator, variant="raw", exclude_iso=iso)
+            fewshot_block=_build_fewshot_block(indicator, variant="summ_id", exclude_iso=iso)
         )
 
     # Anonymized and summarized conditions must not reveal the focal country or year —
