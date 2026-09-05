@@ -126,3 +126,27 @@ paired_delta <- function(a_mk, a_cond, b_mk, b_cond, label,
   ) |>
     dplyr::mutate(sesoi_out = abs(est) > sesoi_val)
 }
+
+# ── Model-coverage guard ──────────────────────────────────────────────────────
+# Every JSONL row is self-describing — model_key is set from whichever model actually served
+# the request, not from what a job was meant to run — so a row can't be silently mislabeled.
+# But a whole family CAN go missing if a job meant to produce it silently ran as a different
+# one instead (e.g. a dropped BASE= env var defaulting to Llama; see
+# notes/proposed-mechanism-tests.md, 2026-09-05). This catches that: pass the model_key values
+# the caller actually expects to find (post "-local" strip, e.g.
+# c("llama-70b","qwen-72b","gemma-27b")) and it stops loudly if any are entirely absent, rather
+# than silently building a bundle two-thirds the size it should be.
+check_model_coverage <- function(df, expect_models, label = "") {
+  if (is.null(expect_models)) return(invisible(df))
+  present <- unique(df$model_key)
+  missing <- setdiff(expect_models, present)
+  if (length(missing) > 0) {
+    stop(glue::glue(
+      "{label}: expected model_key(s) missing entirely from the loaded runs: ",
+      "{paste(missing, collapse = ', ')}. Present: {paste(sort(present), collapse = ', ')}. ",
+      "Check the coding/name-swap job for that family actually ran (and didn't silently ",
+      "fall back to a default) before trusting this bundle."
+    ))
+  }
+  invisible(df)
+}
