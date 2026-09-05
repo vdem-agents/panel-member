@@ -61,7 +61,8 @@ build_bootstrap_bundle <- function(proj_root,
                                    min_coders  = 2,
                                    seed        = 42,
                                    out_dir     = file.path(proj_root, "data", "derived"),
-                                   write       = TRUE) {
+                                   write       = TRUE,
+                                   expect_models = NULL) {
   source(file.path(proj_root, "helpers", "bootstrap_helpers.R"), local = TRUE)
   data_dir <- file.path(proj_root, "data", "processed")
   runs_dir <- file.path(proj_root, "data", "output", "runs", runs_subdir)
@@ -76,6 +77,7 @@ build_bootstrap_bundle <- function(proj_root,
   if (length(run_files) == 0) stop("No .jsonl files in ", runs_dir)
   ai_raw <- run_files |> map(read_run) |> bind_rows() |>
     mutate(model_key = str_remove(model_key, "-local$"))
+  check_model_coverage(ai_raw, expect_models, label = glue("build_bootstrap_bundle({year})"))
 
   panel_means   <- read_csv(file.path(data_dir, "panel_means.csv"),   show_col_types = FALSE)
   human_ratings <- read_csv(file.path(data_dir, "human_ratings.csv"), show_col_types = FALSE)
@@ -209,7 +211,8 @@ build_expectation_bundle <- function(proj_root,
                                      min_coders = 2,
                                      seed       = 42,
                                      out_dir    = file.path(proj_root, "data", "derived"),
-                                     write      = TRUE) {
+                                     write      = TRUE,
+                                     expect_models = NULL) {
   source(file.path(proj_root, "helpers", "bootstrap_helpers.R"), local = TRUE)
   data_dir <- file.path(proj_root, "data", "processed")
   exp_dir  <- file.path(proj_root, "data", "output", "runs", exp_subdir)
@@ -229,6 +232,7 @@ build_expectation_bundle <- function(proj_root,
   if (length(exp_files) == 0) stop("No .jsonl files in ", exp_dir)
   exp_raw <- exp_files |> map(read_exp) |> bind_rows() |>
     mutate(model_key = str_remove(model_key, "-local$"))
+  check_model_coverage(exp_raw, expect_models, label = glue("build_expectation_bundle({year})"))
 
   panel_means   <- read_csv(file.path(data_dir, "panel_means.csv"),   show_col_types = FALSE)
   human_ratings <- read_csv(file.path(data_dir, "human_ratings.csv"), show_col_types = FALSE)
@@ -390,16 +394,17 @@ build_expectation_bundle <- function(proj_root,
 # ── CLI ──────────────────────────────────────────────────────────────────────
 parse_args <- function(a) {
   out <- list(year = 2019, runs_subdir = "", exp_subdir = "expectation",
-              n_boot = 2000, which = "both", verify = FALSE)
+              n_boot = 2000, which = "both", verify = FALSE, expect_models = NULL)
   i <- 1
   while (i <= length(a)) {
     switch(a[[i]],
-      "--year"        = { out$year        <- as.integer(a[[i + 1]]); i <- i + 2 },
-      "--runs-subdir" = { out$runs_subdir <- a[[i + 1]];             i <- i + 2 },
-      "--exp-subdir"  = { out$exp_subdir  <- a[[i + 1]];             i <- i + 2 },
-      "--n-boot"      = { out$n_boot      <- as.integer(a[[i + 1]]); i <- i + 2 },
-      "--which"       = { out$which       <- a[[i + 1]];             i <- i + 2 },
-      "--verify"      = { out$verify      <- TRUE;                   i <- i + 1 },
+      "--year"           = { out$year          <- as.integer(a[[i + 1]]); i <- i + 2 },
+      "--runs-subdir"    = { out$runs_subdir   <- a[[i + 1]];             i <- i + 2 },
+      "--exp-subdir"     = { out$exp_subdir    <- a[[i + 1]];             i <- i + 2 },
+      "--n-boot"         = { out$n_boot        <- as.integer(a[[i + 1]]); i <- i + 2 },
+      "--which"          = { out$which         <- a[[i + 1]];             i <- i + 2 },
+      "--verify"         = { out$verify        <- TRUE;                   i <- i + 1 },
+      "--expect-models"  = { out$expect_models <- strsplit(a[[i + 1]], ",")[[1]]; i <- i + 2 },
       stop("unknown arg: ", a[[i]])
     )
   }
@@ -434,9 +439,9 @@ if (sys.nframe() == 0) {
   } else {
     if (opt$which %in% c("both", "bootstrap"))
       build_bootstrap_bundle(proj_root, year = opt$year, runs_subdir = opt$runs_subdir,
-                             n_boot = opt$n_boot)
+                             n_boot = opt$n_boot, expect_models = opt$expect_models)
     if (opt$which %in% c("both", "expectation"))
       build_expectation_bundle(proj_root, year = opt$year, exp_subdir = opt$exp_subdir,
-                               n_boot = opt$n_boot)
+                               n_boot = opt$n_boot, expect_models = opt$expect_models)
   }
 }
