@@ -1,0 +1,144 @@
+# build_doseresponse_degradation.R — Appendix A9, Panel B. Companion to
+# build_doseresponse_augmentation.R for the degradation mechanic: healthy 2023 panels
+# (n>=9), k=1..6 human seats replaced with AI (panel size held fixed). Promoted from
+# notes/mockups/tipping-point-degradation-mockup.R. Same three regimes, same "human
+# churn is the zero-reference line, not a plotted regime" treatment -- see
+# build_doseresponse_augmentation.R's header for the full reasoning.
+#
+# Usage:
+#   Rscript helpers/build_doseresponse_degradation.R
+
+suppressPackageStartupMessages({ library(tidyverse); library(glue); library(jsonlite) })
+
+find_panel_member_root <- function() {
+  up <- tryCatch(rprojroot::find_root(rprojroot::is_git_root), error = function(e) NA_character_)
+  if (!is.na(up)) return(up)
+  down <- file.path(getwd(), "panel-member")
+  if (dir.exists(file.path(down, ".git"))) return(down)
+  stop("Could not locate the panel-member project root from working dir: ", getwd())
+}
+
+SAME_CELL <- "qwen-72b-ft-raw|evidence-zeroshot"
+
+build_doseresponse_degradation <- function(proj_root,
+                                           year        = 2023,
+                                           min_coders  = 9L,   # "healthy" panel
+                                           kmax        = 6L,
+                                           ndraw       = 30L,
+                                           n_boot      = 2000L,
+                                           seed        = 42,
+                                           out_dir     = file.path(proj_root, "data", "derived"),
+                                           write       = TRUE) {
+  source(file.path(proj_root, "helpers", "bootstrap_helpers.R"), local = TRUE)
+  data_dir <- file.path(proj_root, "data", "processed")
+  runs_dir <- file.path(proj_root, "data", "output", "runs", as.character(year))
+  set.seed(seed)
+
+  fams <- c("llama-70b", "qwen-72b", "gemma-27b")
+  pool <- bind_rows(
+    expand_grid(model_key = fams, condition = c("codebook", "evidence", "anonymized", "summarized")),
+    expand_grid(model_key = paste0(fams, "-ft-raw"), condition = c("codebook", "evidence-zeroshot"))
+  ) |> mutate(cell = paste(model_key, condition, sep = "|"), is_ft = str_detect(model_key, "ft-raw"))
+  ft_idx <- which(pool$is_ft)
+
+  hr <- read_csv(file.path(data_dir, "human_ratings.csv"), show_col_types = FALSE) |>
+    filter(year == !!year)
+  panels <- hr |>
+    group_by(country_text_id, indicator) |>
+    summarise(n = n(), m = mean(rating), r = list(rating), .groups = "drop") |>
+    filter(n >= min_coders) |>
+    mutate(pid = row_number(), key = paste(country_text_id, indicator))
+
+  needed <- c("country", "indicator", "condition", "model_key", "rating")
+  read_run <- function(f) {
+    con <- file(f, "r"); on.exit(close(con))
+    stream_in(con, verbose = FALSE) |> as_tibble() |> select(any_of(needed))
+  }
+  ai <- list.files(runs_dir, pattern = "\\.jsonl$", full.names = TRUE) |>
+    map(read_run) |> bind_rows() |>
+    mutate(model_key = str_remove(model_key, "-local$"),
+           cell = paste(model_key, condition, sep = "|")) |>
+    filter(cell %in% pool$cell) |>
+    rename(country_text_id = country) |>
+    mutate(key = paste(country_text_id, indicator)) |>
+    distinct(cell, key, .keep_all = TRUE)
+  stopifnot(length(unique(ai$cell)) == nrow(pool))
+  ai_mat <- ai |> select(key, cell, rating) |>
+    pivot_wider(names_from = cell, values_from = rating) |>
+    column_to_rownames("key") |> as.matrix()
+  ai_mat <- ai_mat[, pool$cell]
+
+  panels <- panels |> filter(key %in% rownames(ai_mat))
+
+  run_panel <- function(pp, kmax) {
+    rows <- vector("list", nrow(pp))
+    for (i in seq_len(nrow(pp))) {
+      r <- pp$r[[i]]; n <- pp$n[i]; m <- pp$m[i]
+      kk <- min(kmax, n)
+      av <- ai_mat[pp$key[i], ]
+      ft <- av[ft_idx]; ft <- ft[!is.na(ft)]
+      al <- av[!is.na(av)]
+      a1 <- av[[SAME_CELL]]
+      if (length(ft) < kk || length(al) < kk || is.na(a1)) { rows[[i]] <- NULL; next }
+      sr <- sh <- sf <- sa <- matrix(NA_real_, kk, ndraw)
+      for (j in seq_len(ndraw)) {
+        sr[, j] <- cumsum(r[sample.int(n)])[1:kk]
+        sh[, j] <- cumsum(sample(r, kk, replace = TRUE))
+        sf[, j] <- cumsum(sample(ft, kk))
+        sa[, j] <- cumsum(sample(al, kk))
+      }
+      rows[[i]] <- tibble(pid = pp$pid[i], country_text_id = pp$country_text_id[i],
+                          n = n, m = m, k = rep(1:kk, ndraw), draw = rep(1:ndraw, each = kk),
+                          sum_removed = as.vector(sr), sum_human = as.vector(sh),
+                          sum_ft = as.vector(sf), sum_all = as.vector(sa), a1 = a1)
+    }
+    bind_rows(rows)
+  }
+
+  d <- run_panel(panels, kmax) |> mutate(
+    shift_sameAI = (k * a1 - sum_removed) / n,
+    shift_ft     = (sum_ft - sum_removed) / n,
+    shift_pool   = (sum_all - sum_removed) / n
+  )
+
+  per_panel <- d |> group_by(pid, country_text_id, k) |>
+    summarise(sameAI = mean(shift_sameAI), ft = mean(shift_ft), pool = mean(shift_pool),
+             .groups = "drop")
+
+  boot_regime <- function(df, outcome_col, label) {
+    df |> group_by(k) |> group_modify(~ {
+      dd <- .x
+      W <- country_boot_weights(dd$country_text_id, n_boot, seed = seed)
+      draws <- vapply(colnames(W), function(cl) {
+        w <- unname(W[, cl][dd$country_text_id])
+        weighted.mean(dd[[outcome_col]], w)
+      }, numeric(1))
+      app  <- which(names(draws) == "Apparent")
+      boot <- setdiff(seq_along(draws), app)
+      tibble(est = draws[app], lo = quantile(draws[boot], 0.025), hi = quantile(draws[boot], 0.975))
+    }) |> ungroup() |> mutate(regime = label)
+  }
+
+  results <- bind_rows(
+    boot_regime(per_panel, "sameAI", "Same AI (Qwen FT)"),
+    boot_regime(per_panel, "ft",     "Mixed FT (6 cells)"),
+    boot_regime(per_panel, "pool",   "Mixed pool (18 cells)")
+  ) |> mutate(regime = factor(regime, levels = c("Same AI (Qwen FT)", "Mixed FT (6 cells)",
+                                                 "Mixed pool (18 cells)")))
+
+  bundle <- list(results = results, year = year, kmax = kmax, min_coders = min_coders,
+                 ndraw = ndraw, n_boot = n_boot, same_cell = SAME_CELL)
+
+  if (write) {
+    dir.create(out_dir, showWarnings = FALSE, recursive = TRUE)
+    path <- file.path(out_dir, glue("doseresponse_degradation_{year}.rds"))
+    saveRDS(bundle, path)
+    message(glue("dose-response degradation bundle written: {path} · {nrow(results)} rows"))
+  }
+  invisible(bundle)
+}
+
+if (sys.nframe() == 0) {
+  proj_root <- find_panel_member_root()
+  build_doseresponse_degradation(proj_root)
+}

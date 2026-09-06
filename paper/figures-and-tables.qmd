@@ -62,6 +62,89 @@ sd_signed <- readRDS(file.path(derived, "signeddev_xmodel_2019.rds"))  # Fig 3 (
 sds23 <- file.path(derived, "signeddev_xmodel_2023.rds")
 have_2023_signed <- file.exists(sds23)
 if (have_2023_signed) sd_signed_2023 <- readRDS(sds23)
+
+# Re-identification rates (Fig 5; Question 5). Build with: Rscript helpers/build_reidrates.R
+rr23 <- file.path(derived, "reidrates_2023.rds")
+have_reidrates <- file.exists(rr23)
+if (have_reidrates) reidrates_bundle_2023 <- readRDS(rr23)
+
+# Movement illustration (Fig 4). Build with: Rscript helpers/build_movement.R --year 2023 --baseline-year 2018
+mv23 <- file.path(derived, "movement_2023.rds")
+have_movement <- file.exists(mv23)
+if (have_movement) {
+  movement_bundle_2023 <- readRDS(mv23)
+  country_names <- read_csv(file.path(proj_root, "data", "processed", "ert.csv"),
+                            show_col_types = FALSE) |>
+    distinct(country_text_id, country_name)
+}
+
+# Movement/Prominence effects on the difficulty-tracking slope, by condition (Fig 6). Superseded
+# the single-panel Identity x Compression interaction version (2026-09-06) -- two separate,
+# simpler models (movement-only, reid-only, no interaction term), each run across all four base
+# conditions + the trimmed Codebook/Raw Text Fine-Tuned pair. Build with:
+#   Rscript helpers/build_slope_by_condition.R --moderator movement
+#   Rscript helpers/build_slope_by_condition.R --moderator reid
+sbc_movement_path <- file.path(derived, "slopebycondition_movement_2023.rds")
+sbc_reid_path     <- file.path(derived, "slopebycondition_reid_2023.rds")
+have_sbc_movement <- file.exists(sbc_movement_path)
+have_sbc_reid     <- file.exists(sbc_reid_path)
+if (have_sbc_movement) sbc_movement <- readRDS(sbc_movement_path)
+if (have_sbc_reid)     sbc_reid     <- readRDS(sbc_reid_path)
+
+# Movement/Prominence effects on signed deviation, by condition (Fig 7). Build with:
+#   Rscript helpers/build_signeddev_by_condition.R --moderator movement
+#   Rscript helpers/build_signeddev_by_condition.R --moderator reid
+sdbc_movement_path <- file.path(derived, "signeddevbycondition_movement_2023.rds")
+sdbc_reid_path     <- file.path(derived, "signeddevbycondition_reid_2023.rds")
+have_sdbc_movement <- file.exists(sdbc_movement_path)
+have_sdbc_reid     <- file.exists(sdbc_reid_path)
+if (have_sdbc_movement) sdbc_movement <- readRDS(sdbc_movement_path)
+if (have_sdbc_reid)     sdbc_reid     <- readRDS(sdbc_reid_path)
+
+# Name-swap tracking level, base + fine-tuned, all three families (Appendix, companion to
+# Section 5). Build with: Rscript helpers/build_priorreliance.R --panel B
+priorreliance_panelB_path <- file.path(derived, "priorreliance_panelB_2023.rds")
+have_priorreliance_panelB <- file.exists(priorreliance_panelB_path)
+if (have_priorreliance_panelB) priorreliance_panelB <- readRDS(priorreliance_panelB_path)
+
+# Identity's direct effect (Appendix A8) -- does removing identity, holding text length or
+# compression fixed, change the outcome? Same paired contrast on all three outcomes: MAE,
+# signed deviation, and the difficulty-tracking slope. Build with:
+#   Rscript helpers/build_identity_effect.R
+#   Rscript helpers/build_identity_effect_signeddev.R
+#   Rscript helpers/build_identity_effect_slope.R
+identityeffect_path <- file.path(derived, "identityeffect_2023.rds")
+have_identityeffect <- file.exists(identityeffect_path)
+if (have_identityeffect) identityeffect_bundle <- readRDS(identityeffect_path)
+
+identityeffect_sd_path <- file.path(derived, "identityeffect_signeddev_2023.rds")
+have_identityeffect_sd <- file.exists(identityeffect_sd_path)
+if (have_identityeffect_sd) identityeffect_sd_bundle <- readRDS(identityeffect_sd_path)
+
+identityeffect_slope_path <- file.path(derived, "identityeffect_slope_2023.rds")
+have_identityeffect_slope <- file.exists(identityeffect_slope_path)
+if (have_identityeffect_slope) identityeffect_slope_bundle <- readRDS(identityeffect_slope_path)
+
+# Synthetic-swap deployment check. Figure 8 (main text) = augmentation only, the paper's
+# actual deployment scenario: does adding one AI rating to a thin panel move its mean, and
+# does that hold as more seats are added? Appendix A9 = the degradation companion (healthy
+# panel, coder replaced) -- a robustness check, not a real deployment path. Build with:
+#   Rscript helpers/build_augmentation.R
+#   Rscript helpers/build_degradation.R
+#   Rscript helpers/build_doseresponse_augmentation.R
+#   Rscript helpers/build_doseresponse_degradation.R
+augmentation_path <- file.path(derived, "augmentation_2023.rds")
+degradation_path  <- file.path(derived, "degradation_2023.rds")
+dr_aug_path       <- file.path(derived, "doseresponse_augmentation_2023.rds")
+dr_deg_path       <- file.path(derived, "doseresponse_degradation_2023.rds")
+have_augmentation <- file.exists(augmentation_path)
+have_degradation  <- file.exists(degradation_path)
+have_dr_aug       <- file.exists(dr_aug_path)
+have_dr_deg       <- file.exists(dr_deg_path)
+if (have_augmentation) augmentation_bundle_2023 <- readRDS(augmentation_path)
+if (have_degradation)  degradation_bundle_2023  <- readRDS(degradation_path)
+if (have_dr_aug)        dr_augmentation_2023    <- readRDS(dr_aug_path)
+if (have_dr_deg)        dr_degradation_2023     <- readRDS(dr_deg_path)
 ```
 
 Broader question: how does information help an AI become a synthetic coder? 
@@ -78,7 +161,7 @@ We hypothesize that more evidence should improve the synthetic coder's ability t
 
 ```{r}
 #| label: fig-crossmodel
-#| fig-cap: "Synthetic coder performance across model families (Llama 70B / Qwen 72B / Gemma 27B). Base conditions (top, all four text inputs) and fine-tuned raw-text adapters (bottom, Codebook and Raw Text only — the matched-format check on Anonymized/Summarized is Appendix A7). Color = model, with country-clustered 95% CIs. The base rows show the greedy (mode) readout only — greedy and mean differ by <0.02 MAE there (~1/9 SESOI); the fine-tuned rows show both greedy (open) and expectation/mean (filled), where the two readouts diverge by 0.16–0.30 MAE. Dashed line = naive persistence; long-dash = human reference; grey band = ±SESOI."
+#| fig-cap: "Synthetic coder performance across model families (Llama 70B / Qwen 72B / Gemma 27B). Base conditions (top, all four text inputs) and fine-tuned raw-text adapters (bottom, Codebook and Raw Text only — the matched-format check on Anonymized/Summarized is Appendix A5). Color = model, with country-clustered 95% CIs. The base rows show the greedy (mode) readout only — greedy and mean differ by at most 0.045 MAE there (Qwen; ≤0.017 for Llama and Gemma), well inside the SESOI band and with the same condition ordering under either readout; the fine-tuned rows show both greedy (filled) and expectation/mean (open), where the two readouts diverge by 0.16–0.30 MAE. Dashed line = naive persistence; long-dash = human reference; grey band = ±SESOI."
 #| fig-width: 8
 #| fig-height: 5.2
 fig_crossmodel_landscape(exp_bundle, boot_bundle, band = "human_loo", base_readout = "greedy",
@@ -108,12 +191,13 @@ as the human error, the human reference lies on the 45° line (slope 1) by const
 below 1 is flatter than that reference.
 
 Panel A draws the relationship for two cells against the human reference (curves = mean error per
-difficulty bin, with country-clustered 95% CI bands). Panel B is the slope for every cell, with
-country-clustered 95% CIs, against the human reference at 1.
+difficulty bin, with country-clustered 95% CI bands), with every cell shown as a faint grey trace
+behind them. Panel B is the slope for every cell, with country-clustered 95% CIs, against the
+human reference at 1 (slope 1 = tracks difficulty like a human, flatter = leans on a prior).
 
 ```{r}
 #| label: fig-crossmodel-slope
-#| fig-cap: "Difficulty tracking (greedy readout). (A) Mean AI error vs case difficulty h_c for a flat and a steep exemplar, against the human reference (which lies on the 45° line because h_c is defined as human error); 20 equal-count difficulty bins, country-clustered 95% CI bands. (B) Weighted OLS slope of AI error on h_c for every cell, country-clustered 95% CIs, long-dash = human reference (slope 1). Base block covers all four inputs; the FT-raw block shows Codebook and Raw Text only (the matched-format check on Anonymized/Summarized is Appendix A7)."
+#| fig-cap: "Difficulty tracking (greedy readout). (A) Mean AI error vs case difficulty h_c for a flat and a steep exemplar, against the human reference (which lies on the 45° line because h_c is defined as human error), every cell a faint grey trace; 20 equal-count difficulty bins, country-clustered 95% CI bands. (B) Weighted OLS slope of AI error on h_c for every cell, country-clustered 95% CIs, long-dash = human reference (slope 1). Base block covers all four inputs; the FT-raw block shows Codebook and Raw Text only (the matched-format check on Anonymized/Summarized is Appendix A5)."
 #| fig-width: 12
 #| fig-height: 5.4
 fig_crossmodel_slope_2panel(dm_slope, ft_conds = c("codebook", "evidence-zeroshot"))
@@ -125,70 +209,224 @@ build_distmatch.R min_coders arg); the >=2-coder pool is used here for consisten
 
 ## 3. Directional bias — signed deviation
 
-The third axis keeps the *direction* MAE discards: `s_c = AI rating − panel mean`, averaged within
-regime bins. Zero is the panel-member target (a real coder's signed deviations sum to zero per bin
-by construction). The scalar summary is the **exaggeration gap** (positive = the model spreads the
-regime gradient wider than the human panel — rates autocracies below / democracies above; negative
-= compresses toward the middle), computed two ways below: first on V-Dem's categorical **regime
-type** (Regimes of the World), then on the continuous **democracy quintile** cut directly beneath
-it, so the two views of the same gradient can be compared side by side.
-
-Panel A in each figure draws the gradient for the flattest and steepest cells against two
-references: the dotted zero line (raw panel mean) and the dashed line (V-Dem's IRT `_ord` score
-expressed on the same axis, `mean(ord − panel_mean)` per bin). Panel B is the exaggeration gap for
-every cell.
-
-### Regime type (V-Dem Regimes of the World)
+<!-- STOPGAP PROSE (EJT to rewrite): -->
+The third axis keeps the *direction* MAE discards: `s_c = AI rating − panel mean`. Zero is the
+human panel-member benchmark, since a real coder's signed deviations average to zero by
+construction. Panel A traces `s_c` across V-Dem's Regimes of the World for three exemplar cells —
+the best-calibrated cell, the one with the steepest regime tilt, and the harshest (most negative
+average `s_c`) — with every cell drawn faintly behind them, against the dotted zero line and the
+dashed V-Dem IRT `_ord` target on the same axis. Panel B is the average `s_c` per cell: negative
+means the model rates below the panel on average (harsh), positive means above (generous). The
+democracy-quintile cut of the same measure is in Appendix A3.
 
 ```{r}
 #| label: fig-crossmodel-signeddev-regime
-#| fig-cap: "Directional bias by regime type (greedy readout). (A) Signed deviation (AI − panel mean) across V-Dem's Regimes of the World (closed autocracy → liberal democracy) for the flattest and steepest cells; dotted 0 = panel mean, dashed = V-Dem IRT target on the same axis, grey band = ±SESOI, country-clustered 95% CI bands. (B) Exaggeration gap (liberal democracy − closed autocracy signed deviation) for every cell, country-clustered 95% CIs, dashed 0 = no tilt, grey band = ±SESOI. Base block covers all four inputs; the FT-raw block shows Codebook and Raw Text only (the matched-format check on Anonymized/Summarized is Appendix A7)."
+#| fig-cap: "Directional bias by regime type (greedy readout). (A) Signed deviation (AI − panel mean) across V-Dem's Regimes of the World for three exemplar cells — best-calibrated, steepest regime tilt, harshest average deviation — with every cell shown as a faint grey trace; dotted 0 = human panel-member benchmark, dashed = V-Dem IRT `_ord` target on the same axis, grey band = ±SESOI, country-clustered 95% CI whiskers. (B) Average signed deviation per cell (0 = panel-member benchmark; negative = rates below the panel on average), country-clustered 95% CIs, grey band = ±SESOI. Base block covers all four inputs; the FT-raw block shows Codebook and Raw Text only (the matched-format check on Anonymized/Summarized is Appendix A5)."
 #| fig-width: 12
 #| fig-height: 5.4
 fig_crossmodel_signeddev_2panel_regime(sd_signed, ft_conds = c("codebook", "evidence-zeroshot"))
 ```
 
-### Democracy quintile
+<!-- TODO (EJT): interpretation. Llama and Qwen rate near-zero under Codebook; every base cell
+with de-identified text is strongly negative (rates below the panel), worst under
+Anonymized/Summarized. Gemma's base Codebook is itself strongly negative (-0.25). Fine-tuning
+shrinks the large negative deviations but overshoots into mild generosity for Qwen and Gemma
+on Codebook. -->
+
+## 4. Movement
+
+The other ingredient the prominence-crossing figures cross against identifiability: how much has
+a country's democracy level actually changed since roughly when the model's own "impression" of
+it would have formed? **Change in V-Dem's Polyarchy score, 2018 to 2023**, one point per country,
+ranked. Most countries barely moved; a handful moved a lot, in both directions — exactly the
+long-tailed shape that made a plain (non-rank-transformed) version of this measure too
+noisy to use directly in a bootstrap (see `notes/mockups/prominence-crossing-fig-concept.md`).
+Labels mark exactly the 5 most-backslid and 5 most-improved countries — a fixed rule, not a
+visual judgment call — and four of the five steepest declines here are well-documented coups or
+crises in this window (Burkina Faso, Myanmar, Mali, Tunisia); the fifth, Mauritius, is a slower
+measured democratic erosion under the Jugnauth government. Either way the ranking is a useful
+sanity check on the measure itself before it's used as a mechanism-test input.
 
 ```{r}
-#| label: fig-crossmodel-signeddev
-#| fig-cap: "Directional bias by democracy quintile (greedy readout). (A) Signed deviation (AI − panel mean) across democracy quintiles for the flattest and steepest cells; dotted 0 = panel mean, dashed = V-Dem IRT target on the same axis, grey band = ±SESOI, country-clustered 95% CI bands. (B) Exaggeration gap (Q5 − Q1 signed deviation) for every cell, country-clustered 95% CIs, dashed 0 = no tilt (positive = exaggerates the gradient, negative = compresses), grey band = ±SESOI. Base block covers all four inputs; the FT-raw block shows Codebook and Raw Text only (the matched-format check on Anonymized/Summarized is Appendix A7)."
-#| fig-width: 12
-#| fig-height: 5.4
-fig_crossmodel_signeddev_2panel(sd_signed, ft_conds = c("codebook", "evidence-zeroshot"))
+#| label: fig-movement
+#| fig-cap: "Change in V-Dem's Polyarchy score (v2x_polyarchy), 2018-2023, one point per country (n=179), ranked. Labels: the 5 most-backslid and 5 most-improved countries."
+#| fig-width: 10
+#| fig-height: 6.5
+#| eval: !expr have_movement
+fig_movement(movement_bundle_2023, country_names)
 ```
 
-<!-- TODO (EJT): interpretation of the directional-bias pattern (base vs FT tilt; the IRT line's
-own slope; Qwen's calibration vs its Fig-2 slope; regime-type vs quintile-cut agreement). -->
+## 5. Re-identification
 
-## 4. Continuous Movement
+Even shown only de-identified evidence, how often does the model name the true country anyway?
+**Exact-match re-identification rate** by model family (Llama 70B / Qwen 72B / Gemma 27B), by weights
+(Base vs. Fine-Tuned raw-text adapter — the only fine-tuned condition in the study now), and by
+de-identification condition (Anonymized vs. Summarized), 2023. Bars ordered left to right within
+each condition by descending Base × Anonymized rate. This is a descriptive result in its own
+right — the rates are far above chance regardless of condition or model (chance ≈ 1/176 countries
+≈ 0.6%; not drawn as a reference line since it would sit indistinguishably close to zero at this
+scale) — and one of the ingredients the prominence-crossing figures build on: a country has to be
+identifiable before the model can lean on an identity-based prior about it. See
+`notes/mockups/reid-rates-fig-concept.md` for the full design rationale and a data-integrity fix
+(duplicated rows from a job-submission race) this bundle already reflects.
 
-**Runs:** No additional runs required.
+```{r}
+#| label: fig-reid-rates
+#| fig-cap: "Exact-match re-identification rate by model family, weights, and de-identification condition (2023). Plain bars, no CI (a descriptive proportion, not a paired contrast). Chance level ≈0.6%, not drawn."
+#| fig-width: 9
+#| fig-height: 5
+#| eval: !expr have_reidrates
+fig_reid_rates(reidrates_bundle_2023)
+```
 
-Test how the relevance of information changes with the staleness of the prior. 
+## 6. Difficulty tracking under prominence and movement
 
-## 5. Re-identificaiton
+Does the "tracks difficulty like a human coder would" behavior from Figure 2 hold up equally well
+for every country, or does it depend on how identifiable and how recently-changed the country is?
+Two separate models (no interaction term — dropped 2026-09-06 in favor of this simpler, more
+legible design), each run across all four Base conditions and the trimmed Fine-Tuned pair
+(Codebook + Raw Text, matching the FT-raw trim used throughout Figures 1-3):
+`AI error ~ h + movement + h:movement` (Panel A) and `AI error ~ h + reid + h:reid` (Panel B),
+where `h` is case difficulty (human LOO error). The reported coefficient is the slope-modifying
+term in each — does movement/prominence change how well AI error tracks difficulty, not a level
+effect (see `notes/mockups/prominence-crossing-fig-concept.md`). Panel A's coefficient is on a
+percentile-rank scale (least- to most-moved country, not a real democracy-score unit — see the
+same note for why); Panel B's is a literal identified-vs-not comparison, no transform. No SESOI
+band is shown; these are slope-modifier units, not MAE, so the paper's rating-point SESOI
+threshold doesn't apply here.
 
-**Runs:** Re-identification per model (FT Llama: Ev; FT Qwen: Ev; FT Gemma: Ev) on...what condition? Anonymized, summarized or both? We did see that Llama FT-summ had a harder time re-identifying relative to the other models. Briefly dig into that more. However, fundamentally we are trying to explain patterns in the figures pertaining to the FT-evidence models and so our efforts should primarily focus on those. 
+**Movement excludes zero in every one of the 18 cells (Panel A), always in the same direction,
+including Codebook** — where the model sees no case-specific evidence at all. That last part is
+the key to reading it: with no evidence, a rating can only reflect whatever generic impression the
+model carries from pretraining. For a stable country that impression is still roughly right, so
+whatever error remains still tracks genuine case difficulty; for a country that's recently changed
+a lot, the impression is simply wrong, and wrong by about the same amount for every indicator in
+that country, which washes out the correlation with difficulty. This holds up whether or not real
+evidence is given, and after fine-tuning — a stale prior exerts a baseline pull that in-context
+evidence doesn't override. **Prominence (Panel B) is far less consistent** — strong for Gemma at
+Base, essentially gone after fine-tuning; the reverse for Qwen (null at Base, consistent once
+fine-tuned) — a pattern worth flagging honestly rather than explaining with confidence.
 
-## 6. Name swap
+```{r}
+#| label: fig-slope-by-condition
+#| fig-cap: "Effect of movement (Panel A, percentile rank of |Δv2x_polyarchy|, 2018-2023) and prominence (Panel B, exact-match re-identification, Summarized text) on the difficulty-tracking slope, across all four base conditions and the trimmed Fine-Tuned pair (Codebook, Raw Text). Country-clustered bootstrap 95% CIs; no SESOI band (slope-modifier units, not MAE)."
+#| fig-width: 12
+#| fig-height: 6
+#| eval: !expr have_sbc_movement && have_sbc_reid
+fig_slope_by_condition_2panel(sbc_movement, sbc_reid)
+```
 
-**Runs:** Run name-swap on three models (FT Llama: Ev, FT Qwen: Ev; FT Gemma: Ev). Consider whether using the raw text adapter leaks the names. Perhaps do a trial run to see whether you get different results using the raw versus summarized adapters for Llama. 
+## 7. Signed deviation under prominence and movement
+
+The same question as Section 6, but for directional bias (Figure 3) instead of difficulty
+tracking: does a country that recently backslid still get a rating that's too generous — still
+reflecting its pre-2018 level — and does one that improved get rated too harshly? Two separate
+models, same shape as Section 6 but without the case-difficulty term (signed deviation isn't
+itself regressed against difficulty): `signed deviation ~ movement_signed` (Panel A) and
+`signed deviation ~ reid` (Panel B), across all four Base conditions and the trimmed Fine-Tuned
+pair. Movement uses the *signed*, rank-tamed version — direction is the point here, unlike
+Section 6's magnitude-only measure (see `notes/mockups/prominence-crossing-fig-concept.md`).
+
+**Movement's effect concentrates almost entirely in Codebook** (5 of 6 cells exclude zero, all
+in the anchoring direction) and mostly disappears once any real evidence is given. That's a
+clean, theory-consistent result: with no case-specific evidence, a rating can only reflect the
+model's baked-in impression of the country, so the lag/anchoring signature should be strongest
+exactly there — and real evidence, even de-identified or compressed, is enough to mostly correct
+the *direction* of the guess, even though Section 6 shows it doesn't fix the model's ability to
+track case-specific *difficulty*. Prominence (Panel B) is scattered and inconsistent — a few
+significant cells with no pattern by family or condition, nothing at all once fine-tuned — the
+same weak-signal story prominence told in Section 6.
+
+```{r}
+#| label: fig-signeddev-by-condition
+#| fig-cap: "Effect of movement (Panel A, signed percentile rank of Δv2x_polyarchy, 2018-2023) and prominence (Panel B, exact-match re-identification, Summarized text) on signed deviation (AI rating - panel mean), across all four base conditions and the trimmed Fine-Tuned pair (Codebook, Raw Text). Country-clustered bootstrap 95% CIs, grey band = ±SESOI."
+#| fig-width: 12
+#| fig-height: 6
+#| eval: !expr have_sdbc_movement && have_sdbc_reid && have_2023
+fig_signeddev_by_condition_2panel(sdbc_movement, sdbc_reid, sesoi = boot_bundle_2023$sesoi)
+```
+
+## 8. Synthetic-coder deployment: does adding an AI move the panel?
+
+Figures 1–7 establish performance and mechanism; this section asks the literal
+deployment question underneath the paper's opening motivation — median panel size has
+fallen from roughly eleven coders in the 2010s to 5.8 by 2024, and the practical
+question is whether adding a synthetic coder to one of these thinning panels actually
+moves its mean, and which way. **Augmentation**: one AI rating added to a thin 2023
+panel (2–8 coders), growing it to n+1 — the help a thinning panel would actually
+receive. (The companion question — replacing coders on a *healthy* panel — isn't a
+real deployment scenario; that robustness check is Appendix A9.) Panel A is the
+single-seat result by condition and model; Panel B asks whether it holds up as more
+seats are added, k=1..4, for three regimes: **Same AI** (every seat filled by Qwen
+FT-raw Evidence-ZS — the fine-tuned, evidence-reading system this paper's own results
+point to, and the one cell that lands indistinguishable from zero across every
+single-seat analysis run against it), **Mixed FT** (seats drawn from the 6-cell
+fine-tuned pool used throughout the paper), and **Mixed pool** (seats drawn from the
+full 18-cell grid). Both panels are a signed shift in the panel mean, rating points,
+referenced against zero (no shift) — which is also human coder churn's own expected
+shift: refilling a seat from the panel's own coders draws from the same distribution
+the mean was computed from, so its expected effect is exactly zero, not a separate
+line to plot. No ±SESOI band: unlike Figures 1, 3, and 7, this shift is a difference of
+two integers over a panel-size denominator, with no forced-rounding floor the way a
+single rating compared against a fractional mean has — reusing the SESOI number here
+would borrow the number without the reason (see `notes/mockups/augmentation-concept.md`
+for the full derivation and the earlier designs — a mismatched remove/add threshold,
+then SESOI itself, then a single-panel spread band — that led to this one).
+
+**Panel A repeats Figure 3 and 7's finding independently**: 16 of 18 cells exclude
+zero; Base models push the mean down (harsher) under Raw Text, Anonymized, and
+Summarized, worst under the de-identified conditions, while Codebook is
+mild-to-near-zero, and fine-tuning pulls the shift toward, and often past, zero.
+**Panel B shows this is not a one-seat curiosity.** Same AI stays flat and
+indistinguishable from ordinary churn all the way to k=4 — the CI barely widens and
+never drifts from zero. Mixed FT and Mixed pool are different: both already exclude
+zero at k=1, and the effect grows roughly linearly with k, in *opposite* directions —
+Mixed pool (which includes the harsher-biased base cells) drifts increasingly negative,
+Mixed FT drifts mildly positive. The practical reading: a well-chosen, fine-tuned,
+evidence-reading model looks like ordinary coder turnover no matter how many seats it
+fills; an unfiltered mix of models and conditions does not, and the gap widens with
+every seat added.
+
+```{r}
+#| label: fig-augmentation
+#| fig-cap: "Does adding a synthetic coder move a real panel's mean? (A) One AI rating added to a thin 2023 panel (2-8 coders), panel grows to n+1, by condition and model. (B) Dose-response: k=1-4 AI seats added, three regimes (Same AI = Qwen FT-raw Evidence-ZS; Mixed FT = drawn from the 6-cell fine-tuned pool; Mixed pool = drawn from the full 18-cell grid). Signed shift in the panel mean, rating points, zero-referenced (dashed) — also human churn's own expected shift, not separately plotted. Panel A's Base block covers all four inputs; the FT-raw block shows Codebook and Raw Text only (the matched-format check on Anonymized/Summarized is Appendix A5). Country-clustered 95% CIs throughout. No ±SESOI band (see prose)."
+#| fig-width: 13
+#| fig-height: 6
+#| eval: !expr have_augmentation && have_dr_aug
+fig_augmentation_combined(augmentation_bundle_2023, dr_augmentation_2023)
+```
+
+## Synthesis: what explains Figures 1–3's de-identification pattern?
+
+Two candidate explanations for the original puzzle — de-identifying evidence pushes MAE further
+from the human panel, sometimes past it entirely — were tested directly. The mechanism Sections
+6–7 establish, country-level staleness (and, more weakly, prominence), does **not** explain it:
+crossing movement and re-identification against raw MAE by condition (rather than against the
+difficulty-tracking slope or signed deviation) turns up no consistent relationship — movement
+clears zero in only 5 of 18 cells with no pattern by condition, and re-identification in none.
+Direct identity removal does explain it: holding text length fixed (Anonymized vs. Raw Text) or
+compression fixed (Summarized vs. the new Summarized-Identified condition), removing the
+country's name increases error for most model/condition pairs, most consistently at the
+compressed level (all three families). See Appendix A8. The effects are mostly modest — inside
+the ±SESOI band except for Llama's full-text case — so this is real, not decisive, evidence: it
+points at identity itself carrying informative signal the model loses when stripped, rather than
+at staleness or prominence, but doesn't close the question. See
+`notes/mockups/mechanism-tests-summary-2026-09-06.md` for the fuller writeup, including
+alternative explanations (rewrite-artifact/distributional-shift from the summarization process,
+nuance loss from compression) that remain untested.
 
 # Appendix
 
 ## A1. Synthetic-coder performance — 2023 holdout
 
 Replication of Figure 1 on the 2023 holdout year. Same design and readout convention, same
-Codebook + Raw Text trim on the FT-raw block as Figure 1 (the untrimmed grid is Appendix A7).
-Base block: Qwen and Gemma 2023 base runs on Evidence/Anonymized/Summarized are still in
-flight (Codebook and, for Qwen, Anonymized/Summarized are in). Llama's FT-raw 2023
-`anonymized-zeroshot`/`summarized-zeroshot` runs are pending regardless, which is moot for this
-trimmed view since those two conditions aren't shown here.
+Codebook + Raw Text trim on the FT-raw block as Figure 1 (the untrimmed grid is Appendix A5).
+All four base conditions are in for all three families, as are all four Llama FT-raw
+conditions, at full row counts.
 
 ```{r}
 #| label: fig-crossmodel-2023
-#| fig-cap: "Synthetic coder performance across model families on the 2023 holdout (Llama 70B / Qwen 72B / Gemma 27B). Layout, readout convention (solid = greedy, open = mean; base rows greedy only), and reference lines match Figure 1. FT-raw block: Codebook and Raw Text only (Appendix A7 has the untrimmed grid). Country-clustered 95% CIs."
+#| fig-cap: "Synthetic coder performance across model families on the 2023 holdout (Llama 70B / Qwen 72B / Gemma 27B). Layout, readout convention (solid = greedy, open = mean; base rows greedy only), and reference lines match Figure 1. FT-raw block: Codebook and Raw Text only (Appendix A5 has the untrimmed grid). Country-clustered 95% CIs."
 #| fig-width: 8
 #| fig-height: 5.2
 #| eval: !expr have_2023
@@ -199,45 +437,45 @@ fig_crossmodel_landscape(exp_bundle_2023, boot_bundle_2023, band = "human_loo", 
 ## A2. Difficulty tracking — 2023 holdout
 
 Replication of Figure 2 on the 2023 holdout year. Same two-panel design, featured cells, reference
-(slope 1), greedy readout, and Codebook + Raw Text trim on the FT-raw block as Figure 2. Same
-model/condition coverage caveats as A1.
+(slope 1), greedy readout, and Codebook + Raw Text trim on the FT-raw block as Figure 2. Full
+model/condition coverage, as in A1.
 
 ```{r}
 #| label: fig-crossmodel-slope-2023
-#| fig-cap: "Difficulty tracking on the 2023 holdout — replication of Figure 2. (A) AI error vs case difficulty for the same featured cells; (B) difficulty-tracking slope per cell, long-dash = human reference (slope 1). FT-raw block: Codebook and Raw Text only (Appendix A7 has the untrimmed grid). Greedy readout, country-clustered 95% CIs."
+#| fig-cap: "Difficulty tracking on the 2023 holdout — replication of Figure 2. (A) AI error vs case difficulty for the same featured cells, every cell a faint grey trace; (B) difficulty-tracking slope per cell, long-dash = human reference (slope 1). FT-raw block: Codebook and Raw Text only (Appendix A5 has the untrimmed grid). Greedy readout, country-clustered 95% CIs."
 #| fig-width: 12
 #| fig-height: 5.4
 #| eval: !expr have_2023_slope
 fig_crossmodel_slope_2panel(dm_slope_2023, ft_conds = c("codebook", "evidence-zeroshot"))
 ```
 
-## A3. Directional bias — 2023 holdout
+## A3. Signed Deviation
 
-Replication of Figure 3 on the 2023 holdout year. Same two-panel design, featured cells, references
-(panel mean at 0, V-Dem IRT dashed), greedy readout, and Codebook + Raw Text trim on the FT-raw
-block as Figure 3. Same model/condition coverage caveats as A1–A2. Regime type first, democracy
-quintile directly below it — same pairing as Figure 3.
+<!-- STOPGAP PROSE (EJT to rewrite): -->
+Two companions to Figure 3. First, the same measure on the **democracy-quintile** cut for 2019 —
+the continuous version of the regime-type gradient in the main text. Second, the **regime-type**
+cut replicated on the **2023 holdout**. Panel B (average signed deviation) is identical across
+cuts by construction, so it repeats here; only Panel A (the gradient) changes.
 
-### Regime type (V-Dem Regimes of the World)
+### Democracy quintile — 2019
+
+```{r}
+#| label: fig-crossmodel-signeddev
+#| fig-cap: "Directional bias by democracy quintile, 2019 (greedy readout) — the continuous companion to Figure 3's regime-type cut. (A) Signed deviation (AI − panel mean) across democracy quintiles for three exemplar cells — best-calibrated, steepest tilt, harshest average deviation — with every cell shown as a faint grey trace; dotted 0 = human panel-member benchmark, dashed = V-Dem IRT `_ord` target, grey band = ±SESOI, country-clustered 95% CI whiskers. (B) Average signed deviation per cell (same as Figure 3B). FT-raw block: Codebook and Raw Text only (Appendix A5 has the untrimmed grid)."
+#| fig-width: 12
+#| fig-height: 5.4
+fig_crossmodel_signeddev_2panel(sd_signed, ft_conds = c("codebook", "evidence-zeroshot"))
+```
+
+### Regime type — 2023 holdout
 
 ```{r}
 #| label: fig-crossmodel-signeddev-2023-regime
-#| fig-cap: "Directional bias by regime type on the 2023 holdout — replication of the regime-type panel of Figure 3. (A) Signed deviation across V-Dem's Regimes of the World (closed autocracy → liberal democracy) for the flattest and steepest cells, dotted 0 = panel mean, dashed = V-Dem IRT; (B) exaggeration gap (liberal democracy − closed autocracy signed deviation) per cell. FT-raw block: Codebook and Raw Text only (Appendix A7 has the untrimmed grid). Greedy readout, country-clustered 95% CIs, grey band = ±SESOI."
+#| fig-cap: "Directional bias by regime type on the 2023 holdout — replication of Figure 3. (A) Signed deviation across V-Dem's Regimes of the World for three exemplar cells (best-calibrated, steepest tilt, harshest average deviation), every cell a faint grey trace; dotted 0 = panel-member benchmark, dashed = V-Dem IRT. (B) Average signed deviation per cell. FT-raw block: Codebook and Raw Text only. Greedy readout, country-clustered 95% CIs, grey band = ±SESOI."
 #| fig-width: 12
 #| fig-height: 5.4
 #| eval: !expr have_2023_signed
 fig_crossmodel_signeddev_2panel_regime(sd_signed_2023, ft_conds = c("codebook", "evidence-zeroshot"))
-```
-
-### Democracy quintile
-
-```{r}
-#| label: fig-crossmodel-signeddev-2023
-#| fig-cap: "Directional bias by democracy quintile on the 2023 holdout — replication of Figure 3. (A) Signed deviation across democracy quintiles for the flattest and steepest cells, dotted 0 = panel mean, dashed = V-Dem IRT; (B) exaggeration gap per cell. FT-raw block: Codebook and Raw Text only (Appendix A7 has the untrimmed grid). Greedy readout, country-clustered 95% CIs, grey band = ±SESOI."
-#| fig-width: 12
-#| fig-height: 5.4
-#| eval: !expr have_2023_signed
-fig_crossmodel_signeddev_2panel(sd_signed_2023, ft_conds = c("codebook", "evidence-zeroshot"))
 ```
 
 ## A4. Synthetic-coder performance — 2024 FH-only holdout
@@ -245,7 +483,7 @@ fig_crossmodel_signeddev_2panel(sd_signed_2023, ft_conds = c("codebook", "eviden
 Loose out-of-sample replication of Figure 1 on the most recent year — data furthest from the
 fine-tuning window (through 2018) and not part of any earlier run. Same design and readout
 convention, same Codebook + Raw Text trim on the FT-raw block as Figure 1 (no untrimmed 2024
-companion is planned — Appendix A7 covers that check on 2019 only). Base ladder (codebook/
+companion is planned — Appendix A5 covers that check on 2019 only). Base ladder (codebook/
 evidence/anonymized/summarized) × 3 families (Llama 70B / Qwen 72B / Gemma 27B) = 12 cells;
 FT-raw diagonal restricted to Codebook + Raw Text × 3 families = 6 cells. FH-only: State
 Department country reports changed format enough for 2024 that they aren't used, so every cell
@@ -256,7 +494,7 @@ drops one source), so this is not placed on a shared axis with 2019/2023.
 
 ```{r}
 #| label: fig-crossmodel-2024
-#| fig-cap: "Synthetic coder performance across model families on the 2024 FH-only holdout (Llama 70B / Qwen 72B / Gemma 27B). Layout, readout convention (solid = greedy, open = mean; base rows greedy only), and reference lines match Figure 1. FT-raw block: Codebook and Raw Text only (Appendix A7 has the untrimmed grid on 2019). Country-clustered 95% CIs."
+#| fig-cap: "Synthetic coder performance across model families on the 2024 FH-only holdout (Llama 70B / Qwen 72B / Gemma 27B). Layout, readout convention (solid = greedy, open = mean; base rows greedy only), and reference lines match Figure 1. FT-raw block: Codebook and Raw Text only (Appendix A5 has the untrimmed grid on 2019). Country-clustered 95% CIs."
 #| fig-width: 8
 #| fig-height: 5.2
 #| eval: !expr have_2024
@@ -264,42 +502,12 @@ fig_crossmodel_landscape(exp_bundle_2024, boot_bundle_2024, band = "human_loo", 
                          ft_conds = c("codebook", "evidence-zeroshot"))
 ```
 
-## A5. B and F hypothesis tests
-
-```{r}
-#| label: fig-bf
-#| fig-cap: "Paired ΔMAE for the registered B and F contrasts, with the zero line and ±SESOI band."
-#| fig-width: 8
-#| fig-height: 4.8
-fig_bf(boot_bundle)
-```
-
-## A6. Full model × input grid
-
-Llama only: Base plus all three Llama fine-tuned adapters (FT-raw, FT-anon, FT-summ), each run on
-all four inputs — Qwen and Gemma trained only the raw-text adapter, so there is no matched-vs-
-mismatched comparison to make for them here. The ringed cell in each FT block is that adapter's own
-matched training input (e.g., FT-anon on Anonymized); it is not consistently the best-performing
-cell for that model, but the ranking among matched/mismatched conditions is not consistent across
-model families either (Llama's matched condition loses to Codebook; Qwen's and Gemma's FT-raw
-matched condition — Raw Text — is their best of the four), and every cell in every block falls
-within ±SESOI of the human reference regardless of condition. Treated here as noise rather than a
-format effect.
-
-```{r}
-#| label: fig-grid
-#| fig-cap: "Every model on every input (the off-diagonal expansion of Figure 1), Llama only. Greedy (mode) vs expectation (mean) MAE with country-clustered 95% CIs. Rings mark each fine-tuned model's own training input (the diagonal) — not consistently its best-performing cell, and every cell here falls within ±SESOI of the human reference. Dashed line = naive persistence model; long-dash line = human reference; grey band = ±SESOI around the human reference."
-#| fig-width: 8
-#| fig-height: 9
-fig_readout_grid(exp_bundle, boot_bundle, band = "human_loo")
-```
-
-## A7. Untrimmed FT-raw evidence-format grid (2019, cross-model)
+## A5. Untrimmed FT-raw evidence-format grid (2019, cross-model)
 
 Figures 1–3's FT-raw block shows Codebook and Raw Text only — the one apples-to-apples comparison
 (does reading the matched-training-format evidence help beyond fine-tuning). This section restores
 the two conditions cut from there — Anonymized and Summarized — for all three model families, i.e.
-the FT-raw adapter tested on input formats it was never fine-tuned on. As established in A5 (Llama
+the FT-raw adapter tested on input formats it was never fine-tuned on. As established in A10 (Llama
 only, but the same logic applies here): this is a generalization/robustness check, not a second
 "does evidence help" test, and it should not be read as evidence for or against the matched-format
 finding above.
@@ -312,26 +520,145 @@ finding above.
 fig_crossmodel_landscape(exp_bundle, boot_bundle, band = "human_loo", base_readout = "greedy")
 ```
 
-```{r}
-#| label: fig-crossmodel-slope-full
-#| fig-cap: "Untrimmed companion to Figure 2: FT-raw block restored to all four inputs, cross-model. Same design and reference (human self-reference, slope 1) as Figure 2."
-#| fig-width: 12
-#| fig-height: 5.4
-fig_crossmodel_slope_2panel(dm_slope)
-```
+## A6. Re-identification — top-3 rate
+
+Companion to Figure 5 (Section 5): the same model × weights × condition grid, but crediting the
+model whenever the true country appears anywhere in its top-3 guesses rather than only at top-1.
+Same layout, same "no chance-line drawn" treatment, same bar ordering rule (descending Base ×
+Anonymized rate) applied independently to this metric.
 
 ```{r}
-#| label: fig-crossmodel-signeddev-full-regime
-#| fig-cap: "Untrimmed companion to Figure 3 (regime-type cut): FT-raw block restored to all four inputs, cross-model. Same design and references as Figure 3's regime-type panel."
-#| fig-width: 12
-#| fig-height: 5.4
-fig_crossmodel_signeddev_2panel_regime(sd_signed)
+#| label: fig-reid-rates-top3
+#| fig-cap: "Top-3 re-identification rate by model family, weights, and de-identification condition (2023) — appendix companion to Figure 5. Plain bars, no CI."
+#| fig-width: 9
+#| fig-height: 5
+#| eval: !expr have_reidrates
+fig_reid_rates(reidrates_bundle_2023, metric = "top3")
 ```
 
+## A7. Name-swap tracking
+
+A different, more direct test of the same identity-reliance question as Section 5: instead of
+asking whether the model can *recognize* a country from de-identified evidence, hold the real
+evidence text fixed and swap in a different country's name — does the rating still follow the
+real content, or drift toward whatever the fake name implies? Country-clustered bootstrap mean of
+`|rating − named_mean| − |rating − source_mean|` (analysis/10-nameswap-2019.qmd's Metric 1;
+positive = tracks content, negative/near-zero = follows the fake name), base and fine-tuned, all
+three families, 2023 — no crossing against prominence or movement here, unlike Section 5's
+figures (that's a separate question this appendix doesn't ask). **All six cells exclude zero, and
+every one sits inside the ±SESOI band** — real but small effects, and the direction flips cleanly
+between weight states: every base model leans slightly toward content (reads), every fine-tuned
+model flips to leaning slightly toward the injected name (recites), consistent across all three
+families. Not featured in the main text because it doesn't cross either of the two ingredients
+(prominence, movement) the main-text mechanism figures are built around — see
+`notes/mockups/prior-reliance-fig-concept.md` for the original figure design this is drawn from.
+
 ```{r}
-#| label: fig-crossmodel-signeddev-full
-#| fig-cap: "Untrimmed companion to Figure 3 (democracy-quintile cut): FT-raw block restored to all four inputs, cross-model. Same design and references as Figure 3's quintile panel."
-#| fig-width: 12
-#| fig-height: 5.4
-fig_crossmodel_signeddev_2panel(sd_signed)
+#| label: fig-nameswap-tracking
+#| fig-cap: "Name-swap tracking level, base vs. fine-tuned, by model family (2023). Positive = rating tracks the true source country's content over the injected fake name; negative = follows the fake name. Country-clustered bootstrap 95% CIs, grey band = ±SESOI."
+#| fig-width: 6.5
+#| fig-height: 4.6
+#| eval: !expr have_priorreliance_panelB && have_2023
+fig_nameswap_tracking(priorreliance_panelB, sesoi = boot_bundle_2023$sesoi)
+```
+
+## A8. Identity's direct effect
+
+The direct test behind the Synthesis note above: does removing a country's identity from the
+evidence, holding either text length or compression fixed, change the synthetic coder's behavior?
+Two paired condition contrasts per family, same shared country-clustered bootstrap draws:
+**Full Text** (Anonymized − Raw Text, identity removed with length held fixed) and **Compressed**
+(Summarized − Summarized-Identified, identity removed with compression held fixed) — base models
+only, 2023. The contrast is run on all three outcomes Figures 1–3 track — MAE, signed deviation,
+and the difficulty-tracking slope — the same three-axis view Sections 6–7 take of the movement and
+prominence moderators. The **Compressed** contrast is the clean one: both sides are LLM rewrites,
+so the raw-vs-rewrite confound cancels; the **Full Text** contrast (Anonymized is a rewrite, Raw
+Text is not) does not have that protection. A third row differencing the two, **Full Text −
+Compressed**, is reported in prose only (its point estimate is mechanically the difference of the
+other two): it excludes zero in opposite directions across families on every outcome — MAE
+(Llama +0.04, Gemma −0.06, Qwen ~0), signed deviation (Llama −0.06, Gemma +0.15, Qwen ~0),
+slope (all three +0.04 to +0.08) — so identity-removal and rewrite-artifact effects cannot be
+fully separated with this data.
+
+**MAE.** The Compressed contrast is positive and excludes zero for all three families; Full Text
+excludes zero for Llama and Qwen but not Gemma. Every effect sits inside the ±SESOI band except
+Llama's Full Text case — real, fairly consistent, modest. Unlike Sections 6–7's country-level
+moderators (movement, prominence), which came back null against raw MAE by condition, this direct
+contrast is the one candidate mechanism tested that predicts part of Figures 1–3's
+de-identification pattern.
+
+**Signed deviation.** The axis on which the de-identification pattern is largest (base Llama's
+average signed deviation moves from +0.03 under Codebook to −0.48 under Summarized). Negative =
+removing the name makes the model **harsher** (rates further below the panel). **Llama shows the
+strongest, cleanest identity effect in the analysis** — Full Text −0.19 and Compressed −0.13, both
+excluding zero, both beyond ±SESOI. Qwen's contrasts are the same direction but small (−0.03,
+−0.04, inside the band). Gemma's clean Compressed contrast is null (−0.01, CI crosses zero) and
+its Full Text contrast runs the *other* way (+0.14, beyond the band) — the rewrite confound, not
+an identity effect.
+
+**Difficulty tracking slope.** No ±SESOI band — slope-modifier units, not MAE, so the paper's
+rating-point threshold doesn't apply (same convention as Section 6 / Figure 6). Negative =
+removing the name **flattens** difficulty tracking (the model leans harder on a prior). On the
+clean Compressed contrast every family is negative and excludes zero — **Gemma most (−0.20)**,
+Qwen −0.11, Llama −0.05 — and Gemma is also the family whose aggregate slope drops most across the
+de-identification ladder (0.32 → 0.10, Codebook → Summarized). Full Text agrees for Qwen and Gemma
+(−0.06, −0.12) and is near-zero for Llama.
+
+```{r}
+#| label: fig-identity-effect
+#| fig-cap: "Effect of removing country identity — the Full Text (Anonymized − Raw Text) and Compressed (Summarized − Summarized-Identified) paired contrasts — on all three outcomes (2023, base models), side by side. Each panel has its own x-scale: the outcomes are in different units (MAE and signed deviation in rating points, difficulty slope in slope-modifier units) and are not comparable across panels. The ±SESOI band is drawn only on the two rating-point-scale panels, not on Difficulty Slope. Country-clustered bootstrap 95% CIs, shared draws per family. The Full Text − Compressed contrast is reported in prose, not shown."
+#| fig-width: 11
+#| fig-height: 3.8
+#| eval: !expr have_identityeffect && have_identityeffect_sd && have_identityeffect_slope && have_2023
+fig_identity_effect_combined(identityeffect_bundle, identityeffect_sd_bundle,
+                             identityeffect_slope_bundle, sesoi = boot_bundle_2023$sesoi)
+```
+
+## A9. Degradation: does replacing a healthy panel's coders move it?
+
+The companion to Figure 8 that isn't a real deployment scenario on its own — no one is
+proposing to swap out a functioning human panel for AI — but is a useful robustness
+check: does Figure 8's story depend on starting from a thin panel, or does it hold up
+on a healthy one too? Same design as Figure 8, swapped for the degradation mechanic:
+Panel A replaces one human coder with the AI on a healthy 2023 panel (n≥9), panel size
+held fixed (every coder-in-panel used as the swapped-out seat); Panel B is the k=1..6
+dose-response for the same three regimes (Same AI, Mixed FT, Mixed pool). Same
+zero-referenced signed shift, no ±SESOI band, same reasoning as Figure 8.
+
+**The story replicates closely.** Panel A excludes zero in 15 of 18 cells, same
+de-identification gradient as Figure 8's Panel A. Panel B: Same AI stays flat through
+k=6; Mixed FT and Mixed pool already exclude zero at k=1 and diverge in opposite
+directions as k grows, reaching roughly ±0.06–0.09 rating points by k=6 — larger in
+absolute terms than Figure 8's k=4 ceiling simply because k runs further, not because
+degradation behaves differently from augmentation. The deployment risk Figure 8
+measures doesn't depend on how thin the panel already was.
+
+```{r}
+#| label: fig-degradation
+#| fig-cap: "Robustness companion to Figure 8: does replacing a healthy panel's coders with AI move it the same way? (A) One human coder replaced by the AI on a healthy 2023 panel (n≥9), panel size held fixed, by condition and model. (B) Dose-response: k=1-6 seats replaced, same three regimes as Figure 8B. Signed shift in the panel mean, rating points, zero-referenced (dashed). Panel A's Base block covers all four inputs; the FT-raw block shows Codebook and Raw Text only (Appendix A5 has the untrimmed grid). Country-clustered 95% CIs throughout. No ±SESOI band (see Figure 8's prose)."
+#| fig-width: 13
+#| fig-height: 6
+#| eval: !expr have_degradation && have_dr_deg
+fig_degradation_combined(degradation_bundle_2023, dr_degradation_2023)
+```
+
+## A10. Full model × input grid
+
+Llama only: Base plus all three Llama fine-tuned adapters (FT-raw, FT-anon, FT-summ), each run on
+all four inputs — Qwen and Gemma trained only the raw-text adapter, so there is no matched-vs-
+mismatched comparison to make for them here. The ringed cell in each FT block is that adapter's own
+matched training input (e.g., FT-anon on Anonymized); it is not consistently the best-performing
+cell for that model, but the ranking among matched/mismatched conditions is not consistent across
+model families either (Llama's matched condition loses to Codebook; Qwen's and Gemma's FT-raw
+matched condition — Raw Text — is their best of the four), and under the greedy readout every
+cell in every block falls within ±SESOI of the human reference regardless of condition (under the
+mean readout no cell rates worse than human beyond SESOI, and most rate better). Treated here as
+noise rather than a format effect.
+
+```{r}
+#| label: fig-grid
+#| fig-cap: "Every model on every input (the off-diagonal expansion of Figure 1), Llama only. Greedy (mode) vs expectation (mean) MAE with country-clustered 95% CIs. Rings mark each fine-tuned model's own training input (the diagonal) — not consistently its best-performing cell; under the greedy readout every cell falls within ±SESOI of the human reference, and no cell under either readout rates worse than human beyond SESOI. Dashed line = naive persistence model; long-dash line = human reference; grey band = ±SESOI around the human reference."
+#| fig-width: 8
+#| fig-height: 9
+fig_readout_grid(exp_bundle, boot_bundle, band = "human_loo")
 ```
