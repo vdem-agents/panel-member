@@ -225,6 +225,78 @@ fig_crossmodel_landscape <- function(exp_bundle, greedy_bundle,
           plot.margin = margin(t = 16, r = 8, b = 6, l = 6))
 }
 
+# Panel-A featured cells, chosen from exactly the cells Panel B plots (base x {codebook, evidence,
+# anonymized, summarized}; FT-raw x ft_conds). Returns c(steep_cell, flat_cell) as
+# "model_key|condition" strings; a non-NULL `feature` passes straight through (manual override).
+#
+#   steep = max of the Panel-B coefficient (`coef_tbl`: dm_slope / dm_eg_q / dm_eg_r).
+#   flat  = if `curve_tbl` (dm_q / dm_r) is given, the best-CALIBRATED cell — min RMS deviation
+#           from 0 across the per-bin gradient. The exaggeration gap is a Q5-Q1 *difference*, so
+#           it is blind to level: a uniformly biased-low flat line scores near-zero gap. Ranking
+#           the flat pick by distance-from-target instead avoids featuring that misleading curve.
+#           Without `curve_tbl` (difficulty slope, where the metric IS the slope and the curve
+#           starts near the origin) the flat pick is just the min coefficient.
+# The cells a Panel B plots: base x {codebook, evidence, anonymized, summarized}, FT-raw x ft_conds.
+# Shared by the featured-cell pickers and the Panel A grey context traces.
+.panelB_pool <- function(tbl, ft_conds) {
+  base_models <- c("llama-70b", "qwen-72b", "gemma-27b")
+  ft_models   <- c("llama-70b-ft-raw", "qwen-72b-ft-raw", "gemma-27b-ft-raw")
+  base_conds  <- c("codebook", "evidence", "anonymized", "summarized")
+  dplyr::filter(tbl, (model_key %in% base_models & condition %in% base_conds) |
+                     (model_key %in% ft_models   & condition %in% ft_conds))
+}
+
+.panelA_feature <- function(coef_tbl, ft_conds, feature = NULL, curve_tbl = NULL) {
+  if (!is.null(feature)) return(feature)
+  in_pool <- function(tbl) .panelB_pool(tbl, ft_conds)
+  fam <- function(cell) sub("-.*$", "", sub("\\|.*$", "", cell))  # llama / qwen / gemma
+
+  pool  <- in_pool(coef_tbl)
+  steep <- pool$cell[which.max(pool$est)]
+
+  # Flat candidates, best-first: by calibration (RMS deviation from 0 across the gradient) when a
+  # curve table is supplied, else by the coefficient itself.
+  if (is.null(curve_tbl)) {
+    ord <- pool$cell[order(pool$est)]
+  } else {
+    cp  <- in_pool(curve_tbl)
+    rms <- tapply(cp$est, cp$cell, function(v) sqrt(mean(v^2, na.rm = TRUE)))
+    ord <- names(sort(rms))
+  }
+  # Prefer a flat exemplar from a different model family than the steep one so Panel A stays a
+  # two-colour read; the top-ranked candidates are near-tied on calibration anyway. Fall back to
+  # the best candidate if every option shares the family.
+  diff_fam <- ord[vapply(ord, function(c) fam(c) != fam(steep), logical(1))]
+  flat <- if (length(diff_fam)) diff_fam[1] else ord[1]
+
+  c(steep, flat)
+}
+
+# Fig 3 Panel A features three cells that illustrate the distinct patterns the average-signed-
+# deviation panel (Panel B) collapses into one number:
+#   calibrated = min RMS deviation from 0 across the gradient  (from cut_tbl: dm_q / dm_r)
+#   steepest   = max exaggeration gap Q5-Q1 / lib.dem - closed aut.  (from gap_tbl: dm_eg_q / dm_eg_r)
+#   harshest   = min average signed deviation  (from ov_tbl: dm_ov)
+# All three drawn from the Panel B pool. A non-NULL `feature` passes straight through.
+.signeddev_feature3 <- function(cut_tbl, gap_tbl, ov_tbl, ft_conds, feature = NULL) {
+  if (!is.null(feature)) return(feature)
+  fam <- function(cell) sub("-.*$", "", sub("\\|.*$", "", cell))  # llama / qwen / gemma
+  cut <- .panelB_pool(cut_tbl, ft_conds)
+  gap <- .panelB_pool(gap_tbl, ft_conds)
+  ov  <- .panelB_pool(ov_tbl,  ft_conds)
+  # Prefer one cell per model family so Panel A stays a three-colour read; fall back to the raw
+  # pick when no distinct-family option is left.
+  pick_diff <- function(ranked, used) {
+    d <- ranked[!vapply(ranked, function(c) fam(c) %in% used, logical(1))]
+    if (length(d)) d[1] else ranked[1]
+  }
+  rms        <- tapply(cut$est, cut$cell, function(v) sqrt(mean(v^2, na.rm = TRUE)))
+  calibrated <- names(which.min(rms))
+  steepest   <- pick_diff(gap$cell[order(-gap$est)], fam(calibrated))
+  harshest   <- pick_diff(ov$cell[order(ov$est)], c(fam(calibrated), fam(steepest)))
+  unique(c(calibrated, steepest, harshest))
+}
+
 # Fig 2 — the difficulty-tracking twin of Fig 1. Same rows (base block over FT-raw block, each
 # on the four inputs) and the same color = MODEL encoding, but the x-axis is the Test-3 slope of
 # AI error on case difficulty h_c instead of MAE, and the reference is the human self-reference
@@ -275,20 +347,27 @@ fig_crossmodel_slope <- function(dm_bundle,
   # error bars — a row holding a single model (the base block until the Qwen/Gemma base runs land)
   # reads the same as a dodged trio, so no lone "TIE fighter" bars.
   dodge <- position_dodge(width = 0.6)
+  ref_lab <- tibble::tibble(block = factor("Base", levels = c("Base", "Fine-tuned")),
+                            x = 0.985, y = "Codebook", label = "Human coder")
 
   ggplot(cells, aes(est, row, color = model, group = model)) +
     geom_vline(xintercept = 1, linetype = "longdash", color = "grey40") +
+    geom_text(data = ref_lab, aes(x = x, y = y, label = label),
+              position = position_nudge(y = 0.4), hjust = 1, vjust = 0.5,
+              color = "grey40", size = 2.9, inherit.aes = FALSE) +
     geom_pointrange(aes(xmin = lo, xmax = hi), orientation = "y",
                     size = 0.45, linewidth = 0.5, position = dodge) +
     facet_grid(rows = vars(block), scales = "free_y", space = "free", switch = "y") +
     scale_color_manual(values = model_pal, name = NULL) +
     scale_x_continuous(expand = expansion(mult = c(0.04, 0.02))) +
     coord_cartesian(clip = "off") +
-    labs(x = expression("difficulty-tracking slope of AI error on  " * h[c]),
-         y = NULL) +
+    labs(title = "B. Average Difficulty Tracking Error",
+         x = "AI Case Difficulty Slope", y = NULL) +
     theme_minimal(base_size = 12) +
     theme(legend.position = "top", legend.justification = "left",
           panel.grid.major.y = element_blank(), plot.title.position = "plot",
+          plot.title = element_text(face = "bold"),
+          axis.title.x = element_text(margin = margin(t = 7)),
           panel.spacing.y = unit(0.9, "lines"),
           strip.placement = "outside",
           strip.background = element_blank(),
@@ -299,14 +378,17 @@ fig_crossmodel_slope <- function(dm_bundle,
 # steep exemplar and a flat exemplar, against the human reference curve — which lies on y = x
 # because difficulty h_c is *defined* as the human error on the case (so the human's error equals
 # the case's difficulty). x is a property of the case (how hard humans found it); y is whichever
-# coder's error we plot. `feature` = two "model_key|condition" cells to draw as curves (default:
-# the steepest and flattest cells, i.e. the top and bottom of the coefficient panel). Revisit the
-# defaults once the Qwen/Gemma base runs land and the flattest cell may change.
+# coder's error we plot. `feature` = two "model_key|condition" cells to draw as curves; default
+# NULL auto-selects the top and bottom of the coefficient panel (max / min slope) from the cells
+# Panel B plots under this ft_conds trim. Pass an explicit pair to override.
 #
 #   dm_bundle <- readRDS("data/derived/distmatch_slope_2019.rds")  # needs dm_fine + he_fine
 fig_slope_curve <- function(dm_bundle,
-                            feature = c("qwen-72b-ft-raw|codebook", "llama-70b|summarized"),
+                            feature = NULL,
+                            ft_conds = c("codebook", "evidence-zeroshot",
+                                         "anonymized-zeroshot", "summarized-zeroshot"),
                             xmax = 1.6) {
+  feature <- .panelA_feature(dm_bundle$dm_slope, ft_conds, feature)
   family_of <- function(mk) dplyr::case_when(
     grepl("^llama", mk) ~ "Llama 70B", grepl("^qwen", mk) ~ "Qwen 72B",
     grepl("^gemma", mk) ~ "Gemma 27B", TRUE ~ NA_character_)
@@ -328,6 +410,8 @@ fig_slope_curve <- function(dm_bundle,
   sel$label <- factor(sel$label, levels = lab_levels)
 
   ggplot() +
+    geom_line(data = .panelB_pool(dm_bundle$dm_fine, ft_conds),
+              aes(x, est, group = cell), color = "grey78", linewidth = 0.3) +
     geom_ribbon(data = he,  aes(x, ymin = lo, ymax = hi), fill = "grey70", alpha = 0.30) +
     geom_line(data = he,   aes(x, est, color = "Human coder"), linewidth = 1.0) +
     geom_ribbon(data = sel, aes(x, ymin = lo, ymax = hi, fill = label), alpha = 0.18) +
@@ -335,35 +419,41 @@ fig_slope_curve <- function(dm_bundle,
     scale_color_manual(values = pal, name = NULL) +
     scale_fill_manual(values = pal, guide = "none") +
     coord_cartesian(xlim = c(0, xmax), ylim = c(0, xmax)) +
-    labs(x = "Case difficulty — typical human error (rating points)",
-         y = "Mean absolute error (rating points)") +
+    labs(title = "A. AI Error by Case Difficulty",
+         x = "Case Difficulty (Typical Human Error)", y = "MAE of AI Rating") +
     theme_minimal(base_size = 12) +
     theme(legend.position = "top", legend.justification = "left", legend.direction = "vertical",
-          panel.grid.minor = element_blank(), plot.title.position = "plot")
+          panel.grid.minor = element_blank(), plot.title.position = "plot",
+          plot.title = element_text(face = "bold"),
+          axis.title.x = element_text(margin = margin(t = 7)),
+          axis.title.y = element_text(margin = margin(r = 7)))
 }
 
 # Fig 2 (composite) — the two panels side by side: the curve (what the slope measures) and the
 # coefficient plot (every model ranked by that slope). Requires the curve fields in the bundle.
 fig_crossmodel_slope_2panel <- function(dm_bundle,
-                                        feature = c("qwen-72b-ft-raw|codebook",
-                                                    "llama-70b|summarized"),
+                                        feature = NULL,
                                         ft_conds = c("codebook", "evidence-zeroshot",
                                                      "anonymized-zeroshot", "summarized-zeroshot")) {
-  fig_slope_curve(dm_bundle, feature = feature) + fig_crossmodel_slope(dm_bundle, ft_conds = ft_conds) +
-    patchwork::plot_layout(widths = c(1, 1.05)) +
-    patchwork::plot_annotation(tag_levels = "A")
+  fig_slope_curve(dm_bundle, feature = feature, ft_conds = ft_conds) +
+    fig_crossmodel_slope(dm_bundle, ft_conds = ft_conds) +
+    patchwork::plot_layout(widths = c(1, 1.05))
 }
 
 # Fig 3 (left panel) — signed deviation across the democracy gradient. y = AI rating minus the
 # human panel mean; the dotted zero line is the panel-member target (a real coder sums to 0 per
 # bin by construction), the dashed grey line is the V-Dem IRT target expressed on the same axis
 # (mean(ord - panel_mean) per bin), so featured cells can be read against BOTH references. An
-# upward slope = exaggerates the regime gradient; downward = compresses. `feature` = cells drawn
-# as curves (default: the gap extremes — flattest and steepest of the plotted cells). Uses dm_q +
-# irt_ref_q from build_signeddev.R.
+# upward slope = exaggerates the regime gradient; downward = compresses. Faint grey traces show
+# every cell in the Panel B pool; `feature` = the cells drawn in colour, default NULL auto-selects
+# three (calibrated / steepest / harshest — see .signeddev_feature3). Uses dm_q + irt_ref_q from
+# build_signeddev.R.
 fig_signeddev_curve <- function(sd_bundle,
-                                feature = c("gemma-27b-ft-raw|anonymized-zeroshot",
-                                            "llama-70b|evidence")) {
+                                feature = NULL,
+                                ft_conds = c("codebook", "evidence-zeroshot",
+                                             "anonymized-zeroshot", "summarized-zeroshot")) {
+  feature <- .signeddev_feature3(sd_bundle$dm_q, sd_bundle$dm_eg_q, sd_bundle$dm_ov,
+                                 ft_conds, feature)
   sesoi <- sd_bundle$sesoi
   family_of <- function(mk) dplyr::case_when(
     grepl("^llama", mk) ~ "Llama 70B", grepl("^qwen", mk) ~ "Qwen 72B",
@@ -387,29 +477,40 @@ fig_signeddev_curve <- function(sd_bundle,
     annotate("rect", xmin = -Inf, xmax = Inf, ymin = -sesoi, ymax = sesoi,
              fill = "grey85", alpha = 0.55) +
     geom_hline(yintercept = 0, linetype = "dotted", color = "grey30", linewidth = 0.4) +
+    geom_line(data = .panelB_pool(sd_bundle$dm_q, ft_conds),
+              aes(bin, est, group = cell), color = "grey78", linewidth = 0.3) +
     geom_line(data = irt, aes(bin, est), linetype = "dashed", color = "grey45", linewidth = 0.7) +
     annotate("text", x = 3, y = irt$est[irt$bin == 3], label = "V-Dem IRT",
              color = "grey25", size = 2.9, hjust = 1, vjust = -0.9) +
-    geom_ribbon(data = sel, aes(bin, ymin = lo, ymax = hi, fill = label), alpha = 0.18) +
-    geom_line(data = sel, aes(bin, est, color = label), linewidth = 1.0) +
-    geom_pointrange(data = sel, aes(bin, est, ymin = lo, ymax = hi, color = label), size = 0.3) +
+    # Uncertainty carried by the per-bin whiskers only. A ribbon here would (a) duplicate the
+    # exact lo/hi the pointrange already shows, (b) imply continuous between-bin uncertainty
+    # across just 4-5 discrete bins, and (c) muddy where the two translucent series overlap.
+    # (The 20-bin difficulty-tracking Panel A keeps its ribbon — there a band is quasi-continuous.)
+    geom_line(data = sel, aes(bin, est, color = label), linewidth = 0.7) +
+    geom_pointrange(data = sel, aes(bin, est, ymin = lo, ymax = hi, color = label), size = 0.45) +
     scale_color_manual(values = pal, name = NULL) +
-    scale_fill_manual(values = pal, guide = "none") +
     scale_x_continuous(breaks = 1:5) +
-    labs(x = "democracy quintile (1 = most autocratic → 5 = most democratic)",
-         y = "signed deviation (AI − panel mean)") +
+    labs(title = "A. Signed Deviation by Quintile",
+         x = "Democracy Quintile (1 = Most Autocratic, 5 = Most Democratic)",
+         y = "Signed Deviation (AI - Panel Mean)") +
     theme_minimal(base_size = 12) +
     theme(legend.position = "top", legend.justification = "left", legend.direction = "vertical",
-          panel.grid.minor = element_blank(), plot.title.position = "plot")
+          panel.grid.minor = element_blank(), plot.title.position = "plot",
+          plot.title = element_text(face = "bold"),
+          axis.title.x = element_text(margin = margin(t = 7)),
+          axis.title.y = element_text(margin = margin(r = 7)))
 }
 
-# Fig 3 (right panel) — exaggeration gap (Q5 − Q1 signed deviation) per cell, the twin of Fig 2's
-# coefficient panel. Reference at 0 (no tilt); positive = exaggerates the gradient, negative =
-# compresses. Same Base/Fine-tuned strips, plain input rows, capless point-ranges, color = model.
+# Fig 3 (right panel) — AVERAGE signed deviation across the gradient (dm_ov, "pooled shift" from
+# build_signeddev.R) per cell, the twin of Fig 2's coefficient panel. Reference at 0 = the human
+# panel member (their signed deviations average to 0). Negative = the model rates below the panel
+# on average (harsh); positive = above (generous). dm_ov is binning-independent, so the regime
+# variant plots the same numbers — only Panel A differs between the two cuts. Same Base/Fine-tuned
+# strips, plain input rows, capless point-ranges, color = model.
 fig_signeddev_gap <- function(sd_bundle,
                               ft_conds = c("codebook", "evidence-zeroshot",
                                            "anonymized-zeroshot", "summarized-zeroshot")) {
-  cells0 <- sd_bundle$dm_eg_q
+  cells0 <- sd_bundle$dm_ov
   base_models <- c("llama-70b", "qwen-72b", "gemma-27b")
   ft_models   <- c("llama-70b-ft-raw", "qwen-72b-ft-raw", "gemma-27b-ft-raw")
   base_conds  <- c("codebook", "evidence", "anonymized", "summarized")
@@ -430,20 +531,32 @@ fig_signeddev_gap <- function(sd_bundle,
                   block = factor(block, levels = c("Base", "Fine-tuned")))
   sesoi <- sd_bundle$sesoi
   dodge <- position_dodge(width = 0.6)
+  ref_lab <- tibble::tibble(block = factor("Base", levels = c("Base", "Fine-tuned")),
+                            x = -0.006, y = "Codebook", label = "Human reference")
+  band_lab <- tibble::tibble(block = factor("Base", levels = c("Base", "Fine-tuned")),
+                             x = 0, label = "±SESOI band")
 
   ggplot(cells, aes(est, row, color = model, group = model)) +
     annotate("rect", xmin = -sesoi, xmax = sesoi, ymin = -Inf, ymax = Inf,
              fill = "grey85", alpha = 0.55) +
     geom_vline(xintercept = 0, linetype = "dashed", color = "grey40") +
+    geom_text(data = ref_lab, aes(x = x, y = y, label = label),
+              position = position_nudge(y = 0.4), hjust = 1, vjust = 0.5,
+              color = "grey40", size = 2.9, inherit.aes = FALSE) +
+    geom_text(data = band_lab, aes(x = x, y = Inf, label = label),
+              hjust = 0.5, vjust = -0.5, color = "grey40", size = 2.9, inherit.aes = FALSE) +
     geom_pointrange(aes(xmin = lo, xmax = hi), orientation = "y",
                     size = 0.45, linewidth = 0.5, position = dodge) +
     facet_grid(rows = vars(block), scales = "free_y", space = "free", switch = "y") +
     scale_color_manual(values = model_pal, name = NULL) +
     coord_cartesian(clip = "off") +
-    labs(x = "exaggeration gap (Q5 − Q1 signed deviation)", y = NULL) +
+    labs(title = "B. Average Signed Deviation",
+         x = "Average Signed Deviation (AI - Panel Mean)", y = NULL) +
     theme_minimal(base_size = 12) +
     theme(legend.position = "top", legend.justification = "left",
           panel.grid.major.y = element_blank(), plot.title.position = "plot",
+          plot.title = element_text(face = "bold"),
+          axis.title.x = element_text(margin = margin(t = 7)),
           panel.spacing.y = unit(0.9, "lines"),
           strip.placement = "outside", strip.background = element_blank(),
           strip.text.y.left = element_text(angle = 0, face = "bold", hjust = 1))
@@ -452,13 +565,12 @@ fig_signeddev_gap <- function(sd_bundle,
 # Fig 3 (composite) — the gradient curve (what the exaggeration gap measures) beside the gap
 # coefficient plot (every model ranked). Requires signeddev_xmodel_{year}.rds.
 fig_crossmodel_signeddev_2panel <- function(sd_bundle,
-                                            feature = c("gemma-27b-ft-raw|anonymized-zeroshot",
-                                                        "llama-70b|evidence"),
+                                            feature = NULL,
                                             ft_conds = c("codebook", "evidence-zeroshot",
                                                          "anonymized-zeroshot", "summarized-zeroshot")) {
-  fig_signeddev_curve(sd_bundle, feature = feature) + fig_signeddev_gap(sd_bundle, ft_conds = ft_conds) +
-    patchwork::plot_layout(widths = c(1, 1.05)) +
-    patchwork::plot_annotation(tag_levels = "A")
+  fig_signeddev_curve(sd_bundle, feature = feature, ft_conds = ft_conds) +
+    fig_signeddev_gap(sd_bundle, ft_conds = ft_conds) +
+    patchwork::plot_layout(widths = c(1, 1.05))
 }
 
 # Fig 3 (regime variant, left panel) — signed deviation across V-Dem's Regimes of the World
@@ -466,8 +578,11 @@ fig_crossmodel_signeddev_2panel <- function(sd_bundle,
 # 1..4). Same construction as fig_signeddev_curve but reads dm_r / irt_ref_r — the regime-type cut
 # build_signeddev.R computes alongside the democracy-quintile cut.
 fig_signeddev_curve_regime <- function(sd_bundle,
-                                       feature = c("gemma-27b-ft-raw|anonymized-zeroshot",
-                                                   "llama-70b|evidence")) {
+                                       feature = NULL,
+                                       ft_conds = c("codebook", "evidence-zeroshot",
+                                                    "anonymized-zeroshot", "summarized-zeroshot")) {
+  feature <- .signeddev_feature3(sd_bundle$dm_r, sd_bundle$dm_eg_r, sd_bundle$dm_ov,
+                                 ft_conds, feature)
   sesoi <- sd_bundle$sesoi
   family_of <- function(mk) dplyr::case_when(
     grepl("^llama", mk) ~ "Llama 70B", grepl("^qwen", mk) ~ "Qwen 72B",
@@ -492,28 +607,35 @@ fig_signeddev_curve_regime <- function(sd_bundle,
     annotate("rect", xmin = -Inf, xmax = Inf, ymin = -sesoi, ymax = sesoi,
              fill = "grey85", alpha = 0.55) +
     geom_hline(yintercept = 0, linetype = "dotted", color = "grey30", linewidth = 0.4) +
+    geom_line(data = .panelB_pool(sd_bundle$dm_r, ft_conds),
+              aes(bin, est, group = cell), color = "grey78", linewidth = 0.3) +
     geom_line(data = irt, aes(bin, est), linetype = "dashed", color = "grey45", linewidth = 0.7) +
-    annotate("text", x = 2, y = irt$est[irt$bin == 2], label = "V-Dem IRT",
-             color = "grey25", size = 2.9, hjust = 1, vjust = -0.9) +
-    geom_ribbon(data = sel, aes(bin, ymin = lo, ymax = hi, fill = label), alpha = 0.18) +
-    geom_line(data = sel, aes(bin, est, color = label), linewidth = 1.0) +
-    geom_pointrange(data = sel, aes(bin, est, ymin = lo, ymax = hi, color = label), size = 0.3) +
+    annotate("text", x = 1.3, y = irt$est[irt$bin == 1], label = "V-Dem IRT",
+             color = "grey15", size = 3.1, fontface = "bold", hjust = 0, vjust = 1.2) +
+    # Uncertainty carried by the per-bin whiskers only. A ribbon here would (a) duplicate the
+    # exact lo/hi the pointrange already shows, (b) imply continuous between-bin uncertainty
+    # across just 4-5 discrete bins, and (c) muddy where the two translucent series overlap.
+    # (The 20-bin difficulty-tracking Panel A keeps its ribbon — there a band is quasi-continuous.)
+    geom_line(data = sel, aes(bin, est, color = label), linewidth = 0.7) +
+    geom_pointrange(data = sel, aes(bin, est, ymin = lo, ymax = hi, color = label), size = 0.45) +
     scale_color_manual(values = pal, name = NULL) +
-    scale_fill_manual(values = pal, guide = "none") +
     scale_x_continuous(breaks = 1:4, labels = regime_lv) +
-    labs(x = "regime type (V-Dem Regimes of the World)",
-         y = "signed deviation (AI − panel mean)") +
+    labs(title = "A. Signed Deviation by Regime Type",
+         x = NULL, y = "Signed Deviation (AI - Panel Mean)") +
     theme_minimal(base_size = 12) +
     theme(legend.position = "top", legend.justification = "left", legend.direction = "vertical",
-          panel.grid.minor = element_blank(), plot.title.position = "plot")
+          panel.grid.minor = element_blank(), plot.title.position = "plot",
+          plot.title = element_text(face = "bold"),
+          axis.title.y = element_text(margin = margin(r = 7)))
 }
 
-# Fig 3 (regime variant, right panel) — exaggeration gap (liberal democracy − closed autocracy
-# signed deviation) per cell, the regime-cut twin of fig_signeddev_gap. Reads dm_eg_r.
+# Fig 3 (regime variant, right panel) — identical to fig_signeddev_gap: average signed deviation
+# is binning-independent, so the regime-cut Panel B is the same plot as the quintile-cut one.
+# Kept as its own function so the regime composite reads symmetrically; only Panel A differs.
 fig_signeddev_gap_regime <- function(sd_bundle,
                                      ft_conds = c("codebook", "evidence-zeroshot",
                                                   "anonymized-zeroshot", "summarized-zeroshot")) {
-  cells0 <- sd_bundle$dm_eg_r
+  cells0 <- sd_bundle$dm_ov
   base_models <- c("llama-70b", "qwen-72b", "gemma-27b")
   ft_models   <- c("llama-70b-ft-raw", "qwen-72b-ft-raw", "gemma-27b-ft-raw")
   base_conds  <- c("codebook", "evidence", "anonymized", "summarized")
@@ -534,20 +656,32 @@ fig_signeddev_gap_regime <- function(sd_bundle,
                   block = factor(block, levels = c("Base", "Fine-tuned")))
   sesoi <- sd_bundle$sesoi
   dodge <- position_dodge(width = 0.6)
+  ref_lab <- tibble::tibble(block = factor("Base", levels = c("Base", "Fine-tuned")),
+                            x = -0.006, y = "Codebook", label = "Human reference")
+  band_lab <- tibble::tibble(block = factor("Base", levels = c("Base", "Fine-tuned")),
+                             x = 0, label = "±SESOI band")
 
   ggplot(cells, aes(est, row, color = model, group = model)) +
     annotate("rect", xmin = -sesoi, xmax = sesoi, ymin = -Inf, ymax = Inf,
              fill = "grey85", alpha = 0.55) +
     geom_vline(xintercept = 0, linetype = "dashed", color = "grey40") +
+    geom_text(data = ref_lab, aes(x = x, y = y, label = label),
+              position = position_nudge(y = 0.4), hjust = 1, vjust = 0.5,
+              color = "grey40", size = 2.9, inherit.aes = FALSE) +
+    geom_text(data = band_lab, aes(x = x, y = Inf, label = label),
+              hjust = 0.5, vjust = -0.5, color = "grey40", size = 2.9, inherit.aes = FALSE) +
     geom_pointrange(aes(xmin = lo, xmax = hi), orientation = "y",
                     size = 0.45, linewidth = 0.5, position = dodge) +
     facet_grid(rows = vars(block), scales = "free_y", space = "free", switch = "y") +
     scale_color_manual(values = model_pal, name = NULL) +
     coord_cartesian(clip = "off") +
-    labs(x = "exaggeration gap (liberal democracy − closed autocracy signed deviation)", y = NULL) +
+    labs(title = "B. Average Signed Deviation",
+         x = "Average Signed Deviation (AI - Panel Mean)", y = NULL) +
     theme_minimal(base_size = 12) +
     theme(legend.position = "top", legend.justification = "left",
           panel.grid.major.y = element_blank(), plot.title.position = "plot",
+          plot.title = element_text(face = "bold"),
+          axis.title.x = element_text(margin = margin(t = 7)),
           panel.spacing.y = unit(0.9, "lines"),
           strip.placement = "outside", strip.background = element_blank(),
           strip.text.y.left = element_text(angle = 0, face = "bold", hjust = 1))
@@ -556,14 +690,12 @@ fig_signeddev_gap_regime <- function(sd_bundle,
 # Fig 3 (regime variant, composite) — the gradient curve beside the gap coefficient plot, using
 # V-Dem Regimes of the World instead of democracy quintiles. Requires signeddev_xmodel_{year}.rds.
 fig_crossmodel_signeddev_2panel_regime <- function(sd_bundle,
-                                                   feature = c("gemma-27b-ft-raw|anonymized-zeroshot",
-                                                               "llama-70b|evidence"),
+                                                   feature = NULL,
                                                    ft_conds = c("codebook", "evidence-zeroshot",
                                                                 "anonymized-zeroshot", "summarized-zeroshot")) {
-  fig_signeddev_curve_regime(sd_bundle, feature = feature) +
+  fig_signeddev_curve_regime(sd_bundle, feature = feature, ft_conds = ft_conds) +
     fig_signeddev_gap_regime(sd_bundle, ft_conds = ft_conds) +
-    patchwork::plot_layout(widths = c(1, 1.05)) +
-    patchwork::plot_annotation(tag_levels = "A")
+    patchwork::plot_layout(widths = c(1, 1.05))
 }
 
 
@@ -763,4 +895,500 @@ fig_bf <- function(boot_bundle) {
   pB <- one(dplyr::filter(d, grp == "Base-model identification"), "Base-model identification", FALSE)
   pF <- one(dplyr::filter(d, grp == "Fine-tuning"),               "Fine-tuning",               TRUE)
   patchwork::wrap_plots(pB, pF, ncol = 1, heights = c(4, 5))
+}
+
+# Standalone re-identification-rate figure (Question 5 — notes/proposed-mechanism-tests.md,
+# Section 6; see notes/mockups/reid-rates-fig-concept.md for the full design rationale and the
+# data-integrity fix this bundle already reflects). Plain bars, no CI — a descriptive proportion
+# over a large pool, not a paired contrast (2026-09-05 decision).
+#
+#   reidrates_bundle <- readRDS("data/derived/reidrates_2023.rds")
+#   fig_reid_rates(reidrates_bundle)                 # top-1 (main text)
+#   fig_reid_rates(reidrates_bundle, metric = "top3") # top-3 (appendix companion)
+#
+# Model order (left to right within each condition) is fixed by descending Base x Anonymized
+# rate on the metric being plotted, computed from the real data — not hardcoded — so it re-sorts
+# itself if the underlying rates change (and independently for the top-3 panel, rather than
+# inheriting top-1's order). No chance-level reference line drawn (2026-09-05) — it sits
+# indistinguishably close to zero at this scale; `reidrates_bundle$chance_rate` is still there
+# for the figure note / caption to cite as a number instead.
+fig_reid_rates <- function(reidrates_bundle, metric = c("top1", "top3")) {
+  metric  <- match.arg(metric)
+  rate_col <- if (metric == "top1") "rate" else "rate_top3"
+
+  d <- reidrates_bundle$rates |>
+    dplyr::mutate(
+      modelvar  = factor(modelvar, levels = c("base", "ft-raw"), labels = c("Base", "Fine-Tuned")),
+      condition = factor(condition, levels = c("Anonymized", "Summarized")),
+      rate      = .data[[rate_col]]
+    )
+
+  model_order <- d |>
+    dplyr::filter(modelvar == "Base", condition == "Anonymized") |>
+    dplyr::arrange(dplyr::desc(rate)) |>
+    dplyr::pull(model)
+  d <- dplyr::mutate(d, model = factor(model, levels = model_order))
+
+  ggplot(d, aes(condition, rate, fill = model)) +
+    geom_col(position = position_dodge(width = 0.7), width = 0.62) +
+    facet_grid(~ modelvar, switch = "x") +
+    scale_fill_manual(values = model_pal, name = NULL) +
+    scale_y_continuous(labels = scales::percent, expand = expansion(mult = c(0, 0.08))) +
+    labs(x = NULL, y = "Re-Identification Rate") +
+    theme_minimal(base_size = 12) +
+    theme(legend.position = "top", legend.justification = "left",
+          panel.grid.major.x = element_blank(),
+          strip.placement = "outside", strip.text = element_text(face = "bold"),
+          panel.spacing = unit(1.2, "lines"))
+}
+
+# Prominence-crossing mechanism figure (notes/proposed-mechanism-tests.md, Section 6; design
+# settled 2026-09-06 — see notes/mockups/prominence-crossing-fig-concept.md). One panel per
+# outcome: per model family x weight-state (Base / Fine-Tuned), the three coefficients of
+#   outcome ~ Re-identified + Movement + Re-identified:Movement
+# fit per CYI by closed-form country-clustered WLS in helpers/build_prominence.R. Re-identified
+# is a fixed per-CYI prominence flag from that family's base-model re-id (Summarized text, main
+# text; Anonymized is the appendix companion); Movement is |Δv2x_polyarchy| 2018-2023.
+#
+#   prom_bundle <- readRDS("data/derived/prominence_evidence_gain_2023_summ.rds")
+#   fig_prominence(prom_bundle, sesoi = boot_bundle_2023$sesoi,
+#                  xlab = "effect on evidence gain (MAE)")
+#
+# `sesoi = NULL` (the default) draws no band — required for outcomes not on the MAE rating-point
+# scale (difficulty_slope's rows are slope-modifier coefficients, a different unit; the SESOI
+# band is only meaningful for evidence_gain / nameswap_tracking, both literal rating-point
+# differences). Pass a numeric sesoi only for those.
+fig_prominence <- function(prom_bundle, sesoi = NULL, xlab) {
+  d <- prom_bundle$effects
+
+  p <- ggplot(d, aes(est, term, color = model))
+  if (!is.null(sesoi)) {
+    p <- p + annotate("rect", xmin = -sesoi, xmax = sesoi, ymin = -Inf, ymax = Inf,
+                      fill = "grey85", alpha = 0.55)
+  }
+  p +
+    geom_vline(xintercept = 0, linetype = "dashed", color = "grey40") +
+    geom_pointrange(aes(xmin = lo, xmax = hi), size = 0.45, linewidth = 0.6,
+                     position = position_dodge(width = 0.5)) +
+    facet_grid(rows = vars(block), scales = "free_y", space = "free", switch = "y") +
+    scale_color_manual(values = model_pal, name = NULL) +
+    labs(x = xlab, y = NULL) +
+    theme_minimal(base_size = 11) +
+    theme(legend.position = "top", legend.justification = "left",
+          panel.grid.major.y = element_blank(), strip.placement = "outside",
+          strip.background = element_blank(),
+          strip.text.y.left = element_text(angle = 0, face = "bold", hjust = 1),
+          axis.title.x = element_text(margin = margin(t = 7)))
+}
+
+# Movement illustration (Question 3/Section 6's "staleness" ingredient — the descriptive
+# companion to fig_reid_rates()'s "prominence" ingredient, both foreshadowing the
+# prominence-crossing test). Ranked lollipop chart: one point per country, signed change in
+# v2x_polyarchy (2018-2023), sorted. Labels exactly the 5 most-backslid and 5 most-improved
+# countries — a fixed rule, not a visual judgment call — pushed into the margins clear of the
+# stem region so they never sit on top of a bar. See notes/mockups/movement-illustration-
+# mockup.R for the design iteration this was built from.
+#
+#   movement_bundle <- readRDS("data/derived/movement_2023.rds")
+#   country_names    <- readr::read_csv("data/processed/ert.csv") |> dplyr::distinct(country_text_id, country_name)
+#   fig_movement(movement_bundle, country_names)
+fig_movement <- function(movement_bundle, country_names, n_label = 5) {
+  d <- movement_bundle$dpoly |>
+    dplyr::left_join(country_names, by = "country_text_id") |>
+    dplyr::filter(!is.na(dpoly_signed)) |>
+    dplyr::arrange(dpoly_signed) |>
+    dplyr::mutate(rank = dplyr::row_number(),
+                  direction = dplyr::if_else(dpoly_signed >= 0, "Improved", "Backslid"))
+
+  n_countries <- nrow(d)
+  d <- d |>
+    dplyr::mutate(label = dplyr::if_else(rank <= n_label | rank > n_countries - n_label,
+                                         country_name, NA_character_))
+
+  dir_pal <- c("Backslid" = "#D55E00", "Improved" = "#0072B2")
+  margin  <- round(n_countries * 0.12)
+
+  ggplot(d, aes(rank, dpoly_signed, color = direction)) +
+    geom_hline(yintercept = 0, color = "grey50", linewidth = 0.4) +
+    geom_segment(aes(xend = rank, yend = 0), linewidth = 0.4, alpha = 0.6) +
+    geom_point(size = 1.6) +
+    ggrepel::geom_text_repel(
+      data = ~ filter(.x, rank <= n_label),
+      aes(label = label), size = 2.9, color = "grey20",
+      max.overlaps = Inf, segment.size = 0.3, min.segment.length = 0, seed = 42,
+      box.padding = 0.4, direction = "y", hjust = 1,
+      xlim = c(NA, 1 - margin * 0.4)) +
+    ggrepel::geom_text_repel(
+      data = ~ filter(.x, rank > n_countries - n_label),
+      aes(label = label), size = 2.9, color = "grey20",
+      max.overlaps = Inf, segment.size = 0.3, min.segment.length = 0, seed = 42,
+      box.padding = 0.4, direction = "y", hjust = 0,
+      xlim = c(n_countries + margin * 0.4, NA)) +
+    scale_color_manual(values = dir_pal, name = NULL) +
+    scale_x_continuous(breaks = NULL, expand = expansion(mult = c(0.16, 0.16))) +
+    scale_y_continuous(expand = expansion(mult = c(0.08, 0.08))) +
+    labs(x = NULL, y = "Change in Polyarchy Score (2018 - 2023)") +
+    theme_minimal(base_size = 12) +
+    theme(legend.position = "top", legend.justification = "left",
+          panel.grid.major.x = element_blank(), panel.grid.minor = element_blank())
+}
+
+# Figure 6: does movement's / prominence's effect on the difficulty-tracking slope hold up
+# across the de-identification ladder? Two side-by-side panels (Movement, Prominence), each from
+# helpers/build_slope_by_condition.R's separate, interaction-free models:
+#   a ~ h + movement + h:movement   (Panel A)
+#   a ~ h + reid     + h:reid       (Panel B)
+# run across all four Base conditions (Codebook/Evidence/Anonymized/Summarized) and the trimmed
+# Fine-Tuned pair (Codebook/Evidence only, matching the FT-raw trim used throughout Figures 1-3).
+# No SESOI band (slope-modifier units, not MAE). Movement's coefficient is on a percentile-rank
+# scale (least- to most-moved country); Prominence's is a literal identified-vs-not comparison,
+# no transform — a caption/prose note, not an axis-title difference (2026-09-06 decision).
+#
+#   sbc_movement <- readRDS("data/derived/slopebycondition_movement_2023.rds")
+#   sbc_reid     <- readRDS("data/derived/slopebycondition_reid_2023.rds")
+#   fig_slope_by_condition_2panel(sbc_movement, sbc_reid)
+fig_slope_by_condition_2panel <- function(movement_bundle, reid_bundle) {
+  make_panel <- function(bundle, subtitle, xlab) {
+    d <- bundle$effects
+    ggplot(d, aes(est, condition, color = model)) +
+      geom_vline(xintercept = 0, linetype = "dashed", color = "grey40") +
+      geom_pointrange(aes(xmin = lo, xmax = hi), size = 0.42, linewidth = 0.6,
+                       position = position_dodge(width = 0.5)) +
+      facet_grid(rows = vars(block), scales = "free_y", space = "free", switch = "y") +
+      scale_color_manual(values = model_pal, name = NULL) +
+      labs(x = xlab, y = NULL, subtitle = subtitle) +
+      theme_minimal(base_size = 11) +
+      theme(legend.position = "top", legend.justification = "left",
+            panel.grid.major.y = element_blank(), strip.placement = "outside",
+            strip.background = element_blank(),
+            strip.text.y.left = element_text(angle = 0, face = "bold", hjust = 1),
+            axis.title.x = element_text(margin = margin(t = 7)),
+            plot.subtitle = element_text(face = "bold", size = 10.5))
+  }
+
+  # Axis titles carry the differing basis explicitly (2026-09-06) -- a reader scanning the plot
+  # (not the caption) should not assume the two coefficients are on the same per-unit footing.
+  pA <- make_panel(movement_bundle, "A. Movement", "Effect on Slope (Max Swing)")
+  pB <- make_panel(reid_bundle, "B. Prominence", "Effect on Slope (Identified vs. Not)")
+
+  (pA | pB) + patchwork::plot_layout(guides = "collect") &
+    theme(legend.position = "top")
+}
+
+# Figure 7: does movement's / prominence's effect on signed deviation (AI rating - panel mean)
+# hold up across the de-identification ladder? Same shape as fig_slope_by_condition_2panel(), but
+# from helpers/build_signeddev_by_condition.R's two SEPARATE, simpler models (no h term at all,
+# unlike the difficulty-slope version -- signed deviation isn't itself regressed against
+# difficulty here):
+#   signed_dev ~ movement_signed   (Panel A)
+#   signed_dev ~ reid              (Panel B)
+# Movement uses the SIGNED, rank-tamed version (direction is the point -- a lag/anchoring test:
+# does a backslid country still get an overly generous rating). UNLIKE Figure 6, this DOES carry
+# a SESOI band (2026-09-06 correction) -- signed deviation is a plain rating-point-scale level
+# effect (same footing as evidence_gain/tracking), not a slope-modifier, so the paper's usual
+# rounding-floor logic applies here the same way it does everywhere else.
+#
+#   sd_movement <- readRDS("data/derived/signeddevbycondition_movement_2023.rds")
+#   sd_reid     <- readRDS("data/derived/signeddevbycondition_reid_2023.rds")
+#   fig_signeddev_by_condition_2panel(sd_movement, sd_reid, sesoi = boot_bundle_2023$sesoi)
+fig_signeddev_by_condition_2panel <- function(movement_bundle, reid_bundle, sesoi = NULL) {
+  make_panel <- function(bundle, subtitle, xlab) {
+    d <- bundle$effects
+    p <- ggplot(d, aes(est, condition, color = model))
+    if (!is.null(sesoi)) {
+      p <- p + annotate("rect", xmin = -sesoi, xmax = sesoi, ymin = -Inf, ymax = Inf,
+                        fill = "grey85", alpha = 0.55)
+    }
+    p +
+      geom_vline(xintercept = 0, linetype = "dashed", color = "grey40") +
+      geom_pointrange(aes(xmin = lo, xmax = hi), size = 0.42, linewidth = 0.6,
+                       position = position_dodge(width = 0.5)) +
+      facet_grid(rows = vars(block), scales = "free_y", space = "free", switch = "y") +
+      scale_color_manual(values = model_pal, name = NULL) +
+      labs(x = xlab, y = NULL, subtitle = subtitle) +
+      theme_minimal(base_size = 11) +
+      theme(legend.position = "top", legend.justification = "left",
+            panel.grid.major.y = element_blank(), strip.placement = "outside",
+            strip.background = element_blank(),
+            strip.text.y.left = element_text(angle = 0, face = "bold", hjust = 1),
+            axis.title.x = element_text(margin = margin(t = 7)),
+            plot.subtitle = element_text(face = "bold", size = 10.5))
+  }
+
+  pA <- make_panel(movement_bundle, "A. Movement", "Effect on Signed Deviation (Max Swing)")
+  pB <- make_panel(reid_bundle, "B. Prominence", "Effect on Signed Deviation (Identified vs. Not)")
+
+  (pA | pB) + patchwork::plot_layout(guides = "collect") &
+    theme(legend.position = "top")
+}
+
+# Shared regime palette for the dose-response panels below -- Okabe-Ito throughout
+# (Mixed FT and Mixed pool were originally a ColorBrewer blue/purple inherited from the
+# exploratory tipping-point scripts; the blue in particular collided with Llama's model
+# color when the two panel types sit side by side, so both were swapped to validated
+# Okabe-Ito hues that don't collide with model_pal: vermillion and reddish purple).
+doseresponse_pal <- c("Same AI (Qwen FT)" = "#e08214", "Mixed FT (6 cells)" = "#D55E00",
+                      "Mixed pool (18 cells)" = "#CC79A7")
+
+# Figure 8: the paper's actual deployment scenario -- augmentation. Does adding one AI
+# rating to a thin 2023 panel (2-8 coders, panel GROWS n -> n+1) move the mean, and does
+# that hold up as more seats are added? Panel A = build_augmentation.R's single-seat
+# result by condition/model; Panel B = build_doseresponse_augmentation.R's k=1..4
+# dose-response for three curated regimes. Degradation (replacing a healthy panel's
+# coders) is not a real deployment path -- demoted to Appendix A9
+# (fig_degradation_combined()) as a robustness companion rather than co-headlined here.
+# Both outcomes are a signed shift in the panel mean, rating points, zero-referenced. No
+# SESOI band: the shift is a difference of two integers over a panel-size denominator,
+# with no forced-rounding floor the way a single rating vs. a fractional mean has (see
+# notes/mockups/augmentation-concept.md for the full derivation and the abandoned
+# alternatives -- a mismatched remove/add threshold, then SESOI itself -- that led here).
+#
+#   aug <- readRDS("data/derived/augmentation_2023.rds")
+#   dr  <- readRDS("data/derived/doseresponse_augmentation_2023.rds")
+#   fig_augmentation_combined(aug, dr)
+fig_augmentation_combined <- function(augmentation_bundle, doseresponse_bundle) {
+  d <- augmentation_bundle$effects |>
+    mutate(condition = factor(as.character(condition),
+                              levels = c("Summarized", "Anonymized", "Raw Text", "Codebook")),
+          block = factor(as.character(block), levels = c("Base", "Fine-Tuned")))
+
+  pA <- ggplot(d, aes(est, condition, color = model)) +
+    geom_vline(xintercept = 0, linetype = "dashed", color = "grey40") +
+    geom_pointrange(aes(xmin = lo, xmax = hi), size = 0.42, linewidth = 0.6,
+                     position = position_dodge(width = 0.5)) +
+    facet_grid(rows = vars(block), scales = "free_y", space = "free", switch = "y") +
+    scale_color_manual(values = model_pal, name = NULL) +
+    labs(x = "Shift in Rating Points", y = NULL, subtitle = "A. One AI Seat, by Condition") +
+    theme_minimal(base_size = 11) +
+    theme(legend.position = "top", legend.justification = "left",
+          panel.grid.major.y = element_blank(), strip.placement = "outside",
+          strip.background = element_blank(),
+          strip.text.y.left = element_text(angle = 0, face = "bold", hjust = 1),
+          axis.title.x = element_text(margin = margin(t = 7)),
+          plot.subtitle = element_text(face = "bold", size = 10.5))
+
+  dodge <- position_dodge(width = 0.08)
+  pB <- ggplot(doseresponse_bundle$results, aes(k, est, color = regime)) +
+    geom_hline(yintercept = 0, linetype = "dashed", color = "grey40") +
+    geom_line(position = dodge, linewidth = 0.7) +
+    geom_pointrange(aes(ymin = lo, ymax = hi), position = dodge, size = 0.42, linewidth = 0.6) +
+    scale_color_manual(values = doseresponse_pal, name = NULL) +
+    scale_x_continuous(breaks = seq_len(doseresponse_bundle$kmax)) +
+    labs(x = "k AI Seats Added", y = "Shift in Rating Points",
+         subtitle = "B. Dose-Response, k Seats Added") +
+    theme_minimal(base_size = 11) +
+    theme(legend.position = "top", legend.justification = "left",
+          panel.grid.minor = element_blank(),
+          axis.title.x = element_text(margin = margin(t = 7)),
+          plot.subtitle = element_text(face = "bold", size = 10.5))
+
+  pA | pB
+}
+
+# Appendix A9: the degradation companion to Figure 8 -- does replacing a HEALTHY panel's
+# coders with AI move it the same way? Not a real deployment scenario on its own (no one
+# is proposing to swap out functioning human panels), kept as a robustness check that the
+# augmentation story isn't an artifact of starting from a thin panel. Same shape as
+# fig_augmentation_combined(): Panel A = build_degradation.R's single-seat swap result by
+# condition/model; Panel B = build_doseresponse_degradation.R's k=1..6 dose-response.
+#
+#   deg <- readRDS("data/derived/degradation_2023.rds")
+#   dr  <- readRDS("data/derived/doseresponse_degradation_2023.rds")
+#   fig_degradation_combined(deg, dr)
+fig_degradation_combined <- function(degradation_bundle, doseresponse_bundle) {
+  d <- degradation_bundle$effects |>
+    mutate(condition = factor(as.character(condition),
+                              levels = c("Summarized", "Anonymized", "Raw Text", "Codebook")),
+          block = factor(as.character(block), levels = c("Base", "Fine-Tuned")))
+
+  pA <- ggplot(d, aes(est, condition, color = model)) +
+    geom_vline(xintercept = 0, linetype = "dashed", color = "grey40") +
+    geom_pointrange(aes(xmin = lo, xmax = hi), size = 0.42, linewidth = 0.6,
+                     position = position_dodge(width = 0.5)) +
+    facet_grid(rows = vars(block), scales = "free_y", space = "free", switch = "y") +
+    scale_color_manual(values = model_pal, name = NULL) +
+    labs(x = "Shift in Rating Points", y = NULL, subtitle = "A. One Seat Swapped, by Condition") +
+    theme_minimal(base_size = 11) +
+    theme(legend.position = "top", legend.justification = "left",
+          panel.grid.major.y = element_blank(), strip.placement = "outside",
+          strip.background = element_blank(),
+          strip.text.y.left = element_text(angle = 0, face = "bold", hjust = 1),
+          axis.title.x = element_text(margin = margin(t = 7)),
+          plot.subtitle = element_text(face = "bold", size = 10.5))
+
+  dodge <- position_dodge(width = 0.08)
+  pB <- ggplot(doseresponse_bundle$results, aes(k, est, color = regime)) +
+    geom_hline(yintercept = 0, linetype = "dashed", color = "grey40") +
+    geom_line(position = dodge, linewidth = 0.7) +
+    geom_pointrange(aes(ymin = lo, ymax = hi), position = dodge, size = 0.42, linewidth = 0.6) +
+    scale_color_manual(values = doseresponse_pal, name = NULL) +
+    scale_x_continuous(breaks = seq_len(doseresponse_bundle$kmax)) +
+    labs(x = "k Seats Replaced", y = "Shift in Rating Points",
+         subtitle = "B. Dose-Response, k Seats Replaced") +
+    theme_minimal(base_size = 11) +
+    theme(legend.position = "top", legend.justification = "left",
+          panel.grid.minor = element_blank(),
+          axis.title.x = element_text(margin = margin(t = 7)),
+          plot.subtitle = element_text(face = "bold", size = 10.5))
+
+  pA | pB
+}
+
+# Appendix: name-swap tracking level, base + fine-tuned, all three families (2023) --
+# helpers/build_priorreliance.R's Panel B. Plain country-clustered bootstrap mean of
+# track = |rating_sw - named_mean| - |rating_sw - source_mean| (analysis/10-nameswap-2019.qmd's
+# Metric 1) per model x weight-state, no crossing against prominence/movement (that's a different,
+# separate question from the one this appendix figure answers). SESOI applies -- tracking is a
+# paired rating-point-scale level effect, same footing as evidence_gain/signed deviation.
+#
+#   panelB <- readRDS("data/derived/priorreliance_panelB_2023.rds")
+#   fig_nameswap_tracking(panelB, sesoi = boot_bundle_2023$sesoi)
+fig_nameswap_tracking <- function(panelB_bundle, sesoi = NULL) {
+  d <- panelB_bundle$effects
+  p <- ggplot(d, aes(est, model, color = model))
+  if (!is.null(sesoi)) {
+    p <- p + annotate("rect", xmin = -sesoi, xmax = sesoi, ymin = -Inf, ymax = Inf,
+                      fill = "grey85", alpha = 0.55)
+  }
+  p +
+    geom_vline(xintercept = 0, linetype = "dashed", color = "grey40") +
+    geom_pointrange(aes(xmin = lo, xmax = hi), size = 0.5, linewidth = 0.6) +
+    facet_grid(rows = vars(block), scales = "free_y", space = "free", switch = "y") +
+    scale_color_manual(values = model_pal, guide = "none") +
+    labs(x = "Tracking (+ = reads content, - = follows swapped name)", y = NULL) +
+    theme_minimal(base_size = 12) +
+    theme(panel.grid.major.y = element_blank(), strip.placement = "outside",
+          strip.background = element_blank(),
+          strip.text.y.left = element_text(angle = 0, face = "bold", hjust = 1),
+          axis.title.x = element_text(margin = margin(t = 7)))
+}
+
+# Mockup: does movement / prominence directly predict name-swap tracking?
+# (helpers/build_nameswap_by_moderator.R, 2026-09-06) -- the one outcome from Figures 4-7's
+# mechanism-test arc that was never crossed against the two moderators. Same simplified,
+# no-interaction shape as fig_slope_by_condition_2panel() / fig_signeddev_by_condition_2panel(),
+# but there's no de-identification ladder here (name-swap only ran on one text condition per
+# weight-state), so the panel layout is fig_nameswap_tracking's y=model / facet=block instead of a
+# condition axis. SESOI applies -- tracking is a rating-point-scale level effect, same footing as
+# signed deviation / evidence_gain.
+#
+#   ns_movement <- readRDS("data/derived/nameswapbymoderator_movement_2023.rds")
+#   ns_reid     <- readRDS("data/derived/nameswapbymoderator_reid_2023.rds")
+#   fig_nameswap_by_moderator_2panel(ns_movement, ns_reid, sesoi = boot_bundle_2023$sesoi)
+fig_nameswap_by_moderator_2panel <- function(movement_bundle, reid_bundle, sesoi = NULL) {
+  make_panel <- function(bundle, subtitle, xlab) {
+    d <- bundle$effects
+    p <- ggplot(d, aes(est, model, color = model))
+    if (!is.null(sesoi)) {
+      p <- p + annotate("rect", xmin = -sesoi, xmax = sesoi, ymin = -Inf, ymax = Inf,
+                        fill = "grey85", alpha = 0.55)
+    }
+    p +
+      geom_vline(xintercept = 0, linetype = "dashed", color = "grey40") +
+      geom_pointrange(aes(xmin = lo, xmax = hi), size = 0.5, linewidth = 0.6) +
+      facet_grid(rows = vars(block), scales = "free_y", space = "free", switch = "y") +
+      scale_color_manual(values = model_pal, guide = "none") +
+      labs(x = xlab, y = NULL, subtitle = subtitle) +
+      theme_minimal(base_size = 11) +
+      theme(panel.grid.major.y = element_blank(), strip.placement = "outside",
+            strip.background = element_blank(),
+            strip.text.y.left = element_text(angle = 0, face = "bold", hjust = 1),
+            axis.title.x = element_text(margin = margin(t = 7)),
+            plot.subtitle = element_text(face = "bold", size = 10.5))
+  }
+
+  pA <- make_panel(movement_bundle, "A. Movement", "Effect on Tracking (Max Swing)")
+  pB <- make_panel(reid_bundle, "B. Prominence", "Effect on Tracking (Identified vs. Not)")
+
+  pA | pB
+}
+
+# Identity's direct effect (Test B from the "what explains Figs 1-3's de-identification pattern"
+# discussion, 2026-09-06) -- helpers/build_identity_effect{,_signeddev,_slope}.R. Two paired
+# condition contrasts, same shared bootstrap draws per family: Anonymized - Evidence ("Full Text",
+# identity removed with length held fixed) and Summarized - Summarized-Identified ("Compressed",
+# identity removed with compression held fixed). Runs on three outcomes: MAE (identityeffect_),
+# signed deviation (identityeffect_signeddev_), and the difficulty-tracking slope
+# (identityeffect_slope_). Pass `xlab` per outcome. `drop_diff = TRUE` hides the
+# "Full Text - Compressed" row (its point estimate is mechanically row1 - row2; keep those numbers
+# in prose). SESOI applies to the MAE and signed-deviation outcomes (rating-point level effects),
+# not to the slope outcome (slope-modifier units) -- pass sesoi = NULL there.
+#
+#   ie <- readRDS("data/derived/identityeffect_2023.rds")
+#   fig_identity_effect(ie, sesoi = boot_bundle_2023$sesoi)
+fig_identity_effect <- function(bundle, sesoi = NULL, drop_diff = FALSE,
+                                xlab = "Effect on MAE (Identity Removed)") {
+  d <- bundle$effects
+  if (drop_diff) d <- droplevels(dplyr::filter(d, level != "Full Text - Compressed"))
+  p <- ggplot(d, aes(est, level, color = model))
+  if (!is.null(sesoi)) {
+    p <- p + annotate("rect", xmin = -sesoi, xmax = sesoi, ymin = -Inf, ymax = Inf,
+                      fill = "grey85", alpha = 0.55)
+  }
+  p +
+    geom_vline(xintercept = 0, linetype = "dashed", color = "grey40") +
+    geom_pointrange(aes(xmin = lo, xmax = hi), size = 0.5, linewidth = 0.6,
+                     position = position_dodge(width = 0.5)) +
+    scale_color_manual(values = model_pal, name = NULL) +
+    labs(x = xlab, y = NULL) +
+    theme_minimal(base_size = 12) +
+    theme(legend.position = "top", legend.justification = "left",
+          panel.grid.major.y = element_blank(),
+          axis.title.x = element_text(margin = margin(t = 7)))
+}
+
+# Appendix A8 (combined) — the identity-removal contrast on all three outcomes in one figure. Three
+# side-by-side panels, each its own ggplot with its OWN x-scale (the outcomes are in different
+# units and are not comparable across panels). The measure name rides in each panel's bold
+# subtitle ("A. Mean Absolute Error" / "B. Signed Deviation" / "C. Case Difficulty Slope"), the
+# Fig 6/7 idiom; one shared meta x-title "Effect of Removing Country Identity" beneath all three
+# (patchwork caption). Shared y-axis is the two paired
+# contrasts (Full Text, Compressed) -- the "Full Text - Compressed" row is dropped (its point
+# estimate is mechanically row1 - row2; keep those numbers in prose). The ±SESOI band is drawn only
+# on the two rating-point-scale panels (A, B), never on Case Difficulty Slope (slope-modifier
+# units, per the Section 6 rule). Built with patchwork.
+#
+#   ie <- readRDS("data/derived/identityeffect_2023.rds")
+#   sd <- readRDS("data/derived/identityeffect_signeddev_2023.rds")
+#   sl <- readRDS("data/derived/identityeffect_slope_2023.rds")
+#   fig_identity_effect_combined(ie, sd, sl, sesoi = boot_bundle_2023$sesoi)
+fig_identity_effect_combined <- function(mae_bundle, signeddev_bundle, slope_bundle,
+                                         sesoi = NULL) {
+  con_lv <- c("Compressed", "Full Text")   # first level plots at bottom
+
+  one_panel <- function(bundle, subtitle, band, show_y) {
+    d <- bundle$effects |>
+      dplyr::filter(level != "Full Text - Compressed") |>
+      dplyr::mutate(contrast = factor(as.character(level), levels = con_lv),
+                    model    = factor(model, levels = names(model_pal)))
+    p <- ggplot(d, aes(est, contrast, color = model, group = model))
+    if (band && !is.null(sesoi)) {
+      p <- p + annotate("rect", xmin = -sesoi, xmax = sesoi, ymin = -Inf, ymax = Inf,
+                        fill = "grey85", alpha = 0.55)
+    }
+    p <- p +
+      geom_vline(xintercept = 0, linetype = "dashed", color = "grey40") +
+      geom_pointrange(aes(xmin = lo, xmax = hi), size = 0.5, linewidth = 0.6,
+                      position = position_dodge(width = 0.5)) +
+      scale_color_manual(values = model_pal, name = NULL) +
+      labs(subtitle = subtitle, x = NULL, y = NULL) +
+      theme_minimal(base_size = 12) +
+      theme(legend.position = "top", legend.justification = "left",
+            panel.grid.major.y = element_blank(),
+            plot.subtitle = element_text(face = "bold", size = 10.5))
+    if (!show_y) p <- p + theme(axis.text.y = element_blank())
+    p
+  }
+
+  pA <- one_panel(mae_bundle,       "A. Mean Absolute Error",   band = TRUE,  show_y = TRUE)
+  pB <- one_panel(signeddev_bundle, "B. Signed Deviation",      band = TRUE,  show_y = FALSE)
+  pC <- one_panel(slope_bundle,     "C. Case Difficulty Slope", band = FALSE, show_y = FALSE)
+
+  (pA | pB | pC) +
+    patchwork::plot_layout(guides = "collect") +
+    patchwork::plot_annotation(
+      caption = "Effect of Removing Country Identity",
+      theme = theme(plot.caption = element_text(hjust = 0.5, size = 11, margin = margin(t = 8)))
+    ) &
+    theme(legend.position = "top", legend.justification = "left")
 }
