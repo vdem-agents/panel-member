@@ -1,0 +1,200 @@
+% references.bib — panel-member paper
+%
+% Populated as citations are confirmed. Workflow: verify each candidate in
+% paper/drafts/intro-citations.md or theory-citations.md against the published version, put the PDF in the shared
+% library at v-dem-coding/_literature/ (one level above this repo, shared with bridge-coder),
+% then add the entry here. Do not add entries for unverified refs.
+%
+% Cite in the .qmd with pandoc syntax: [@key], @key, [-@key].
+%
+% Already in the shared library: Benoit et al. 2026 (AJPS), Weidmann et al. 2025 (PS).
+
+% ---------------------------------------------------------------------------
+% Branch 1: reproducing human gold-label annotations (Introduction, para 1)
+% Entries copied from satp/code-satp/papers/classification/nlp-coding.bib, verified
+% against the PDFs in satp/code-satp/literature/ on 2026-09-07.
+% ---------------------------------------------------------------------------
+
+@article{gilardi2023,
+  title = {{{ChatGPT}} Outperforms Crowd Workers for Text-Annotation Tasks},
+  author = {Gilardi, Fabrizio and Alizadeh, Meysam and Kubli, Maël},
+  date = {2023-07-25},
+  journaltitle = {Proceedings of the National Academy of Sciences},
+  shortjournal = {Proc. Natl. Acad. Sci. U.S.A.},
+  volume = {120},
+  number = {30},
+  pages = {e2305016120},
+  issn = {0027-8424, 1091-6490},
+  doi = {10.1073/pnas.2305016120},
+  url = {https://pnas.org/doi/10.1073/pnas.2305016120},
+  urldate = {2026-01-30},
+  abstract = {Many NLP applications require manual text annotations for a variety of tasks, notably to train classifiers or evaluate the performance of unsupervised models. Depending on the size and degree of complexity, the tasks may be conducted by crowd workers on platforms such as MTurk as well as trained annotators, such as research assistants. Using four samples of tweets and news articles (               n               = 6,183), we show that ChatGPT outperforms crowd workers for several annotation tasks, including relevance, stance, topics, and frame detection. Across the four datasets, the zero-shot accuracy of ChatGPT exceeds that of crowd workers by about 25 percentage points on average, while ChatGPT’s intercoder agreement exceeds that of both crowd workers and trained annotators for all tasks. Moreover, the per-annotation cost of ChatGPT is less than \$0.003—about thirty times cheaper than MTurk. These results demonstrate the potential of large language models to drastically increase the efficiency of text classification.},
+  langid = {english}
+}
+
+@article{halterman2025b,
+  title = {Codebook {{LLMs}}: {{Evaluating LLMs}} as {{Measurement Tools}} for {{Political Science Concepts}}},
+  shorttitle = {Codebook {{LLMs}}},
+  author = {Halterman, Andrew and Keith, Katherine A.},
+  date = {2025-09-19},
+  journaltitle = {Political Analysis},
+  shortjournal = {Polit. Anal.},
+  pages = {1--17},
+  issn = {1047-1987, 1476-4989},
+  doi = {10.1017/pan.2025.10017},
+  url = {https://www.cambridge.org/core/product/identifier/S104719872510017X/type/journal_article},
+  urldate = {2026-01-30},
+  abstract = {Codebooks—documents that operationalize concepts and outline annotation procedures—are used almost universally by social scientists when coding political texts. To code these texts automatically, researchers are increasingly turning to generative large language models (LLMs). However, there is limited empirical evidence on whether “off-the-shelf ” LLMs faithfully follow real-world codebook operationalizations and measure complex political constructs with sufficient accuracy. To address this, we gather and curate three real-world political science codebooks—covering protest events, political violence, and manifestos—along with their unstructured texts and human-coded labels. We also propose a five-stage framework for codebook-LLM measurement: Preparing a codebook for both humans and LLMs, testing LLMs’ basic capabilities on a codebook, evaluating zero-shot measurement accuracy (i.e., off-the-shelf performance), analyzing errors, and further (parameter-efficient) supervised training of LLMs. We provide an empirical demonstration of this framework using our three codebook datasets and several pre-trained 7–12 billion open-weight LLMs. We find current open-weight LLMs have limitations in following codebooks zero-shot, but that supervised instruction-tuning can substantially improve performance. Rather than suggesting the “best” LLM, our contribution lies in our codebook datasets, evaluation framework, and guidance for applied researchers who wish to implement their own codebook-LLM measurement projects.},
+  langid = {english}
+}
+
+@article{heseltine2024,
+  title = {Large Language Models as a Substitute for Human Experts in Annotating Political Text},
+  author = {Heseltine, Michael and Clemm von Hohenberg, Bernhard},
+  date = {2024-01-01},
+  journaltitle = {Research \& Politics},
+  volume = {11},
+  number = {1},
+  pages = {20531680241236239},
+  publisher = {SAGE Publications Ltd},
+  issn = {2053-1680},
+  doi = {10.1177/20531680241236239},
+  url = {https://doi.org/10.1177/20531680241236239},
+  urldate = {2024-03-29},
+  abstract = {Large-scale text analysis has grown rapidly as a method in political science and beyond. To date, text-as-data methods rely on large volumes of human-annotated training examples, which place a premium on researcher resources. However, advances in large language models (LLMs) may make automated annotation increasingly viable. This paper tests the performance of GPT-4 across a range of scenarios relevant for analysis of political text. We compare GPT-4 coding with human expert coding of tweets and news articles across four variables (whether text is political, its negativity, its sentiment, and its ideology) and across four countries (the United States, Chile, Germany, and Italy). GPT-4 coding is highly accurate, especially for shorter texts such as tweets, correctly classifying texts up to 95\% of the time. Performance drops for longer news articles, and very slightly for non-English text. We introduce a ‘hybrid’ coding approach, in which disagreements of multiple GPT-4 runs are adjudicated by a human expert, which boosts accuracy. Finally, we explore downstream effects, finding that transformer models trained on hand-coded or GPT-4-coded data yield almost identical outcomes. Our results suggest that LLM-assisted coding is a viable and cost-efficient approach, although consideration should be given to task complexity.},
+  langid = {english}
+}
+
+@unpublished{ornstein2023,
+  title = {How to {{Train Your Stochastic Parrot}}: {{Large Language Models}} for {{Political Texts}}},
+  author = {Ornstein, Joseph T and Blasingame, Elise N and Truscott, Jake S},
+  date = {2023-07-27},
+  abstract = {Large language models pre-trained on massive corpora of text from the Internet have transformed the way that computer scientists approach natural language processing over the past five years. But these “foundation models” have yet to see widespread adoption in the social sciences, partly due to their novelty and upfront costs. In this paper, we demonstrate that such models can be effectively applied to a wide variety of text-as-data tasks in political science – including sentiment analysis, ideological scaling, and topic modeling. In a series of pre-registered analyses, this approach outperforms conventional supervised learning methods without the need for extensive data pre-processing or large sets of labeled training data. And performance is comparable to expert and crowd-coding methods at a fraction of the cost. We propose a set of best practices for adapting these models to social science measurement tasks, and develop an open-source software package for researchers.},
+  langid = {english}
+}
+
+@online{pangakis2023,
+  title = {Automated {{Annotation}} with {{Generative AI Requires Validation}}},
+  author = {Pangakis, Nicholas and Wolken, Samuel and Fasching, Neil},
+  date = {2023-05-31},
+  eprint = {2306.00176},
+  eprinttype = {arXiv},
+  eprintclass = {cs},
+  doi = {10.48550/arXiv.2306.00176},
+  url = {http://arxiv.org/abs/2306.00176},
+  urldate = {2026-01-30},
+  abstract = {Generative large language models (LLMs) can be a powerful tool for augmenting text annotation procedures, but their performance varies across annotation tasks due to prompt quality, text data idiosyncrasies, and conceptual difficulty. Because these challenges will persist even as LLM technology improves, we argue that any automated annotation process using an LLM must validate the LLM’s performance against labels generated by humans. To this end, we outline a workflow to harness the annotation potential of LLMs in a principled, efficient way. Using GPT-4, we validate this approach by replicating 27 annotation tasks across 11 datasets from recent social science articles in high-impact journals. We find that LLM performance for text annotation is promising but highly contingent on both the dataset and the type of annotation task, which reinforces the necessity to validate on a task-by-task basis. We make available easy-to-use software designed to implement our workflow and streamline the deployment of LLMs for automated annotation.},
+  langid = {english},
+  pubstate = {prepublished},
+  keywords = {Computer Science - Artificial Intelligence,Computer Science - Computation and Language}
+}
+
+@article{tornberg2025,
+  title = {Large {{Language Models Outperform Expert Coders}} and {{Supervised Classifiers}} at {{Annotating Political Social Media Messages}}},
+  author = {Törnberg, Petter},
+  date = {2025-12},
+  journaltitle = {Social Science Computer Review},
+  shortjournal = {Social Science Computer Review},
+  volume = {43},
+  number = {6},
+  pages = {1181--1195},
+  issn = {0894-4393, 1552-8286},
+  doi = {10.1177/08944393241286471},
+  url = {https://journals.sagepub.com/doi/10.1177/08944393241286471},
+  urldate = {2026-01-30},
+  abstract = {Instruction-tuned Large Language Models (LLMs) have recently emerged as a powerful new tool for text analysis. As these models are capable of zero-shot annotation based on instructions written in natural language, they obviate the need of large sets of training data—and thus bring potential paradigm-shifting implications for using text as data. While the models show substantial promise, their relative performance compared to human coders and supervised models remains poorly understood and subject to significant academic debate. This paper assesses the strengths and weaknesses of popular fine-tuned AI models compared to both conventional supervised classifiers and manual annotation by experts and crowd workers. The task used is to identify the political affiliation of politicians based on a single X/Twitter message, focusing on data from 11 different countries. The paper finds that GPT-4 achieves higher accuracy than both supervised models and human coders across all languages and country contexts. In the US context, it achieves an accuracy of 0.934 and an inter-coder reliability of 0.982. Examining the cases where the models fail, the paper finds that the LLM—unlike the supervised models—correctly annotates messages that require interpretation of implicit or unspoken references, or reasoning on the basis of contextual knowledge—capacities that have traditionally been understood to be distinctly human. The paper thus contributes to our understanding of the revolutionary implications of LLMs for text analysis within the social sciences.},
+  langid = {english}
+}
+
+% ---------------------------------------------------------------------------
+% Branch 2: reproducing aggregate expert-panel measures (Introduction, para 4)
+% Verified 2026-09-07 against PDFs in v-dem-coding/_literature/ and, for
+% mens2025, satp/code-satp/papers/classification/nlp-coding.bib.
+% ---------------------------------------------------------------------------
+
+@article{benoit2026,
+  title = {Using Large Language Models to Analyze Political Texts through Natural Language Understanding},
+  author = {Benoit, Kenneth and De Marchi, Scott and Laver, Conor and Laver, Michael and Ma, Jinshuai},
+  date = {2026},
+  journaltitle = {American Journal of Political Science},
+  shortjournal = {Am. J. Polit. Sci.},
+  pages = {1--17},
+  doi = {10.1111/ajps.70050},
+  note = {Early view. Running foot reads ``Am J Pol Sci. 2025;1--17'' while the
+          copyright line reads 2026; confirm the final volume, issue, and pages
+          before submission.}
+}
+
+@article{weidmann2026,
+  title = {Large Language Models Are Democracy Coders with Attitudes},
+  author = {Weidmann, Nils B. and Faulborn, Mats and García, David},
+  date = {2026-01},
+  journaltitle = {PS: Political Science \& Politics},
+  volume = {59},
+  number = {1},
+  pages = {17--23},
+  doi = {10.1017/S1049096525101248},
+  note = {Open access, CC BY 4.0. Appendices A--D are online supplementary
+          material, not in the 7-page article. Replication data:
+          \href{https://doi.org/10.7910/DVN/I34X6P}{10.7910/DVN/I34X6P}.}
+}
+
+@article{mens2025,
+  title = {Positioning {{Political Texts}} with {{Large Language Models}} by {{Asking}} and {{Averaging}}},
+  author = {Le Mens, Gaël and Gallego, Aina},
+  date = {2025-01-27},
+  journaltitle = {Political Analysis},
+  shortjournal = {Polit. Anal.},
+  volume = {33},
+  pages = {274--282},
+  issn = {1047-1987, 1476-4989},
+  doi = {10.1017/pan.2024.29},
+  url = {https://www.cambridge.org/core/journals/political-analysis/article/positioning-political-texts-with-large-language-models-by-asking-and-averaging/BB17F58E7329B53BC4B5F4065C7E00FF},
+  langid = {english}
+}
+
+@unpublished{maerz2026,
+  title = {Improving {{V-Dem}} Coding Transparency with Large Language Models ({{LLMs}})},
+  author = {Maerz, Seraphine F. and Weidmann, Nils B.},
+  date = {2026},
+  type = {Working paper},
+  note = {V-Dem pilot proposal; PDF in v-dem-coding/\_literature/. No formal
+          identifier yet. Confirm citable form with Maerz before submission.}
+}
+
+% ---------------------------------------------------------------------------
+% Human label variation: disagreement as signal, not noise (Introduction, para 3)
+% Group J in drafts/theory-citations.md. Verified 2026-09-07 via ACL Anthology
+% and JAIR; the remaining group J entries (Baan et al., Peterson et al.,
+% Müller et al.) are still memory-sourced and unverified.
+% ---------------------------------------------------------------------------
+
+@inproceedings{plank2022,
+  title = {The ``{{Problem}}'' of {{Human Label Variation}}: {{On Ground Truth}} in {{Data}}, {{Modeling}} and {{Evaluation}}},
+  shorttitle = {The ``{{Problem}}'' of {{Human Label Variation}}},
+  author = {Plank, Barbara},
+  date = {2022-12},
+  booktitle = {Proceedings of the 2022 Conference on Empirical Methods in Natural Language Processing},
+  pages = {10671--10682},
+  publisher = {Association for Computational Linguistics},
+  location = {Abu Dhabi, United Arab Emirates},
+  doi = {10.18653/v1/2022.emnlp-main.731},
+  url = {https://aclanthology.org/2022.emnlp-main.731/},
+  eprint = {2211.02570},
+  eprinttype = {arXiv},
+  langid = {english}
+}
+
+@article{uma2021,
+  title = {Learning from {{Disagreement}}: {{A Survey}}},
+  shorttitle = {Learning from {{Disagreement}}},
+  author = {Uma, Alexandra N. and Fornaciari, Tommaso and Hovy, Dirk and Paun, Silviu and Plank, Barbara and Poesio, Massimo},
+  date = {2021},
+  journaltitle = {Journal of Artificial Intelligence Research},
+  shortjournal = {JAIR},
+  volume = {72},
+  pages = {1385--1470},
+  doi = {10.1613/jair.1.12752},
+  url = {https://jair.org/index.php/jair/article/view/12752},
+  langid = {english}
+}
