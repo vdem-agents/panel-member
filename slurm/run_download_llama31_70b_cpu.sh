@@ -37,13 +37,29 @@ VENV=$HOME/venvs/hf-x86
 # .env may or may not define HF_TOKEN; the cached token covers us either way.
 set -a; [ -f .env ] && source .env; set +a
 
+# ── Python ────────────────────────────────────────────────────────────────────
+# The system python3 on the cpu nodes is 3.6 (EOL 2021). huggingface_hub needs 3.8+,
+# and on 3.6 pip silently resolves to an ancient release that then fails on
+# `from dataclasses import dataclass` (job 138251267). 3.12.9 rather than the 3.13.3
+# default because some compiled wheels, hf_transfer among them, lag the newest release.
+PYTHON_MODULE=${PYTHON_MODULE:-python3/3.12.9}
+module load "$PYTHON_MODULE"
+echo "python: $(python3 --version 2>&1) from $(command -v python3)"
+
 # ── x86 venv (built once, reused) ─────────────────────────────────────────────
-if [ ! -x "$VENV/bin/python" ]; then
-    echo "$(date): creating x86 venv at $VENV"
+# Rebuild rather than reuse if the existing venv was built against an old interpreter,
+# so a stale venv from a failed run cannot silently poison a later one.
+VENV_OK=0
+if [ -x "$VENV/bin/python" ]; then
+    VENV_OK=$("$VENV/bin/python" -c 'import sys; print(1 if sys.version_info >= (3,9) else 0)' 2>/dev/null || echo 0)
+fi
+if [ "$VENV_OK" != "1" ]; then
+    echo "$(date): creating venv at $VENV"
+    rm -rf "$VENV"
     mkdir -p "$(dirname "$VENV")"
     python3 -m venv "$VENV"
 else
-    echo "reusing x86 venv at $VENV"
+    echo "reusing venv at $VENV"
 fi
 
 # Always run the installs, not just on first creation -- otherwise a venv left
