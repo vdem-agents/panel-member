@@ -16,7 +16,7 @@
 #   sbatch slurm/run_probe_weidmann.sh
 # Or one arm:
 #   ARMS=A  sbatch slurm/run_probe_weidmann.sh
-#   ARMS=B0 sbatch slurm/run_probe_weidmann.sh
+#   ARMS=B  sbatch slurm/run_probe_weidmann.sh   (both temperatures)
 #
 # Prerequisite: slurm/run_download_llama31_70b.sh has completed.
 #
@@ -38,19 +38,33 @@ mkdir -p logs
 
 # ── Configuration ──────────────────────────────────────────────────────────────
 YEAR=${YEAR:-2023}
-ARMS=${ARMS:-all}                 # all | A | B0 | B1
+ARMS=${ARMS:-all}                 # all | A | B (both temps) | B0 | B1
 MODEL_KEY=llama-70b-31-local
 MODEL_PATH=/scratch/ejtgrp/models/llama-3.1-70b-instruct
 VLLM_PORT=8000
 OUTPUT_DIR=${OUTPUT_DIR:-data/output/probes}
 IND_FILE=config/weidmann_53_indicators.txt
 
+# ── Preflight: check EVERY input before starting vLLM ─────────────────────────
+# Job 73652287 held a GH200 through the model load and all of Arm A, then died on a
+# missing crosswalk file that this block would have caught in under a second. Anything
+# an arm needs gets checked here, not when the arm reaches it.
+CROSSWALK=data/processed/weidmann_country_crosswalk.csv
+PROBE=pipeline/probe_weidmann_arms.py
+missing=0
+for f in "$IND_FILE" "$CROSSWALK" "$PROBE"; do
+    if [ ! -f "$f" ]; then echo "MISSING: $f" >&2; missing=1; fi
+done
 if [ ! -d "$MODEL_PATH" ]; then
-    echo "Missing $MODEL_PATH — run slurm/run_download_llama31_70b.sh first." >&2
+    echo "MISSING: $MODEL_PATH (run slurm/run_download_llama31_70b_cpu.sh)" >&2
+    missing=1
+fi
+if [ "$missing" -ne 0 ]; then
+    echo "Preflight failed - not starting vLLM." >&2
     exit 1
 fi
 mapfile -t INDICATORS < "$IND_FILE"
-echo "Loaded ${#INDICATORS[@]} indicators from $IND_FILE"
+echo "Preflight OK. ${#INDICATORS[@]} indicators from $IND_FILE; $(wc -l < "$CROSSWALK") crosswalk rows."
 
 # ── Environment (identical to run_coding_llama70b.sh) ──────────────────────────
 source ~/miniforge3/etc/profile.d/conda.sh
@@ -106,13 +120,13 @@ if [ "$ARMS" = "all" ] || [ "$ARMS" = "A" ]; then
 fi
 
 # ── Arm B: their prompt verbatim, raw capture, no parsing ─────────────────────
-if [ "$ARMS" = "all" ] || [ "$ARMS" = "B0" ]; then
+if [ "$ARMS" = "all" ] || [ "$ARMS" = "B" ] || [ "$ARMS" = "B0" ]; then
     echo "=== Arm B, temperature 0 ==="
     python3 pipeline/probe_weidmann_arms.py \
         --model "$MODEL_KEY" --year "$YEAR" --temperature 0 --workers 16
 fi
 
-if [ "$ARMS" = "all" ] || [ "$ARMS" = "B1" ]; then
+if [ "$ARMS" = "all" ] || [ "$ARMS" = "B" ] || [ "$ARMS" = "B1" ]; then
     echo "=== Arm B, temperature 1 ==="
     python3 pipeline/probe_weidmann_arms.py \
         --model "$MODEL_KEY" --year "$YEAR" --temperature 1 --workers 16
