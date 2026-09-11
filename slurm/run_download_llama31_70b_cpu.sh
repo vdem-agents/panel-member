@@ -42,15 +42,26 @@ if [ ! -x "$VENV/bin/python" ]; then
     echo "$(date): creating x86 venv at $VENV"
     mkdir -p "$(dirname "$VENV")"
     python3 -m venv "$VENV"
-    "$VENV/bin/pip" install --quiet --upgrade pip
-    "$VENV/bin/pip" install --quiet huggingface_hub hf_transfer
 else
     echo "reusing x86 venv at $VENV"
 fi
-"$VENV/bin/python" -c "import huggingface_hub, platform; print('huggingface_hub', huggingface_hub.__version__, 'on', platform.machine())"
 
-# hf_transfer gives a large speedup on multi-shard downloads; harmless if unavailable.
-export HF_HUB_ENABLE_HF_TRANSFER=1
+# Always run the installs, not just on first creation -- otherwise a venv left
+# half-built by an earlier failure is silently reused and the import fails later.
+"$VENV/bin/pip" install --quiet --upgrade pip
+"$VENV/bin/pip" install --quiet huggingface_hub
+
+# hf_transfer is a compiled wheel and is not available for every python/platform
+# combination (job 138250950 died here: "No matching distribution found"). It is a
+# download speedup, nothing more, so treat it as optional.
+if "$VENV/bin/pip" install --quiet hf_transfer 2>/dev/null; then
+    export HF_HUB_ENABLE_HF_TRANSFER=1
+    echo "hf_transfer enabled"
+else
+    echo "hf_transfer unavailable for this python - continuing without it (slower, still fine)"
+fi
+
+"$VENV/bin/python" -c "import huggingface_hub, platform, sys; print('huggingface_hub', huggingface_hub.__version__, '| python', sys.version.split()[0], '| arch', platform.machine())"
 
 # ── Preflight: one small file, to fail fast on auth or licence problems ───────
 echo "$(date): preflight - fetching config.json only"
