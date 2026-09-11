@@ -6,12 +6,6 @@ notes, not draft prose — EJT writes the prose. `[cite: X]` tags point at group
 Figure numbers follow `paper/figures-and-tables.qmd` as it stands now. Old §§5–7 + the
 justification caveat are in `results.md`.*
 
-*Draw on `scratch.md` and `seraphine-questions.md` for the motivation prose — the latter is
-EJT's own statement of the rationale (social-science hook = the leakage/information question;
-Benoit assumes summaries drive ratings but manifestos are in pretraining; contextual vs.
-parametric knowledge; why fixed packets not tool-calling; why Llama-3.3-70B; why State Dept +
-FH; the "not that LLMs should never use priors, but they must update on new information" line).*
-
 ## Open structural decisions (framing)
 
 - **What this section is called.** Not "Theory". Frame it as an exploration of a general
@@ -35,11 +29,15 @@ FH; the "not that LLMs should never use priors, but they must update on new info
   so criterion 2 ("right MAE is not enough, the error shape has to match") must be set up
   *before* Fig 1 appears.
 
+NEED TO SAY MORE ABOUT THE V-DEM PIPELINE ITSELF...INCLUDING THE IRT PIPELINE
+
 ## Overview paragraph
 
-Conceptual measurement in political science frequently features expert-coded data produced by trained coders who read primary sources and score them against a detailed codebook. Most projects in this space, including Polity, Freedom House's Freedom in the World, the Comparative Manifesto Project and many conflict datasets, rely on a single coder or a small adjudicating team. Others gather judgments from multiple experts and average them across country cases in a panel framework. Prominent examples of panel-based projects include the Chapel Hill Expert Survey, the Perceptions of Electoral Integrity project, and the World Justice Project's Rule of Law Index. The Varieties of Democracy project (V-Dem) and related efforts modeled on it represent a unique framework in which many independent experts rate each case and a measurement model estimates each coder's reliability and scale use before the ratings are aggregated [cite: L]. 
+
 
 Sustaining a panel of this kind asks more of its members than single-coder projects do. In the case of V-Dem, a country expert typically codes one country across its full time series for a block of about 100 indicators in their area, and experts recruited after 2013 are responsible for every year from 2005 forward. Consequently, the assignment grows with each round, from roughly 10 country-years in 2015 to nearly 20 by 2024 [cite: L]. 
+
+Median panel size across V-Dem indicators fell from roughly eleven coders in the 2010s to 5.8 by 2024 as the original cohort of experts aged out faster than it was replaced.
 
 (put a footnote here instead of a citation)
 
