@@ -7,12 +7,16 @@
 #
 # By default it ALSO downloads the small tokenizer/config files first, so you
 # never have to touch the login-node terminal. That download step only works if
-# the gh200 node has outbound internet. If it fails with a network/SSL error,
-# download on the LOGIN node instead:
-#     hf download Qwen/Qwen2.5-72B-Instruct \
-#         --local-dir /scratch/ejtgrp/models/qwen2.5-72b-instruct \
-#         --include "*.json" "tokenizer*" "*.txt" "*.model"
-# then re-submit this job with DOWNLOAD=0.
+# the gh200 node has outbound internet.
+#
+# If it fails with a network/SSL error, do NOT try to download on the login node.
+# An earlier version of this header suggested that; it does not work. `hf` lives in
+# the ARM miniforge envs, the login node is x86, and there is no `hf` on login (see
+# run_download_model.sh). Instead run the download as its own job on the x86 `cpu`
+# partition -- weights and tokenizer files are architecture-neutral data, so nothing
+# about fetching them needs ARM or a GPU. See run_download_llama31_70b_cpu.sh for the
+# pattern (small x86 venv, cached HF credential, snapshot_download). Then re-submit
+# this job with DOWNLOAD=0.
 #
 # Submit (Qwen2.5-72B, raw variant — the defaults):
 #   sbatch slurm/run_verify_tokenizer.sh

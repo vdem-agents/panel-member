@@ -18,6 +18,14 @@
 #
 #SBATCH --job-name=pm-dl-llama31
 #SBATCH --partition=superChip
+# --gres is REQUIRED even though this job never touches the GPU. Every superChip node
+# carries gpu:gh200:1, and since the 2026 "explicit resource requests are now enforced"
+# change (Pegasus Researcher Guide Rev B, §3-4), a job with no --gres is allocated zero
+# CPUs there and sbatch rejects it with "More processors requested than permitted".
+# Verified 2026-09-11: identical script submits with --gres, fails without.
+# Note: superChip is the only ARM partition — the cpu partition is x86 and cannot run
+# the ARM64 conda env — so moving this job off GH200 hardware is not an option.
+#SBATCH --gres=gpu:gh200:1
 #SBATCH --cpus-per-task=8
 #SBATCH --mem=32G
 #SBATCH --time=04:00:00
