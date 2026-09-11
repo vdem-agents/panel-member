@@ -51,6 +51,15 @@ LLM_CONFIGS = {
         "api_key_env": "VLLM_API_KEY",
         "supports_logprobs": True,
     },
+    # Llama 3.1 70B — NOT part of the confirmatory design. Added 2026-09-11 for the
+    # Weidmann et al. (2026) probe; see notes/weidmann-anomaly-handling-and-test-plan.md.
+    # Path is created by slurm/run_download_llama31_70b.sh.
+    "llama-70b-31-local": {
+        "base_url": _VLLM_URL,
+        "model": "meta-llama/Llama-3.1-70B-Instruct",
+        "api_key_env": "VLLM_API_KEY",
+        "supports_logprobs": True,
+    },
     "llama-8b-local": {
         "base_url": _VLLM_URL,
         "model": "meta-llama/Llama-3.1-8B-Instruct",

@@ -145,7 +145,9 @@ build_panelB_tracking <- function(proj_root,
 
   panel_means <- read_csv(file.path(data_dir, "panel_means.csv"), show_col_types = FALSE)
 
-  ns_files <- list.files(ns_dir, pattern = "\\.jsonl$", full.names = TRUE)
+  # Swapped arm only. Correct-arm rows have source == named, so track is
+  # identically 0 by construction and pooling them halves every estimate.
+  ns_files <- list.files(ns_dir, pattern = "^nameswap_swapped_.*\\.jsonl$", full.names = TRUE)
   if (length(ns_files) == 0) stop("No .jsonl files in ", ns_dir)
   ns <- ns_files |> map(function(f) {
     con <- file(f, "r"); on.exit(close(con))

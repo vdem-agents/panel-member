@@ -140,6 +140,9 @@ build_prominence_bundle <- function(proj_root,
   } else if (outcome == "nameswap_tracking") {
     ns_dir <- file.path(proj_root, "data", "output", "nameswap")
     ns <- read_jsonl_dir(ns_dir, c("source", "named", "year", "indicator", "model_key", "rating")) |>
+      # Swapped arm only: correct-arm rows (source == named) have track
+      # identically 0 and would dilute the outcome toward zero.
+      filter(source != named) |>
       filter(year == !!year)
 
     outcome_df <- function(model_key) {
