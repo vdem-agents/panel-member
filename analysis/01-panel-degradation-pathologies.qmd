@@ -259,29 +259,116 @@ cat("Years:", range(panel_full$year), "\n")
 Before the regressions, two descriptive figures establish the structural problem.
 
 ```{r context-pyramid, fig.width = 9, fig.height = 4.5}
+# Okabe-Ito blue / vermillion, the repo's figure convention. Long form so the two
+# series carry a legend rather than being identified by colour in the subtitle.
 panel_full |>
   group_by(year) |>
-  summarise(
-    mean_n   = mean(n_coders),
-    median_n = median(n_coders),
-    .groups  = "drop"
-  ) |>
-  ggplot(aes(x = year)) +
-  geom_line(aes(y = mean_n),   colour = "steelblue", linewidth = 1,   linetype = "solid") +
-  geom_line(aes(y = median_n), colour = "tomato",    linewidth = 0.8, linetype = "dashed") +
+  summarise(Mean = mean(n_coders), Median = median(n_coders), .groups = "drop") |>
+  pivot_longer(c(Mean, Median), names_to = "stat", values_to = "n") |>
+  ggplot(aes(x = year, y = n, colour = stat, linetype = stat)) +
+  geom_line(linewidth = 0.95) +
   geom_vline(xintercept = 2005, linetype = "dotted", colour = "grey40") +
   geom_vline(xintercept = 2013, linetype = "dotted", colour = "grey40") +
   annotate("text", x = 2005, y = Inf, label = "2005\n(post-2013 recruit floor)",
            hjust = -0.1, vjust = 1.5, size = 3, colour = "grey40") +
   annotate("text", x = 2013, y = Inf, label = "2013\n(attrition begins)",
            hjust = -0.1, vjust = 1.5, size = 3, colour = "grey40") +
+  scale_colour_manual(values = c(Mean = "#0072B2", Median = "#D55E00"), name = NULL) +
+  scale_linetype_manual(values = c(Mean = "solid", Median = "22"), name = NULL) +
   labs(
-    title    = "Mean panel size by year, pooled across all country-indicator pairs (1990–2024)",
-    subtitle = "Blue = mean, red dashed = median. Pooled across all working indicators.",
+    title    = "Mean panel size by year, pooled across all country-indicator pairs (1990\u20132024)",
+    subtitle = "Pooled across all working indicators.",
     x = "Year", y = "Coders per country-year"
   ) +
-  theme_minimal(base_size = 12)
+  theme_minimal(base_size = 12) +
+  theme(legend.position = "bottom", panel.grid.minor = element_blank(),
+        plot.title.position = "plot")
 ```
+
+The figure above is a mean, which hides the shape of the distribution behind it: a mean of
+five is produced equally by every panel having five coders and by half having two and half
+having eight. The companion below decomposes the same quantity into the share of
+country-indicator-years at each panel size, across the full V-Dem time range rather than
+just 1990 onward.
+
+Bands are cut at V-Dem's own published thresholds (codebook p. 35): oranges are at or below
+four coders, which is the zone V-Dem either warns against (1-3) or leaves below its
+recommended floor (4); blues are at or above the floor of five.
+
+```{r context-bands, fig.width = 9.5, fig.height = 5.4}
+band_periods <- c(-Inf, 1899, 1944, 1989, 2004, 2015, Inf)
+band_labels  <- c("19th century\n1789–1899", "Pre-war\n1900–44",
+                  "Cold War\n1945–89", "Post-Cold War\n1990–2004",
+                  "Contemporary\n2005–15", "Recent\n2016–25")
+
+# Separate pull from unc_long, which is restricted to 1990-2024.
+band_dat <- vdemdata::vdem |>
+  select(country_text_id, year, any_of(paste0(working_indicators, "_nr"))) |>
+  pivot_longer(-c(country_text_id, year), names_to = "indicator", values_to = "n_coders") |>
+  filter(!is.na(n_coders)) |>
+  mutate(
+    period = cut(year, band_periods, labels = band_labels),
+    band   = cut(n_coders, c(0, 1, 2, 3, 4, 8, Inf),
+                 labels = c("1", "2", "3", "4", "5–8", "9+"))
+  )
+
+band_summary <- band_dat |>
+  count(period, band) |>
+  group_by(period) |>
+  mutate(prop = n / sum(n)) |>
+  ungroup()
+
+band_labels_lt5 <- band_dat |>
+  group_by(period) |>
+  summarise(cells = n(), pct_lt5 = mean(n_coders < 5) * 100, .groups = "drop")
+
+# Panel size is ordered, so a categorical palette would throw the ordering away. These
+# are ramps anchored on the repo's two Okabe-Ito hues instead: vermillion (#D55E00)
+# stepped dark-to-light below V-Dem's floor, blue (#0072B2) at or above it. Adjacent-pair
+# separation validated: worst normal-vision dE 15.6, worst CVD dE 10.2.
+band_pal <- c("1"     = "#5A2800", "2"  = "#C25600", "3"  = "#F09A4A",
+              "4"     = "#FBD9BE", "5–8" = "#8ECFEE", "9+" = "#0072B2")
+
+ggplot(band_summary, aes(period, prop, fill = band)) +
+  geom_col(width = 0.72, colour = "white", linewidth = 0.4,
+           position = position_fill(reverse = TRUE)) +
+  geom_text(data = band_labels_lt5,
+            aes(period, y = 1.045, label = sprintf("%.1f%% < 5", pct_lt5)),
+            inherit.aes = FALSE, size = 3.2, colour = "grey25") +
+  scale_fill_manual(values = band_pal, name = "Coders per\ncountry-indicator-year",
+                    guide = guide_legend(reverse = FALSE, nrow = 1)) +
+  scale_y_continuous(labels = scales::percent, breaks = seq(0, 1, 0.25),
+                     expand = expansion(mult = c(0.01, 0.07))) +
+  labs(
+    title    = "Panel size is not one story: the distribution behind the mean",
+    subtitle = paste("Share of country-indicator-years at each panel size.",
+                     "Oranges fall below V-Dem's recommended floor of five coders."),
+    x = NULL, y = "Share of country-indicator-years",
+    caption = paste0("152 working indicators; ",
+                     sum(band_dat$year < 1900 & !duplicated(band_dat$indicator)),
+                     " of them carry pre-1900 data, so the 19th-century column rests on a ",
+                     "narrower indicator set.")
+  ) +
+  theme_minimal(base_size = 12) +
+  theme(legend.position = "bottom", panel.grid.major.x = element_blank(),
+        panel.grid.minor = element_blank(), plot.title.position = "plot",
+        plot.caption = element_text(colour = "grey40", hjust = 0))
+```
+
+```{r context-bands-table}
+band_summary |>
+  select(period, band, prop) |>
+  mutate(prop = round(prop * 100, 2)) |>
+  pivot_wider(names_from = band, values_from = prop, values_fill = 0) |>
+  left_join(band_labels_lt5 |> select(period, cells, pct_lt5) |>
+              mutate(pct_lt5 = round(pct_lt5, 2)), by = "period") |>
+  mutate(period = gsub("\n", " ", period)) |>
+  rename(Period = period, Cells = cells, `% < 5` = pct_lt5) |>
+  gt::gt() |>
+  gt::tab_header(title = "Percent of country-indicator-years at each panel size",
+                 subtitle = "Rows sum to 100 across the six bands.")
+```
+
 
 ```{r context-regime, fig.width = 8, fig.height = 4.5}
 panel_full |>
@@ -753,6 +840,88 @@ ggplot(unc_binned, aes(x = n_bin, y = median_sd)) +
   theme_minimal(base_size = 12)
 ```
 
+The bars above are anchored at zero, so most of the panel is empty space, and their
+whiskers are the IQR — the spread of individual country-indicator-years within each bin,
+not uncertainty about the bin's median. Those are different quantities and they differ in
+width by more than an order of magnitude. The two panels below put each on its own
+median-centred axis.
+
+```{r uncertainty-dotwhisker, fig.width = 10, fig.height = 4.4}
+library(patchwork)
+
+unc_bin_iv <- unc_long |>
+  mutate(n_bin = case_when(
+    n_coders <= 3  ~ "1–3",
+    n_coders <= 5  ~ "4–5",
+    n_coders <= 8  ~ "6–8",
+    n_coders <= 12 ~ "9–12",
+    TRUE           ~ "13+"
+  ),
+  n_bin = factor(n_bin, levels = c("1–3", "4–5", "6–8", "9–12", "13+"))) |>
+  group_by(n_bin) |>
+  summarise(
+    median_sd = median(posterior_sd),
+    q25_sd    = quantile(posterior_sd, 0.25),
+    q75_sd    = quantile(posterior_sd, 0.75),
+    n         = n(),
+    # Asymptotic SE of a median for a large sample: 1.253 * sd / sqrt(n).
+    se_med    = 1.253 * sd(posterior_sd) / sqrt(n()),
+    .groups   = "drop"
+  ) |>
+  mutate(ci_lo = median_sd - 1.96 * se_med,
+         ci_hi = median_sd + 1.96 * se_med)
+
+BLUE <- "#0072B2"   # Okabe-Ito blue, the repo's figure convention
+
+p_ci <- ggplot(unc_bin_iv, aes(x = n_bin, y = median_sd)) +
+  geom_linerange(aes(ymin = ci_lo, ymax = ci_hi), linewidth = 1.2, colour = BLUE) +
+  geom_point(size = 3, colour = BLUE) +
+  geom_text(aes(label = sprintf("%.3f", median_sd)),
+            hjust = -0.4, size = 3.1, colour = "grey25") +
+  scale_y_continuous(expand = expansion(mult = 0.13)) +
+  labs(title = "Median, with 95% CI",
+       subtitle = "Do the bins differ? Every interval is narrower than its own point.",
+       x = NULL, y = "Posterior SD") +
+  theme_minimal(base_size = 11) +
+  theme(panel.grid.minor = element_blank(), plot.title.position = "plot")
+
+p_iqr <- ggplot(unc_bin_iv, aes(x = n_bin, y = median_sd)) +
+  geom_linerange(aes(ymin = q25_sd, ymax = q75_sd),
+                 linewidth = 1.2, colour = BLUE, alpha = 0.45) +
+  geom_point(size = 3, colour = BLUE) +
+  scale_y_continuous(expand = expansion(mult = 0.06)) +
+  labs(title = "Median, with IQR",
+       subtitle = "How much do cells vary? More than the bin medians span.",
+       x = NULL, y = NULL) +
+  theme_minimal(base_size = 11) +
+  theme(panel.grid.minor = element_blank(), plot.title.position = "plot")
+
+(p_ci | p_iqr) +
+  plot_annotation(
+    title    = "Panel size shifts the median reliably; individual cells barely sort",
+    subtitle = "Panel size (coders) on the x-axis. Pooled across ~150 working indicators, 1990–2024.",
+    caption  = paste("Left: 95% CI on each median. Right: interquartile range of the underlying",
+                     "country-indicator-years.\nNote the different y-axis ranges: the CIs are 14-58x",
+                     "narrower than the IQRs, so a shared scale would hide them entirely."),
+    theme    = theme(plot.title = element_text(size = 13, face = "bold"))
+  )
+```
+
+```{r uncertainty-dotwhisker-table}
+unc_bin_iv |>
+  transmute(
+    `Panel size` = n_bin, n,
+    Median  = round(median_sd, 4),
+    `CI low` = round(ci_lo, 4), `CI high` = round(ci_hi, 4),
+    `CI width`  = round(ci_hi - ci_lo, 4),
+    `IQR width` = round(q75_sd - q25_sd, 4),
+    `IQR / CI`  = round((q75_sd - q25_sd) / (ci_hi - ci_lo))
+  ) |>
+  gt::gt() |>
+  gt::tab_header(title = "Bin medians: estimation uncertainty vs cell-level spread")
+```
+
+
 ```{r uncertainty-time-plot}
 unc_year <- unc_long |>
   group_by(year) |>
@@ -797,6 +966,271 @@ modelsummary(
   title      = "Panel size and IRT posterior uncertainty (posterior SD ~ panel size)"
 )
 ```
+
+### Marginal value of an added coder
+
+The pooled coefficient above is a single slope, but the relationship is not a straight
+line. The two figures below trace posterior SD at each integer panel size and the change
+contributed by each additional coder. The first uses raw conditional means — what a data
+user encounters. The second re-estimates the same quantities as panel-size dummies inside
+the full fixed-effects specification, netting out the indicator, country and era
+differences the raw means absorb. Both use the same estimator and the same
+country-clustered SEs, so the only thing separating them is the fixed effects.
+
+Restricted to 2005 onward. Before 2005 the contemporary panel does not operate: those
+country-years are covered by the retrospective historical programme, where one or two
+specialists coded a country's whole political history at once. Pooling the two puts ~80%
+of all 1-3 coder cells into the figure's left end, where they read as solid anchors while
+actually describing a different coding process.
+
+```{r marginal-value-setup}
+NRMAX   <- 15
+MV_FROM <- 2005   # contemporary panel only; see note above
+
+mv_dat <- unc_long |>
+  filter(year >= MV_FROM, n_coders >= 1, n_coders <= NRMAX) |>
+  mutate(nrf = factor(n_coders))
+
+# Both curves come from the same estimator and the same country-clustered SEs, so the
+# ONLY difference between the two figures is whether the fixed effects are absorbed.
+# (An unclustered SE on a raw cell mean would be ~15x too narrow -- it treats every
+# country-indicator-year as independent, which they plainly are not.)
+mv_raw_fit <- feols(posterior_sd ~ 0 + nrf,
+                    data = mv_dat, cluster = ~country_text_id)
+mv_adj_fit <- feols(posterior_sd ~ i(nrf, ref = "5") | indicator + country_text_id + year,
+                    data = mv_dat, cluster = ~country_text_id)
+
+# Levels. The raw fit gives group means directly; the adjusted fit gives contrasts
+# against n = 5, re-anchored onto the raw mean at n = 5 so both sit on one scale.
+mv_anchor <- unname(coef(mv_raw_fit)[["nrf5"]])
+
+mv_raw_lvl <- tibble(
+  n_coders = as.integer(sub("^nrf", "", names(coef(mv_raw_fit)))),
+  est      = unname(coef(mv_raw_fit)),
+  se       = unname(sqrt(diag(vcov(mv_raw_fit))))
+) |> arrange(n_coders)
+
+mv_adj_cf <- coef(mv_adj_fit); mv_adj_V <- vcov(mv_adj_fit)
+mv_adj_lv <- as.integer(sub(".*::", "", names(mv_adj_cf)))
+mv_adj_lvl <- tibble(n_coders = c(mv_adj_lv, 5L),
+                     est = c(unname(mv_adj_cf) + mv_anchor, mv_anchor),
+                     se  = c(unname(sqrt(diag(mv_adj_V))), 0)) |>
+  arrange(n_coders)
+
+# Marginal change per added coder: a difference of two coefficients, so its SE needs the
+# covariance between them, not a sum of squares.
+mv_marginal <- function(cf, V, levels_vec, ref = NA_integer_) {
+  idx <- setNames(seq_along(cf), levels_vec)
+  bind_rows(lapply(2:NRMAX, function(k) {
+    gk <- function(j) if (!is.na(ref) && j == ref) NULL else idx[[as.character(j)]]
+    a <- gk(k); b <- gk(k - 1)
+    d <- (if (is.null(a)) 0 else cf[a]) - (if (is.null(b)) 0 else cf[b])
+    v <- (if (is.null(a)) 0 else V[a, a]) + (if (is.null(b)) 0 else V[b, b]) -
+         2 * (if (is.null(a) || is.null(b)) 0 else V[a, b])
+    tibble(n_coders = k, d = unname(d), se = sqrt(max(v, 0)))
+  }))
+}
+
+mv_marg_raw <- mv_marginal(coef(mv_raw_fit), vcov(mv_raw_fit),
+                           as.integer(sub("^nrf", "", names(coef(mv_raw_fit)))))
+mv_marg_adj <- mv_marginal(mv_adj_cf, mv_adj_V, mv_adj_lv, ref = 5L)
+
+MV_YL <- range(c(mv_raw_lvl$est - 1.96 * mv_raw_lvl$se, mv_raw_lvl$est + 1.96 * mv_raw_lvl$se,
+                 mv_adj_lvl$est - 1.96 * mv_adj_lvl$se, mv_adj_lvl$est + 1.96 * mv_adj_lvl$se))
+MV_YM <- range(c(mv_marg_raw$d - 1.96 * mv_marg_raw$se, mv_marg_raw$d + 1.96 * mv_marg_raw$se,
+                 mv_marg_adj$d - 1.96 * mv_marg_adj$se, mv_marg_adj$d + 1.96 * mv_marg_adj$se))
+
+# Sign convention is kept as-is: this is a change in SD, the same quantity and sign a
+# regression coefficient would report. Plotting "reduction" instead would make the axis
+# positive-is-better but would no longer be the number in the table. Labelled instead.
+mv_figure <- function(lvl, marg, colour, tag) {
+  bands <- list(
+    annotate("rect", xmin = 0.5, xmax = 3.5, ymin = -Inf, ymax = Inf,
+             fill = "grey70", alpha = 0.16),
+    annotate("segment", x = 5, xend = 5, y = -Inf, yend = Inf,
+             linetype = "22", colour = "grey45", linewidth = 0.4)
+  )
+
+  p1 <- ggplot(lvl, aes(n_coders, est)) + bands +
+    geom_ribbon(aes(ymin = est - 1.96 * se, ymax = est + 1.96 * se),
+                fill = colour, alpha = 0.30) +
+    geom_line(colour = colour, linewidth = 0.5) +
+    geom_point(colour = colour, size = 1.5) +
+    scale_x_continuous(breaks = seq(1, NRMAX, 2)) +
+    coord_cartesian(ylim = MV_YL) +
+    labs(title = "Level — how uncertain is a panel of this size?",
+         subtitle = "Lower is less uncertainty",
+         x = "Panel size (coders)", y = "Posterior SD") +
+    theme_minimal(base_size = 11) +
+    theme(panel.grid.minor = element_blank(), plot.title.position = "plot")
+
+  p2 <- ggplot(marg, aes(n_coders, d)) + bands +
+    geom_hline(yintercept = 0, colour = "grey40", linewidth = 0.5) +
+    annotate("text", x = NRMAX, y = 0, hjust = 1, vjust = -0.8, size = 2.9,
+             colour = "grey35", label = "zero = the added coder changed nothing") +
+    geom_linerange(aes(ymin = d - 1.96 * se, ymax = d + 1.96 * se),
+                   colour = colour, alpha = 0.55, linewidth = 0.9) +
+    geom_point(colour = colour, size = 2.1) +
+    scale_x_continuous(breaks = seq(2, NRMAX, 2)) +
+    coord_cartesian(ylim = MV_YM) +
+    labs(title = "Marginal — what did the next coder buy?",
+         subtitle = "Change in SD from adding one coder. More negative = bought more.",
+         x = "Panel size after adding (coders)", y = "Δ Posterior SD") +
+    theme_minimal(base_size = 11) +
+    theme(panel.grid.minor = element_blank(), plot.title.position = "plot")
+
+  (p1 | p2) + plot_annotation(
+    title = tag,
+    subtitle = paste0("Contemporary panel only (", MV_FROM, "-2024). Intervals 95%, ",
+                      "clustered by country.\nShaded = V-Dem's \"three or fewer\" warning ",
+                      "zone; dashed line = its recommended floor of five."),
+    theme = theme(plot.title = element_text(size = 13, face = "bold")))
+}
+```
+
+#### Note: why the marginal panel's intervals are not read off the level panel
+
+The marginal panel's point estimates are exactly the first differences of the level
+panel's — a deterministic transformation carrying no new information. Its *intervals* are
+a different matter, and they cannot be recovered by eye from the level ribbons.
+
+The variance of a difference has three terms, not two:
+
+$$
+\operatorname{Var}(\beta_k - \beta_{k-1})
+  = \operatorname{Var}(\beta_k) + \operatorname{Var}(\beta_{k-1})
+  - 2\operatorname{Cov}(\beta_k,\, \beta_{k-1})
+$$
+
+In code this is the full variance-covariance matrix rather than just its diagonal —
+`V[a, a] + V[b, b] - 2 * V[a, b]`, as in `mv_marginal()` above. Eyeballing two ribbons on
+the level panel implicitly drops the covariance term, because a level plot shows each
+estimate's own uncertainty and nothing about how the two move together.
+
+Here the adjacent level estimates are strongly positively correlated — they are
+coefficients from one regression, measured against the same reference category and sharing
+the same absorbed country, indicator and year effects, so anything shifting the common
+baseline moves them together. That shared component cancels in the difference, and the
+covariance term credits the cancellation.
+
+In prose: it is the difference between measuring where two knots on a swaying rope are,
+and measuring the gap between them. Each position is uncertain because the rope moves, but
+the gap is steady, because the knots sway together. Treating the positions as independent
+would report the gap as far less certain than it is.
+
+Worked example, the eighth coder:
+
+| term | value |
+|---|---|
+| $\operatorname{Var}(\beta_8)$ | 1.492e-05 (SE 0.0039) |
+| $\operatorname{Var}(\beta_7)$ | 1.188e-05 (SE 0.0034) |
+| $\operatorname{Cov}(\beta_8, \beta_7)$ | 1.013e-05 (correlation 0.761) |
+| naive SE, covariance dropped | 0.0052 |
+| correct SE | **0.0026** |
+
+The covariance is nearly as large as either variance, so subtracting twice it removes about
+three-quarters of the total. Across the range the naive SE averages 1.6x the correct one,
+and close to 2x for every panel size above six.
+
+Two sanity checks on the sign and the mechanism. Positive covariance *shrinks* a
+difference's SE; negative covariance would inflate it past the naive value. And at
+n = 5 and n = 6 the two SEs coincide exactly, because n = 5 is the reference category —
+$\beta_5$ is fixed at zero with no variance, so there is no covariance term to subtract.
+Those are the only two rows where naive and correct agree, which is a useful check that
+the code is indexing the right matrix entries.
+
+```{r marginal-value-raw, fig.width = 10, fig.height = 4.6}
+mv_figure(mv_raw_lvl, mv_marg_raw, "#0072B2",
+          "Raw conditional means: what a data user encounters")
+```
+
+```{r marginal-value-adjusted, fig.width = 10, fig.height = 4.6}
+mv_figure(mv_adj_lvl, mv_marg_adj, "#D55E00",
+          "Adjusted: panel-size dummies within indicator, country and year fixed effects")
+```
+
+```{r marginal-value-table}
+mv_n <- mv_dat |> count(n_coders, name = "n")
+
+full_join(
+  mv_marg_raw |> transmute(n_coders, `Raw Δ` = round(d, 4), `Raw SE` = round(se, 4)),
+  mv_marg_adj |> transmute(n_coders, `Adjusted Δ` = round(d, 4), `Adjusted SE` = round(se, 4)),
+  by = "n_coders"
+) |>
+  left_join(mv_n, by = "n_coders") |>
+  rename(`Panel size` = n_coders, `N cells` = n) |>
+  relocate(`N cells`, .after = `Panel size`) |>
+  gt::gt() |>
+  gt::tab_header(
+    title = "Change in posterior SD per added coder",
+    subtitle = paste("Contemporary panel only (2005-2024). Both columns use",
+                     "country-clustered SEs and differ only in whether fixed effects are",
+                     "absorbed. Negative = the added coder reduced uncertainty.",
+                     "The adjusted series is anchored at n = 5.")
+  )
+```
+
+#### The published thresholds against the marginal series
+
+V-Dem publishes two thresholds, both in the v15 codebook's `_nr` entry at p. 35 (PDF
+sheet 36):
+
+> We strongly advise against using observations based on three or fewer coders.
+
+> ...we suggest that users primarily base analyses on observations based on five or more
+> coders.
+
+The first is a usage instruction; the Cautionary Notes attribute it to internal analysis
+that the published documents do not reproduce. The second is a recruitment quota the
+methodology describes as a staffing target (p. 13, p. 16) and the codebook calls an
+assumption. Analysis 14 §7 documents the provenance.
+
+The marginal series above is the corresponding quantity in the data: what each additional
+coder actually buys. Grouping it around the two published thresholds:
+
+```{r threshold-gap}
+mv_marg_adj |>
+  mutate(zone = case_when(
+    n_coders <= 3 ~ "2-3  (V-Dem: advise against)",
+    n_coders == 4 ~ "4    (no guidance given)",
+    n_coders <= 8 ~ "5-8  (at/above recommended floor)",
+    TRUE          ~ "9-15 (well above floor)"
+  )) |>
+  group_by(zone) |>
+  summarise(
+    `Coder positions` = n(),
+    `Mean Δ SD`   = round(mean(d), 4),
+    `Largest Δ`   = round(min(d), 4),
+    `Smallest Δ`  = round(max(d), 4),
+    .groups = "drop"
+  ) |>
+  gt::gt() |>
+  gt::tab_header(
+    title = "What each added coder buys, grouped by V-Dem's published thresholds",
+    subtitle = "Adjusted series, contemporary panel. More negative = larger reduction in posterior SD."
+  )
+```
+
+The second and third coders reduce posterior SD by 0.112 and 0.057. Every coder from the
+fourth onward falls between 0.003 and 0.028, and the sequence declines smoothly from there
+with no further step. The discontinuity in marginal value sits between three and four.
+
+That step falls at the edge of V-Dem's warning zone: the two coders carrying outsized
+value are the second and third, so a panel of three or fewer is one still missing them.
+The marginal series and the ≤3 advice locate the same region.
+
+At the recommended floor the series is flat across it: the fifth coder buys 0.026 and the
+sixth buys 0.028, so the sixth is worth marginally more than the fifth. Posterior SD does
+not distinguish a panel that just reaches five from one that just misses. That is what the
+documentary record would predict for a staffing quota, which is set above the steep region
+by design rather than at it — the methodology notes they recruit seven expecting fall-off.
+
+Two caveats on the left end. The n = 2 and n = 3 estimates rest on 1,282 and 2,988 cells
+against 65,158 at n = 6, and those cells concentrate in a small number of countries, so
+country-clustered intervals there are wide. And the step's location is a property of this
+outcome — posterior SD — not of point estimates, which Analyses 1-3 found panel size does
+not move.
+
 
 ---
 

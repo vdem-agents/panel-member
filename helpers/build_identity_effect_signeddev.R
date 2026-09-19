@@ -89,11 +89,13 @@ build_identity_effect_signeddev <- function(proj_root,
       mEv <- sum(w * Ev) / sw; mAn <- sum(w * An) / sw
       mSu <- sum(w * Su) / sw; mSuID <- sum(w * SuID) / sw
       full_text <- mAn - mEv; compressed <- mSu - mSuID
-      c(`Full Text` = full_text, Compressed = compressed,
+      # Compression: compressed rewrite, identity KEPT on both sides (see build_identity_effect.R).
+      compression <- mSuID - mEv
+      c(Compression = compression, `Full Text` = full_text, Compressed = compressed,
         `Full Text - Compressed` = full_text - compressed)
     }
-    M <- vapply(colnames(W), effect_of_draw, numeric(3))
-    rownames(M) <- c("Full Text", "Compressed", "Full Text - Compressed")
+    M <- vapply(colnames(W), effect_of_draw, numeric(4))
+    rownames(M) <- c("Compression", "Full Text", "Compressed", "Full Text - Compressed")
 
     app  <- which(colnames(W) == "Apparent")
     boot <- setdiff(seq_len(ncol(M)), app)
@@ -107,7 +109,7 @@ build_identity_effect_signeddev <- function(proj_root,
 
   effects <- model_families |>
     pmap_dfr(function(family, model, base_key) fit_family(base_key, model)) |>
-    mutate(level = factor(level, levels = c("Full Text - Compressed", "Compressed", "Full Text")))
+    mutate(level = factor(level, levels = c("Full Text - Compressed", "Compressed", "Full Text", "Compression")))
 
   bundle <- list(effects = effects, year = year, n_boot = n_boot, outcome = "signed_deviation")
 
