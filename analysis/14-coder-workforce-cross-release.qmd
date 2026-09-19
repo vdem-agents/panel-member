@@ -1,0 +1,348 @@
+---
+title: "Coder Workforce Across Releases: Separating Attrition from Back-Coding"
+format:
+  html:
+    toc: true
+    toc-depth: 3
+    embed-resources: true
+    code-fold: true
+execute:
+  warning: false
+  message: false
+---
+
+Analysis 01 measures panel size within a single release. This analysis measures the
+same quantity across seven successive releases, which separates two things a single
+release combines: how many coders were working at a given moment, and how many coders
+have since back-coded into that moment.
+
+The distinction matters because V-Dem's `year` is the year being *rated*, not the year
+the rating was *produced*. A coder recruited in 2022 back-codes their country to 2005,
+so within one release their rows are indistinguishable from a founding coder's. This
+makes departures observable — an inactive coder's last rated year freezes and stays
+frozen — while arrivals are invisible, since every new recruit enters at 2005 alongside
+the originals. A single release therefore produces a declining profile toward recent
+years whether or not recruitment has changed.
+
+Successive releases break the tie. A published release is frozen: only coders on the
+roster during that coding round can appear in its most recent year, because no one has
+had the opportunity to back-code into a file already printed. Reading each release at
+its own leading edge gives one back-coding-free measurement of workforce size per
+release. Reading a *fixed* historical year across releases gives the complementary
+quantity — the rate at which later hires accumulate into settled years.
+
+Releases V10 (published 2020) through V16 (published 2026) are mirrored in
+`shared/vdem-data/vdem-release-archive/` from the tagged `vdemdata` package. V10 is the
+earliest tagged release, so the series reaches 2020 and not 2013; earlier releases would
+have to be requested from V-Dem directly. Country and indicator sets are held constant
+across releases (202 countries, 257 indicators) so the series does not confound workforce
+change with scope expansion.
+
+---
+
+## 1. Setup
+
+```{r setup}
+library(tidyverse)
+library(knitr)
+
+series <- readRDS(here::here("data", "derived", "workforce_series.rds"))
+edge     <- series$edge
+backfill <- series$backfill
+
+OKABE_BLUE <- "#0072B2"   # as reported by the current release
+OKABE_VERM <- "#D55E00"   # as measured at the time
+```
+
+## 2. Workforce at each release's leading edge
+
+Each release is read at fixed offsets from its own most recent year. Offset 0 is the
+leading edge itself, which is still accumulating ratings at publication; offsets 1 and 2
+are progressively more settled. The comparison across releases is like-for-like because
+the same offset carries the same degree of incompleteness in every release.
+
+```{r edge-table}
+edge |>
+  mutate(offset = paste0("edge_minus_", offset)) |>
+  pivot_wider(id_cols = c(release, pub_year, edge_year),
+              names_from = offset, values_from = mean_nr) |>
+  mutate(across(starts_with("edge_minus_"), ~round(.x, 2))) |>
+  kable(caption = "Mean coders per country-indicator cell at each release's leading edge")
+```
+
+## 3. Back-coding accumulation into settled years
+
+The same historical year, read from each successive release. Increments are the coders
+added to an already-settled year between one release and the next.
+
+```{r backfill-table}
+backfill |>
+  filter(year %in% c(2010, 2013, 2015, 2017)) |>
+  mutate(mean_nr = round(mean_nr, 2), increment = round(increment, 3)) |>
+  pivot_wider(id_cols = c(release, pub_year), names_from = year,
+              values_from = c(mean_nr, increment)) |>
+  kable(caption = "Coder count for fixed historical years, as reported by each release")
+```
+
+```{r backfill-rate}
+backfill |>
+  filter(year %in% 2010:2017, !is.na(increment)) |>
+  group_by(release, pub_year) |>
+  summarise(mean_increment = round(mean(increment), 3), .groups = "drop") |>
+  arrange(pub_year) |>
+  kable(caption = "Per-release back-coding increment, averaged over settled years 2010-2017")
+```
+
+## 4. Does a flat edge plus steady back-coding reproduce the profile?
+
+If workforce size is roughly constant and each release adds a fixed increment to every
+prior year, then a year's count in the current release should be its edge value plus the
+increment times the number of releases since. Fitting that on V16's profile recovers both
+parameters: the intercept estimates workforce at the edge, the slope estimates the
+per-release back-coding rate.
+
+```{r model}
+v16_profile <- backfill |>
+  filter(release == "V16", year >= 2005) |>
+  mutate(age_releases = 2025 - year)
+
+fit <- lm(mean_nr ~ age_releases, data = v16_profile)
+
+tibble(
+  term      = c("intercept (edge workforce)", "slope (back-coding per release)"),
+  estimate  = round(unname(coef(fit)), 3),
+  std_error = round(summary(fit)$coefficients[, 2], 4)
+) |>
+  kable(caption = sprintf("Linear fit to V16's within-release profile (R-squared = %.4f)",
+                          summary(fit)$r.squared))
+```
+
+```{r model-fit}
+v16_profile |>
+  mutate(predicted = round(predict(fit), 2), observed = round(mean_nr, 2),
+         residual = round(observed - predicted, 2)) |>
+  filter(year %in% c(2005, 2010, 2013, 2016, 2019, 2022, 2023)) |>
+  select(year, age_releases, predicted, observed, residual) |>
+  kable(caption = "Predicted vs observed, V16 profile")
+```
+
+## 5. The two measurements plotted together
+
+Both series are in the same units — mean coders per country-indicator cell — and both are
+indexed by the historical year being rated. The blue line is what V16 reports today for
+each year. The vermillion points are what each release reported for its own edge year at
+the time it was published. The vertical gap between them at a given year is back-coding
+accumulated since.
+
+```{r fig-workforce, fig.width = 9, fig.height = 5.2, dev = "png", dpi = 200}
+as_reported <- backfill |>
+  filter(release == "V16", year >= 2005) |>
+  transmute(year, mean_nr, series = "As reported by V16 (2026)")
+
+at_the_time <- edge |>
+  filter(offset == 0) |>
+  transmute(year = edge_year, mean_nr, series = "Measured at the time (each release's edge)")
+
+plot_dat <- bind_rows(as_reported, at_the_time)
+pal <- c("As reported by V16 (2026)" = OKABE_BLUE,
+         "Measured at the time (each release's edge)" = OKABE_VERM)
+
+ggplot(plot_dat, aes(year, mean_nr, color = series)) +
+  geom_line(data = as_reported, linewidth = 1) +
+  geom_line(data = at_the_time, linewidth = 1, linetype = "22") +
+  geom_point(data = at_the_time, size = 2.4) +
+  geom_text(
+    data = at_the_time |> filter(year %in% c(2019, 2025)),
+    aes(label = sprintf("%.1f", mean_nr)), vjust = 1.9, size = 3.4, show.legend = FALSE
+  ) +
+  geom_text(
+    data = as_reported |> filter(year %in% c(2005, 2013)),
+    aes(label = sprintf("%.1f", mean_nr)), vjust = -1.1, size = 3.4, show.legend = FALSE
+  ) +
+  scale_color_manual(values = pal, name = NULL) +
+  scale_x_continuous(breaks = seq(2005, 2025, 5)) +
+  labs(
+    title    = "Coders per country-year: as reported today vs measured at the time",
+    subtitle = "Constant set of 202 countries and 257 indicators across releases V10-V16",
+    x = "Year being rated", y = "Coders per country-indicator cell"
+  ) +
+  theme_minimal(base_size = 12) +
+  theme(legend.position = "bottom",
+        panel.grid.minor = element_blank(),
+        plot.title.position = "plot")
+```
+
+## 6. Reach of the series
+
+The archive reaches back to V10 because that is the earliest tag carrying a bundled
+dataset. The edge readings therefore cover rating-years 2019 through 2025. Extending the
+"measured at the time" series to 2013 — the inflection point in Analysis 01 — requires the
+v3 release, which is not distributed through the package and would have to be obtained
+from V-Dem directly.
+
+```{r reach}
+edge |>
+  filter(offset == 0) |>
+  summarise(
+    releases       = n(),
+    first_release  = first(release),
+    first_edge_yr  = min(edge_year),
+    last_release   = last(release),
+    last_edge_yr   = max(edge_year),
+    edge_min       = round(min(mean_nr), 2),
+    edge_max       = round(max(mean_nr), 2)
+  ) |>
+  kable(caption = "Coverage of the cross-release workforce series")
+```
+
+---
+
+## 7. Turnover and threshold shortfall
+
+Mean panel size is a poor summary of panel health. It averages the tail away, and the
+tail is where the measurement model loses precision: a mean of 6 is compatible with a
+distribution whose bottom quarter sits under the floor V-Dem tells users to work above.
+The codebook names two thresholds directly.
+
+> We strongly advise against using observations based on three or fewer coders.
+
+> By providing the number of Country Experts for each country-variable-year/date, we
+> suggest that users primarily base analyses on observations based on five or more
+> coders.
+
+Both appear in the v15 codebook on p. 35 (PDF sheet 36), in the entry for the `_nr`
+variable. The first is repeated in the Cautionary Notes at p. 26 (sheet 27), which is
+also issued standalone as `cautionary_notes.pdf`.
+
+The two thresholds do not have the same standing, and it is worth keeping them apart.
+
+**Three or fewer is a usage instruction with a stated empirical basis.** The Cautionary
+Notes preface it with "From analysis, we have found that this at times can result in
+significant changes in point estimates, most likely as a consequence of self-selected
+attrition of Country Experts" (p. 26). No analysis is shown or cited.
+
+**Five is a recruitment quota that is also passed on as user guidance.** The methodology
+describes it as a staffing target rather than a property of the estimates:
+
+> we endeavor to find a minimum of five Country Experts to code each country-year for
+> every indicator
+
+> The Program Managers at the V-Dem Institute (University of Gothenburg) issue invitations
+> until the quota of five Country Experts per survey. We usually recruit 7 or more experts
+> to be able to replace those who fail to begin or complete the survey on time.
+
+(methodology p. 13 and p. 16; PDF sheets 14 and 17). The codebook calls it an assumption
+the methodology "is based on" rather than a finding. The one substantive rationale offered
+anywhere is outlier dilution — "wayward experts ... are unlikely to have a strong influence
+on the point estimates that result from the measurement model's aggregation across five or
+more experts" (methodology p. 25, sheet 26) — asserted without a derivation or simulation.
+
+Four falls in a gap: not warned against, below the recommended floor, and given no
+guidance either way. Analysis 01's marginal-value section reports where the data puts the
+break.
+
+Not checked: the Pemstein et al. measurement-model working paper is not among the PDFs in
+`initial-exploration/vdem-docs/`, so a threshold justification may exist there.
+
+A share crossing one of V-Dem's own lines is interpretable in a way a mean is not. This
+section reports two such series, both built by `helpers/build_coder_attrition.R`.
+
+```{r attrition-setup}
+attr_dat <- readRDS(here::here("data", "derived", "coder_attrition.rds"))
+turnover <- attr_dat$turnover
+sf_year  <- attr_dat$shortfall_year
+sf_edge  <- attr_dat$shortfall_edge
+```
+
+### Turnover
+
+A coder's exit is inferred, not recorded: it is the last rating-year they ever produced.
+Because the archive is additive and contemporary recruits back-code to 2005, a coder
+present in year Y and absent from every later year has genuinely stopped contributing at
+the leading edge. The final row is not an exit cohort — those coders are still active.
+
+```{r turnover-table}
+turnover |>
+  filter(year >= 2013) |>
+  transmute(Year = year, `Coders stopping` = coders_stopping,
+            `% of pool` = pct_of_pool,
+            Note = ifelse(still_active, "still active, not an exit cohort", "")) |>
+  kable(caption = sprintf("Annual coder exits against a contemporary pool of %d (v15)",
+                          attr_dat$meta$contemporary_pool))
+```
+
+```{r fig-turnover, fig.width = 8, fig.height = 3.6, dev = "png", dpi = 200}
+turnover |>
+  filter(year >= 2013, !still_active) |>
+  ggplot(aes(year, coders_stopping)) +
+  geom_segment(aes(xend = year, yend = 0), colour = OKABE_BLUE, linewidth = 0.8) +
+  geom_point(colour = OKABE_BLUE, size = 2.4) +
+  geom_hline(yintercept = median(turnover$coders_stopping[turnover$year %in% 2014:2023]),
+             linetype = "22", colour = "grey45") +
+  annotate("text", x = 2013.2, y = 175, hjust = 0, vjust = -0.5, size = 3.2,
+           colour = "grey35", label = "median 163.5/yr") +
+  scale_x_continuous(breaks = seq(2013, 2023, 2)) +
+  labs(title = "Coders whose last rating-year is Y",
+       subtitle = "v15 coder-level file. 2024 omitted: those coders are still active.",
+       x = NULL, y = "Coders") +
+  theme_minimal(base_size = 12) +
+  theme(panel.grid.minor = element_blank(), plot.title.position = "plot")
+```
+
+Exits run at roughly 120–220 a year against a standing pool of about 4,000 — near 4%
+annual turnover. Section 2's flat leading-edge series is what tells us these are being
+replaced; turnover alone cannot distinguish replacement from decline.
+
+### Threshold shortfall
+
+The same two readings as Section 5. The blue line is what V16 reports today for each
+year; the vermillion points are what each release reported at its own leading edge, before
+back-coding had filled anything in.
+
+```{r fig-shortfall, fig.width = 9, fig.height = 4.8, dev = "png", dpi = 200}
+sf_plot <- bind_rows(
+  sf_year |> transmute(year, pct = pct_lt_5, series = "As reported by V16 (2026)"),
+  sf_edge |> transmute(year = edge_year, pct = pct_lt_5,
+                       series = "Measured at the time (each release's edge)")
+)
+
+ggplot(sf_plot, aes(year, pct, colour = series)) +
+  geom_line(data = ~filter(.x, series == "As reported by V16 (2026)"), linewidth = 1) +
+  geom_line(data = ~filter(.x, series != "As reported by V16 (2026)"),
+            linewidth = 1, linetype = "22") +
+  geom_point(data = ~filter(.x, series != "As reported by V16 (2026)"), size = 2.4) +
+  scale_colour_manual(values = c("As reported by V16 (2026)" = OKABE_BLUE,
+                                 "Measured at the time (each release's edge)" = OKABE_VERM),
+                      name = NULL) +
+  scale_y_continuous(labels = function(x) paste0(x, "%")) +
+  labs(title = "Share of country-indicator cells below V-Dem's recommended floor of five coders",
+       subtitle = sprintf("All %d indicators carrying an _nr column. Constant country set for the edge series.",
+                          attr_dat$meta$n_indicators),
+       x = "Year being rated", y = "Cells with fewer than 5 coders") +
+  theme_minimal(base_size = 12) +
+  theme(legend.position = "bottom", panel.grid.minor = element_blank(),
+        plot.title.position = "plot")
+```
+
+```{r shortfall-tables}
+sf_year |>
+  filter(year %in% c(2005, 2010, 2015, 2019:2024)) |>
+  transmute(Year = year, Cells = cells, `Mean n` = mean_n, `Median n` = median_n,
+            `% <= 3` = pct_le_3, `% < 5` = pct_lt_5) |>
+  kable(caption = "Within V16: shortfall by year, as the current release reports it")
+
+sf_edge |>
+  transmute(Release = release, `Published` = pub_year, `Edge year` = edge_year,
+            Cells = cells, `Mean n` = mean_n, `% <= 3` = pct_le_3, `% < 5` = pct_lt_5) |>
+  kable(caption = "At each release's own leading edge: shortfall before any back-coding")
+```
+
+Two readings sit side by side here. Within V16, the shortfall is near 7% for settled
+years and rises to 21% at 2024 — the back-coding gradient of Section 5, expressed as a
+share rather than a mean. At the leading edge, where no back-coding has occurred, the
+shortfall has run between 24% and 42% in every release since V10, with V16 the highest
+since V10.
+
+Note the indicator set: these figures use every indicator carrying an `_nr` column. An
+analysis restricted to a narrower working set will produce different levels, and
+`build_coder_attrition()` takes an `indicators` argument for that purpose.

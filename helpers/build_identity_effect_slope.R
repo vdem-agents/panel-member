@@ -109,11 +109,13 @@ build_identity_effect_slope <- function(proj_root,
       sSu   <- wls_slope(h, aSu,   w)
       sSuID <- wls_slope(h, aSuID, w)
       full_text <- sAn - sEv; compressed <- sSu - sSuID
-      c(`Full Text` = full_text, Compressed = compressed,
+      # Compression: compressed rewrite, identity KEPT on both sides (see build_identity_effect.R).
+      compression <- sSuID - sEv
+      c(Compression = compression, `Full Text` = full_text, Compressed = compressed,
         `Full Text - Compressed` = full_text - compressed)
     }
-    M <- vapply(colnames(W), effect_of_draw, numeric(3))
-    rownames(M) <- c("Full Text", "Compressed", "Full Text - Compressed")
+    M <- vapply(colnames(W), effect_of_draw, numeric(4))
+    rownames(M) <- c("Compression", "Full Text", "Compressed", "Full Text - Compressed")
 
     app  <- which(colnames(W) == "Apparent")
     boot <- setdiff(seq_len(ncol(M)), app)
@@ -127,7 +129,7 @@ build_identity_effect_slope <- function(proj_root,
 
   effects <- model_families |>
     pmap_dfr(function(family, model, base_key) fit_family(base_key, model)) |>
-    mutate(level = factor(level, levels = c("Full Text - Compressed", "Compressed", "Full Text")))
+    mutate(level = factor(level, levels = c("Full Text - Compressed", "Compressed", "Full Text", "Compression")))
 
   bundle <- list(effects = effects, year = year, min_coders = min_coders,
                  n_boot = n_boot, outcome = "difficulty_slope")

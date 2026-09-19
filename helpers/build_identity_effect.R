@@ -86,17 +86,21 @@ build_identity_effect <- function(proj_root,
       mEv <- sum(w * Ev) / sw; mAn <- sum(w * An) / sw
       mSu <- sum(w * Su) / sw; mSuID <- sum(w * SuID) / sw
       full_text <- mAn - mEv; compressed <- mSu - mSuID
+      # Compression: the compressed rewrite with identity KEPT on both sides, so the only thing
+      # that moves is the compression. Added 2026-09-18 -- the one contrast in this family that
+      # touches raw text with names intact, which neither identity contrast does.
+      compression <- mSuID - mEv
       # Paired contrast (same draw, same weights): if the Full Text identity effect is reliably
       # bigger than the Compressed one, that's suggestive evidence the raw-vs-LLM-rewrite
       # confound in the Full Text comparison (Evidence is unprocessed; Anonymized is itself an
       # LLM rewrite) is adding something beyond pure identity removal -- since the Compressed
       # comparison holds "is this a rewrite" constant (both Summarized and Summarized-Identified
       # are LLM-generated) and only Full Text doesn't. Suggestive, not decisive (2026-09-06).
-      c(`Full Text` = full_text, Compressed = compressed,
+      c(Compression = compression, `Full Text` = full_text, Compressed = compressed,
         `Full Text - Compressed` = full_text - compressed)
     }
-    M <- vapply(colnames(W), effect_of_draw, numeric(3))
-    rownames(M) <- c("Full Text", "Compressed", "Full Text - Compressed")
+    M <- vapply(colnames(W), effect_of_draw, numeric(4))
+    rownames(M) <- c("Compression", "Full Text", "Compressed", "Full Text - Compressed")
 
     app  <- which(colnames(W) == "Apparent")
     boot <- setdiff(seq_len(ncol(M)), app)
@@ -110,7 +114,7 @@ build_identity_effect <- function(proj_root,
 
   effects <- model_families |>
     pmap_dfr(function(family, model, base_key) fit_family(base_key, model)) |>
-    mutate(level = factor(level, levels = c("Full Text - Compressed", "Compressed", "Full Text")))
+    mutate(level = factor(level, levels = c("Full Text - Compressed", "Compressed", "Full Text", "Compression")))
 
   bundle <- list(effects = effects, year = year, n_boot = n_boot)
 

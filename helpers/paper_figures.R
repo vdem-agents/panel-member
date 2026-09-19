@@ -1392,3 +1392,316 @@ fig_identity_effect_combined <- function(mae_bundle, signeddev_bundle, slope_bun
     ) &
     theme(legend.position = "top", legend.justification = "left")
 }
+
+# Figure 5 — name-swap tracking on the metric's achievable range. The rating-point version
+# (fig_nameswap_tracking, built from build_priorreliance.R --panel B) reports base effects of
+# +0.06-0.07, which read as negligible. They are not: the metric is bounded by the gap between
+# the two countries' panel means, so the same estimate is ~10% of the available range. Panel A is
+# the per-swap position on that range, Panel B the win rate against the injected name. Both are
+# drawn on their FULL theoretical range (-1..+1 and 0..1) rather than zoomed to the estimates --
+# what the axis shows is the point of the rescaling. No ±SESOI band: the paper's rating-point
+# threshold is a level comparison against the human reference, and this is neither a level nor a
+# rating-point scale. See notes/mockups/nameswap-rescaled-concept.md.
+#
+#   fig_nameswap_rescaled(readRDS("data/derived/nameswaprescaled_2023.rds"))
+fig_nameswap_rescaled <- function(bundle) {
+  d <- bundle$effects |>
+    dplyr::mutate(model = factor(model, levels = names(model_pal)))
+
+  panel <- function(dd, xlim, ref, xlab, subtitle, breaks, labels) {
+    ggplot(dd, aes(est, model, color = model)) +
+      geom_vline(xintercept = ref, linetype = "dashed", color = "grey40") +
+      geom_pointrange(aes(xmin = lo, xmax = hi), size = 0.5, linewidth = 0.7) +
+      facet_grid(rows = vars(block), scales = "free_y", space = "free", switch = "y") +
+      scale_color_manual(values = model_pal, guide = "none") +
+      scale_x_continuous(limits = xlim, breaks = breaks, labels = labels) +
+      labs(x = xlab, y = NULL, subtitle = subtitle) +
+      theme_minimal(base_size = 11) +
+      theme(panel.grid.major.y = element_blank(), panel.grid.minor = element_blank(),
+            strip.placement = "outside", strip.background = element_blank(),
+            strip.text.y.left = element_text(angle = 0, face = "bold", hjust = 1),
+            axis.title.x = element_text(margin = margin(t = 7)),
+            plot.subtitle = element_text(face = "bold", size = 10.5))
+  }
+
+  pA <- panel(dplyr::filter(d, metric == "position"), c(-1, 1), 0,
+              paste0("-1 = at or past the injected country's panel mean\n",
+                     "+1 = at or past the true country's panel mean"),
+              "A. Position between the two countries",
+              c(-1, -0.5, 0, 0.5, 1), c("-1", "-0.5", "0\nmidpoint", "0.5", "+1"))
+
+  pB <- panel(dplyr::filter(d, metric == "win"), c(0, 1), 0.5,
+              paste0("share of swaps where the rating is closer\n",
+                     "to the true country's panel mean"),
+              "B. Win rate against the injected name",
+              c(0, 0.25, 0.5, 0.75, 1), c("0", "0.25", "0.50\ncoin flip", "0.75", "1"))
+
+  pA | pB
+}
+
+# Figure 6 — the two successive steps along the summarized family, in A8's layout.
+#
+#   Row 1  Compression        summarized-identified - raw text     names present on BOTH sides,
+#                                                                  so only the compression moves
+#   Row 2  De-identification  summarized - summarized-identified   compressed on BOTH sides,
+#                                                                  so only the identity moves
+#
+#   raw text --[row 1]--> summarized-identified --[row 2]--> summarized
+#
+# SIGN: later - earlier, so positive MAE = further from the panel mean in both rows.
+#
+# Row 1 + Row 2 = summarized - raw text, the whole gap. They are two SUCCESSIVE STEPS, not shares
+# of a total: row 1 is measured with identity present, row 2 with compression present, so their
+# magnitudes are conditioned differently. Moving the same two factors in the other order (via
+# anonymized) reverses which looks larger for Gemma -- so no percentage of any kind is reported
+# here. See notes/identity-mechanism-arc-2026-09-16.md.
+#
+# NO ±SESOI band (2026-09-18 decision, following Figure 7's precedent). SESOI defends against
+# small RANDOM error -- a change below half a rounding step vanishes in any single published
+# score. These are consistent directional pushes, and the question is whether a step moves the
+# model and in which direction, i.e. sign + interval. The band also discriminates nothing here:
+# at 0.113 it swallows every cell except Llama's de-identification MAE. Settled in
+# notes/paper-figures-pipeline-review-2026-09-06.md Addendum 9.
+#
+# Reads the same bundles Appendix A8 used to render from; the Compression row was added to them
+# by helpers/build_identity_effect*.R on 2026-09-18.
+#
+#   fig_identity_and_compression(ie, sl, sd)
+fig_identity_and_compression <- function(mae_bundle, slope_bundle, signeddev_bundle) {
+  con_lv <- c("De-identification", "Compression")   # first level plots at bottom
+
+  one_panel <- function(bundle, subtitle, show_y) {
+    d <- bundle$effects |>
+      tibble::as_tibble() |>
+      dplyr::filter(level %in% c("Compression", "Compressed")) |>
+      dplyr::mutate(
+        contrast = factor(dplyr::if_else(level == "Compression",
+                                         "Compression", "De-identification"), levels = con_lv),
+        model    = factor(model, levels = names(model_pal)))
+    p <- ggplot(d, aes(est, contrast, color = model, group = model)) +
+      geom_vline(xintercept = 0, linetype = "dashed", color = "grey40") +
+      geom_pointrange(aes(xmin = lo, xmax = hi), size = 0.5, linewidth = 0.6,
+                      position = position_dodge(width = 0.5)) +
+      scale_color_manual(values = model_pal, name = NULL) +
+      labs(subtitle = subtitle, x = NULL, y = NULL) +
+      theme_minimal(base_size = 12) +
+      theme(legend.position = "top", legend.justification = "left",
+            panel.grid.major.y = element_blank(),
+            # Three free x-scales side by side read as one strip without a boundary.
+            panel.border = element_rect(color = "grey75", fill = NA, linewidth = 0.4),
+            plot.margin = margin(l = 6, r = 6, t = 3, b = 3),
+            axis.text.y = element_text(size = 10.5),
+            plot.subtitle = element_text(face = "bold", size = 10.5))
+    if (!show_y) p <- p + theme(axis.text.y = element_blank())
+    p
+  }
+
+  # Panel order follows Figures 1-3: MAE, difficulty tracking, signed deviation.
+  pA <- one_panel(mae_bundle,       "A. Mean Absolute Error",   TRUE)
+  pB <- one_panel(slope_bundle,     "B. Case Difficulty Slope", FALSE)
+  pC <- one_panel(signeddev_bundle, "C. Signed Deviation",      FALSE)
+
+  (pA | pB | pC) +
+    patchwork::plot_layout(guides = "collect") +
+    patchwork::plot_annotation(
+      caption = "Net Effect of Each Step (Compressing Text and Removing Country Identity)",
+      theme = theme(plot.caption = element_text(hjust = 0.5, size = 11, margin = margin(t = 8)))
+    ) &
+    theme(legend.position = "top", legend.justification = "left")
+}
+
+# Appendix A8, first figure — the three summarized arms as distances from ONE origin (raw
+# evidence), in Figure 6's layout.
+#
+#   Summ-Identified        ~400w rewrite, names in the TEXT and the FRAMING
+#   Summ + named framing   ~400w rewrite, names stripped from the text, country named in framing
+#                          (the name-swap battery's control arm: name-swap mode forces
+#                          hide_identity off, so this is the only run with that combination)
+#   Summarized             ~400w rewrite, names stripped from the text, framing blanked
+#
+# Every arm is a paired contrast against raw evidence, so each is a distance from the same origin:
+# no contrast depends on an ordering and none is a share of a total.
+#
+# CAVEAT that has to travel with it: where the first two arms coincide, that says text identity
+# adds little GIVEN the framing already supplies it. It does not establish that text identity is
+# unimportant on its own -- that needs the fourth cell (identified text, blank framing), which has
+# never been run. It is also strongest for Llama, partial for Qwen, and absent for Gemma (whose
+# three arms sit within 0.012), so it is not a three-family finding.
+#
+#   fig_summarization_arms(readRDS("data/derived/summarizationarms_2023.rds"))
+fig_summarization_arms <- function(bundle) {
+  arm_lv <- c("Summarized", "Summ + named framing", "Summ-Identified")  # first plots at bottom
+
+  d <- bundle$effects |>
+    dplyr::filter(arm %in% c("A", "C", "D")) |>
+    dplyr::mutate(
+      condition = factor(dplyr::recode(arm, A = "Summ-Identified",
+                                            C = "Summ + named framing",
+                                            D = "Summarized"), levels = arm_lv),
+      model     = factor(model, levels = names(model_pal)))
+
+  one_panel <- function(oc, subtitle, show_y) {
+    p <- ggplot(dplyr::filter(d, outcome == oc),
+                aes(est, condition, color = model, group = model)) +
+      geom_vline(xintercept = 0, linetype = "dashed", color = "grey40") +
+      geom_pointrange(aes(xmin = lo, xmax = hi), size = 0.5, linewidth = 0.6,
+                      position = position_dodge(width = 0.5)) +
+      scale_color_manual(values = model_pal, name = NULL) +
+      labs(subtitle = subtitle, x = NULL, y = NULL) +
+      theme_minimal(base_size = 12) +
+      theme(legend.position = "top", legend.justification = "left",
+            panel.grid.major.y = element_blank(),
+            panel.border = element_rect(color = "grey75", fill = NA, linewidth = 0.4),
+            plot.margin = margin(l = 6, r = 6, t = 3, b = 3),
+            axis.text.y = element_text(size = 10.5),
+            plot.subtitle = element_text(face = "bold", size = 10.5))
+    if (!show_y) p <- p + theme(axis.text.y = element_blank())
+    p
+  }
+
+  pA <- one_panel("MAE",              "A. Mean Absolute Error",   TRUE)
+  pB <- one_panel("Difficulty slope", "B. Case Difficulty Slope", FALSE)
+  pC <- one_panel("Signed deviation", "C. Signed Deviation",      FALSE)
+
+  (pA | pB | pC) +
+    patchwork::plot_layout(guides = "collect") +
+    patchwork::plot_annotation(
+      caption = "Effect of Each Summarized Condition Relative to Raw Evidence",
+      theme = theme(plot.caption = element_text(hjust = 0.5, size = 11, margin = margin(t = 8)))
+    ) &
+    theme(legend.position = "top", legend.justification = "left")
+}
+
+# Appendix A8, second figure — is the task-framing leg concentrated where the model CANNOT
+# re-identify the country? Partial leak predicts the effect is LARGER among CYIs the model could
+# NOT name (identity truly gone there); framing-only attention predicts it is FLAT.
+#
+# Color encodes the RE-IDENTIFICATION GROUP, not the model (model is on the facet rows), so
+# model_pal's hues are deliberately avoided -- a reader flipping between figures should never
+# read these as model colors.
+#
+#   fig_reid_split(readRDS("data/derived/reidsplit_2023.rds"))
+fig_reid_split <- function(bundle) {
+  grp_pal <- c("Re-identified"            = "#D55E00",   # Okabe-Ito vermillion
+               "Not re-identified"        = "#0072B2",   # Okabe-Ito blue
+               "Overall"                  = "grey25",
+               "Difference (re-id − not)" = "#009E73")  # Okabe-Ito bluish green
+
+  d <- bundle$effects |>
+    dplyr::mutate(
+      group   = factor(group, levels = rev(names(grp_pal))),
+      outcome = factor(outcome, levels = c("MAE", "Signed deviation", "Difficulty slope"),
+                       labels = c("MAE\n(negative = naming lowers error)",
+                                  "Signed deviation\n(positive = naming is less harsh)",
+                                  "Difficulty slope\n(positive = naming steepens tracking)")))
+
+  ggplot(d, aes(est, group, color = group)) +
+    geom_vline(xintercept = 0, linetype = "dashed", color = "grey45") +
+    geom_pointrange(aes(xmin = lo, xmax = hi), size = 0.45, linewidth = 0.7) +
+    facet_grid(rows = vars(model), cols = vars(outcome), scales = "free_x", switch = "y") +
+    scale_color_manual(values = grp_pal, breaks = names(grp_pal), name = NULL) +
+    labs(x = "Task-framing leg, identified − de-identified (2023, base models)", y = NULL) +
+    guides(color = guide_legend(nrow = 1, reverse = TRUE)) +
+    theme_minimal(base_size = 10.5) +
+    theme(legend.position = "top", legend.justification = "left",
+          # free_x scales butt together and collide otherwise
+          panel.spacing.x = grid::unit(1.4, "lines"),
+          panel.grid.major.y = element_blank(), panel.grid.minor = element_blank(),
+          strip.placement = "outside", strip.background = element_blank(),
+          strip.text.x = element_text(face = "bold", size = 9.5),
+          strip.text.y.left = element_text(angle = 0, face = "bold", size = 9.5, hjust = 1),
+          axis.text.y = element_text(size = 9),
+          axis.title.x = element_text(margin = margin(t = 7)))
+}
+
+# Figure 7 / Appendix A12 — the two deployment mechanics side by side, on verdict flips
+# (main) and directional push (appendix). Both read the build_fliprate.R bundles.
+#
+# Shared y-scale across the two panels in each figure is deliberate: replacement disturbs
+# roughly 1.5-2x as many verdicts as addition, and that level difference is a finding, not a
+# nuisance to be auto-scaled away.
+#
+# Human churn is PLOTTED, not zero-referenced, in the flip figure -- a verdict flip from
+# ordinary turnover is 16-42%, not zero in expectation the way a mean shift is. In the
+# directional figure it becomes the zero line, because that panel is already differenced
+# against it, paired at the panel level.
+#
+#   fa <- readRDS("data/derived/fliprate_augmentation_2023.rds")
+#   fd <- readRDS("data/derived/fliprate_degradation_2023.rds")
+#   fig_fliprate_pair(fa, fd); fig_fliprate_direction_pair(fa, fd)
+fliprate_lv <- c("Same AI (Qwen FT)", "Mixed FT (6 cells)",
+                 "Mixed pool (18 cells)", "Human churn")
+
+# Explicit per-regime x-offset rather than position_dodge(): k is continuous, and the top row
+# has four arms against the bottom row's three, so a dodge would allocate different widths per
+# row and the same colour would land at a different x in A than in C. Fixed offsets keep each
+# regime on one vertical line down the whole figure.
+#
+# Lines are offset with the points. Leaving the lines on the true k was tried and is worse: at
+# an offset of 0.15 the line visibly misses its own markers. The cost of dodging both is that
+# two series sitting a point apart (Mixed FT and Mixed pool in Panel B) can look like they touch
+# -- acceptable, since there they genuinely nearly coincide.
+fliprate_xoff <- stats::setNames(seq(-0.07, 0.07, length.out = length(fliprate_lv)),
+                                 fliprate_lv)
+
+.fliprate_prep <- function(aug_bundle, deg_bundle) {
+  grab <- function(b, mech) tibble::as_tibble(b$effects) |>
+    dplyr::mutate(regime = factor(regime, levels = fliprate_lv), mech = mech)
+  dplyr::bind_rows(grab(aug_bundle, "add"), grab(deg_bundle, "rep")) |>
+    dplyr::mutate(kx = k + unname(fliprate_xoff[as.character(regime)]))
+}
+
+.fliprate_thm <- function() {
+  theme_minimal(base_size = 12) +
+    theme(legend.position = "top", legend.justification = "left",
+          panel.grid.minor = element_blank(),
+          panel.border = element_rect(color = "grey75", fill = NA, linewidth = 0.4),
+          plot.subtitle = element_text(face = "bold", size = 11),
+          axis.title = element_text(size = 10.5))
+}
+
+fig_fliprate_quad <- function(aug_bundle, deg_bundle) {
+  d   <- .fliprate_prep(aug_bundle, deg_bundle)
+  pal <- c(doseresponse_pal, "Human churn" = "grey35")
+  yf  <- range(c(100 * d$flip_lo, 100 * d$flip_hi), na.rm = TRUE) + c(-2, 2)
+  yd  <- range(c(100 * d$netd_lo, 100 * d$netd_hi), na.rm = TRUE) + c(-1, 1)
+
+  # Flip panels carry the only legend: they have the linetype scale (Human churn is a plotted
+  # arm there, and the zero line in the direction panels), so letting the direction panels emit
+  # their own colour guide makes patchwork collect TWO legends instead of merging them.
+  flip_panel <- function(m, sub, xlab) {
+    ggplot(dplyr::filter(d, mech == m),
+           aes(kx, 100 * flip, color = regime, linetype = regime)) +
+      geom_line(linewidth = 0.8) +
+      geom_pointrange(aes(ymin = 100 * flip_lo, ymax = 100 * flip_hi), size = 0.35) +
+      scale_color_manual(values = pal, name = NULL) +
+      scale_linetype_manual(values = c("solid", "solid", "solid", "22"), name = NULL) +
+      scale_x_continuous(breaks = 1:4) + coord_cartesian(ylim = yf) +
+      labs(subtitle = sub, x = xlab, y = "% of Panels Whose\nVerdict Flips") +
+      .fliprate_thm()
+  }
+  dir_panel <- function(m, sub, xlab) {
+    ggplot(dplyr::filter(d, mech == m, regime != "Human churn"),
+           aes(kx, 100 * netd, color = regime)) +
+      geom_hline(yintercept = 0, linetype = "22", color = "grey35") +
+      geom_line(linewidth = 0.8) +
+      geom_pointrange(aes(ymin = 100 * netd_lo, ymax = 100 * netd_hi), size = 0.35) +
+      scale_color_manual(values = pal, guide = "none") +
+      scale_x_continuous(breaks = 1:4) + coord_cartesian(ylim = yd) +
+      labs(subtitle = sub, x = xlab,
+           y = "Net Down \u2212 Up,\nvs. Human Churn (pts)") +
+      .fliprate_thm()
+  }
+
+  # Rows are the MECHANIC, columns the OUTCOME. Row 1 is therefore the whole augmentation story
+  # -- the deployment path the paper argues for -- and row 2 the degradation robustness check,
+  # each readable as a unit. Outcome in columns also matches Figures 5, 6 and A8. Costs four
+  # axis titles rather than two: adjacent columns are in different units, and x means something
+  # different in each row, so neither can be shared away without risking a mislabel.
+  (flip_panel("add", "A. Verdicts Flipped \u2014 Seats Added",    "k Seats Added") |
+   dir_panel("add",  "B. Direction \u2014 Seats Added",           "k Seats Added")) /
+  (flip_panel("rep", "C. Verdicts Flipped \u2014 Seats Replaced", "k Seats Replaced") |
+   dir_panel("rep",  "D. Direction \u2014 Seats Replaced",        "k Seats Replaced")) +
+    patchwork::plot_layout(guides = "collect") &
+    theme(legend.position = "top", legend.justification = "left")
+}

@@ -235,3 +235,26 @@ precedents. All `find` — EJT pulls refs; mine the "Listening to Leaders" bibli
 | V-Dem methodology / coder-management working papers (recruitment, retention, coder characteristics) | — | For the burnout point and the cause-of-decline context EJT flagged. Marquardt / Pemstein / Tannenberg V-Dem WPs are candidates; Pemstein et al. WP21 fn.15 (see L) is the anchor for the "~5 experts, whole time period" structure. | find |
 | In-repo workload computations | `initial-exploration/explore-coder-level-data/` | Already coded, not headline-rendered: `01` §"Indicator Load per Coder" (~100 indicators/coder, the "254" is an overcount incl. conf/beta/post-survey cols); `04` §1 countries-per-coder + distribution plot + `n_rows` per coder; `05` §8 median/p25/p75 ratings per coder by coder type. `notes/panel-size-analysis.md` §9.4 has the qualitative burnout argument (expanding temporal scope 10→19 yrs, anchoring, non-random attrition). Quick re-run for a clean "typical coder fields N CYI ratings" number. | have (in-repo, needs a render for the number) |
 | Expert-survey fatigue / respondent burden (general) | — | Optional general-methods backing for "panels are hard to sustain". | find |
+
+## O. Serial position in the context window — primacy, recency, and the task-framing channel
+
+Supports the framing-vs-text decomposition (§A8 successor). The coding template names the focal
+country three times, all inside the **user** message: the opening task statement
+(`prompts/panel-member-coding-prompt.md:21`), the evidence section header (`:37`), and the closing
+output instruction (`:53`). Two of those are the highest-salience positions in the sequence; names
+inside the evidence body are in the middle. **The caveat these citations exist to support:** a
+larger task-framing effect than evidence-body effect is *predicted by serial position alone*, so
+the decomposition cannot be read as showing that instruction slots are architecturally privileged.
+The design does not separate privilege from position — testing that would require relocating the
+framing line into the middle of the evidence. State the claim as "identity in the task framing,"
+not "instruction slots are privileged."
+
+| Ref | Identifier | Note | Status |
+|---|---|---|---|
+| Liu, Lin, Hewitt, Paranjape, Bevilacqua, Petroni & Liang 2024, "Lost in the Middle: How Language Models Use Long Contexts", *TACL* 12:157–173 | doi:10.1162/tacl_a_00638 / arXiv:2307.03172 | **Primary cite for the position confound.** U-shaped curve: relevant information at the beginning or end of the context is used; in the middle it is not, even in long-context models. Directly describes the asymmetry between the framing slots and the evidence body. | have-ref — verified 2026-09-16 (ACL Anthology, MIT Press TACL) |
+| Xiao, Tian, Chen, Han & Lewis 2024, "Efficient Streaming Language Models with Attention Sinks", *ICLR 2024* | arXiv:2309.17453 | Attention-sink result: disproportionate attention to initial tokens irrespective of semantic content. Mechanistic backing for the **primacy** half only; the StreamingLLM engineering contribution is not relevant. Secondary cite. | have-ref — verified 2026-09-16 (ICLR proceedings, arXiv) |
+| Zhao, Wallace, Feng, Klein & Singh 2021, "Calibrate Before Use: Improving Few-Shot Performance of Language Models", *ICML 2021* | PMLR 139 / arXiv:2102.09690 | **Recency** half: models over-weight the last example in a prompt. Backs the claim that the closing `Rate {COUNTRY} in {YEAR}` line (`:53`) is a strong conditioning signal. Also a standing caution on few-shot *ordering* effects in the calibration block. | have-ref — verified 2026-09-16 (PMLR, arXiv) |
+
+*Untested alternative left on the table:* whether the framing effect survives moving the focal
+country out of the opening/closing slots and into the evidence body. One additional run; not
+currently planned.
