@@ -9,7 +9,7 @@
 #
 # This file lifts *only* the bundle-producing compute out of those QMDs into plain functions, so
 # the bundles can be refreshed with one call — no knitr, no cache, no stale-param trap. The
-# figure/table prototypes stay in the QMDs as a notebook; they are no longer on Fig 1's path.
+# figure/table prototypes stay in the QMDs as a notebook; they are no longer on the MAE landscape's path.
 #
 # The compute is a faithful copy of the QMD chunks (same country-clustered bootstrap, seed 42,
 # n_boot = 2000, min_coders = 2). build_bundles.R and the QMDs must stay in lockstep; the 2019

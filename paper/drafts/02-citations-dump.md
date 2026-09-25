@@ -62,16 +62,38 @@ Source: `notes/anonymization-summarization-concept-origins.md`, `notes/name-swap
 General ML/NLP grounding for "strip the input and see if performance holds". Source:
 `notes/proposed-mechanism-tests.md` §7, `notes/anonymization-summarization-concept-origins.md`.
 
+**Where these go (2026-09-20).** Only Geirhos (and now McCoy 2024) belongs in the theory
+section; it is a claim about how models behave. The other five are *method* precedents that
+attach to specific conditions in the design (Codebook-only, the de-identification ladder, the
+name-swap) and read as clutter in theory, as justification in §4. Their BERT-era vintage does
+not matter there, because we borrow the experimental logic, not the finding.
+
+**The era answer for the framing half.** EJT flagged that this group is pre-LLM. Two modern
+successors located and verified 2026-09-20. **McCoy et al. 2024 (PNAS) is the pick** — same
+first author as the HANS paper below, so the pairing gives a through-line from "right for the
+wrong reasons" in 2019 to the LLM-era version. Du et al. is the review if one sentence should
+cover the whole modern literature instead.
+
 | Ref | Identifier | Note | Status |
 |---|---|---|---|
-| Geirhos et al. 2020, "Shortcut Learning in Deep Neural Networks", *Nature Machine Intelligence* 2(11):665–673 | doi:10.1038/s42256-020-00257-z | Highest-level "why" for anonymization / the reading-vs-shortcut framing. | have-ref (2026-08-30) |
+| Geirhos et al. 2020, "Shortcut Learning in Deep Neural Networks", *Nature Machine Intelligence* 2(11):665–673 | doi:10.1038/s42256-020-00257-z | Highest-level "why" for anonymization / the reading-vs-shortcut framing. Cross-domain (cows on grass, pneumonia classifiers keying on hospital markers); supplies the vocabulary — shortcut, Clever Hans behavior, i.i.d. vs o.o.d. testing — and the argument that in-distribution accuracy cannot tell you which rule was learned. Keep as the concept cite. | have-ref (2026-08-30) |
+| **McCoy, Yao, Friedman, Hardy & Griffiths 2024, "Embers of autoregression show how large language models are shaped by the problem they are trained to solve", *PNAS* 121(41): e2322420121** | doi:10.1073/pnas.2322420121 / arXiv:2309.13638 | **The modern evidence cite, and the answer to "is this still true of current models".** Argues next-token prediction leaves traces in behavior even on deterministic tasks, so accuracy depends on output probability and task frequency rather than task structure alone. The demonstration is quotable: GPT-4 counting items in a list is 97% accurate when the answer is 30 and 17% accurate when the answer is 29, because 30 is the more probable string. Same first author as McCoy et al. 2019 (HANS) below. PNAS also reads better to a PSC reviewer than an ACL venue. **Scope caveat:** this is about output probability and task frequency, not entity shortcuts — it supports "the training objective shapes behavior in ways accuracy does not reveal" (our framing claim), *not* "the model uses country names as a shortcut". Titles differ between arXiv and PNAS; cite the PNAS wording. | have-ref — PDF `_literature/McCoy et. al. 2024 - Embers of Autoregression (arXiv preprint of PNAS).pdf`. **Note: this is the arXiv preprint, 84pp with appendices** — pnas.org is behind Cloudflare and would not fetch. Pull the published PDF through the GW library before final submission; cite the PNAS version regardless. |
+| Du, He, Zou, Tao & Hu 2024, "Shortcut Learning of Large Language Models in Natural Language Understanding", *Communications of the ACM* 67(1): 110–120 | doi:10.1145/3596490 / arXiv:2208.11857 | The direct successor to Geirhos for the language case: LLMs rely on dataset bias and artifacts as shortcuts, with consequences for generalizability and adversarial robustness. It is a **review**, so it is the efficient cite if one sentence should cover the modern literature rather than a specific finding. Second choice behind McCoy; do not cite both unless the paragraph needs the survey. | have-ref — PDF `_literature/Du et. al. 2024 - Shortcut Learning of LLMs in NLU (CACM).pdf` (arXiv version, 10pp) |
 | Poliak et al. 2018, "Hypothesis Only Baselines in Natural Language Inference" | — | Input-ablation precedent (evaluate with half the input removed). Codebook-only analog. | verify |
 | Gururangan et al. 2018, "Annotation Artifacts in Natural Language Inference Data" | — | Models exploit artifacts, not the intended signal. | verify |
-| McCoy, Pavlick & Linzen 2019, "Right for the Wrong Reasons" (HANS) | — | Right answer, wrong mechanism — the whole motivation for the decomposition. | verify |
+| McCoy, Pavlick & Linzen 2019, "Right for the Wrong Reasons: Diagnosing Syntactic Heuristics in Natural Language Inference", *ACL 2019* | — | Right answer, wrong mechanism — the whole motivation for the decomposition. Identifies three heuristics NLI models use (lexical overlap, subsequence, constituent) and builds an adversarial set where they fail; models fall to near or below chance. The most quotable line in the group, and the 2019 half of the McCoy pairing (see McCoy et al. 2024 above). Method cite, so §4 not theory. | verify |
 | Kaushik, Hovy & Lipton 2020, "Learning the Difference that Makes a Difference with Counterfactually-Augmented Data" | — | Counterfactual data as diagnostic; supports the name-swap design. | verify |
-| Gardner et al. 2020, "Evaluating NLP Models via Contrast Sets" | — | Perturb the input minimally, watch the prediction. | verify |
+| Gardner, Artzi, Basmov, Berant, Bogin, Chen, Dasigi, Dua, Elazar, Gottumukkala, Gupta, Hajishirzi, Ilharco et al. 2020, "Evaluating Models' **Local Decision Boundaries** via Contrast Sets", *Findings of EMNLP 2020*, 1307–1323 | aclanthology 2020.findings-emnlp.117 / arXiv:2004.02709 | Perturb the input minimally, watch the prediction. Dataset authors perturb their own test instances just enough to flip the gold label; model accuracy drops far more than human accuracy. Parent for the name-swap. Method cite, so §4. **Title corrected 2026-09-20** — this group previously recorded it as "Evaluating NLP Models via Contrast Sets", which is not the published title. ~30 authors, so `et al.` throughout. | have-ref — PDF `_literature/Gardner et. al. 2020 - Evaluating Models' Local Decision Boundaries via Contrast Sets (Findings EMNLP).pdf`, verified 2026-09-20 against ACL Anthology |
 
-## E. Data contamination / leakage / temporal holdout (input leakage)
+**Also checked, not taken (2026-09-20):** Yuan, Zhao, Zhang, Zheng & Liu 2024, "Do LLMs Overcome
+Shortcut Learning? An Evaluation of Shortcut Challenges in Large Language Models"
+(arXiv:2410.13343) is the most directly on-point empirical test — modern LLMs still rely on
+shortcuts, and *larger* models are more susceptible under standard prompting, which rhymes with
+Zhu et al.'s "stronger models degrade faster" in §K. Held in reserve only because it is an
+unpublished preprint. There is also a 2024 survey on shortcut learning specifically in
+in-context learning (arXiv:2411.02018), unexamined, which may matter for the few-shot condition.
+
+## E. Data contamination / leakage 
 
 Source: `notes/data-leakage-contamination.md`, `notes/prior-work-experimental-contamination-tests.md`.
 
@@ -93,12 +115,16 @@ Source: `notes/anonymization-summarization-concept-origins.md`.
 | "Anonymization by Design of Language Modeling" | arXiv:2501.02407 | Anonymization-by-design LM; tooling citation. | have-ref (link only) |
 | Clinical / privacy de-identification tradition | — | Long tradition of training on de-identified text; motivation is privacy, not generalization — weaker parent, cite for completeness. | find (representative ref) |
 
-## G. Summarizing the evidence before scoring — common practice, and the leakage claim
+## G. Summarizing the evidence before scoring — established practice, and the leakage claim
 
 Two distinct points. (1) **Summarize-then-score is established practice** in LLM text
 measurement — Benoit et al. 2026 (group A) is the anchor: their whole method is an LLM summary
 of the source followed by LLM scoring of the summary. EJT: "maybe not to prevent leakage, but
-summarizing is common" — collect a few more examples. (2) **The leakage-prevention rationale**
+summarizing is common" — collect a few more examples. **Filled 2026-09-20**, with a caveat: in
+political science the practice is thinner than "common" implies. Two instances (Benoit;
+Maerz & Weidmann), one pre-LLM lineage (extract-then-score on the same country-report corpus),
+and two NLP parents whose motivation is cost and retrieval noise rather than leakage. Claim it
+is *established*, not that it is common. (2) **The leakage-prevention rationale**
 is a narrower political-science claim (a fresh paraphrase cannot carry a memorized
 country→label association) that `notes/anonymization-summarization-concept-origins.md` says to
 attribute to a specific source. No standard ML precedent for LLM-summary-as-*training*-input.
@@ -107,8 +133,11 @@ Frame our summarized result as a test of claim (2), positioned within practice (
 | Ref | Identifier | Note | Status |
 |---|---|---|---|
 | Benoit, De Marchi, C. Laver, M. Laver & Ma 2026 (group A) | doi:10.1111/ajps.70050 | Summarize-then-score as the method — practice anchor for (1). | have-ref — PDF in `_literature/` |
-| More examples of LLM-summarization / paraphrase of evidence text before coding | — | 2–3 additional cites for "this is common". | find |
-| The specific PS source(s) making the "summarize to prevent leakage" argument | — | Needed before submission. | find |
+| Maerz & Weidmann 2026 (group A) | — (V-Dem pilot / working paper) | **The V-Dem-side instance, same terrain as ours.** A web-enabled LLM generates verifiable, source-referenced background information per country-year-indicator, and that generated text is what the coder works from. The scorer is human rather than a model, but the architecture is ours: compress the sources, then judge the compression. Best second cite for (1). | have-ref — PDF `_literature/Maerz and Weidman 2026 - V-Dem pilot.pdf` |
+| Cordell, Clay, Fariss, Wood & Wright 2022 (*ISQ*); Park, Greene & Colaresi 2020 (*APSR*) | doi:10.1093/isq/sqac016; doi:10.1017/S0003055420000258 | **The pre-LLM lineage, already cited in `intro-citations.md` Move 1.** Both extract structured records (allegations; judged rights) from State Dept country reports and score or aggregate the extraction rather than the raw document. Extract-then-score is the older form of the same two-stage design, on the same source corpus we use. Worth one clause, because it shows the architecture predates the leakage worry entirely. | have-ref (via `intro-citations.md`) |
+| Xu, Shi & Choi 2024, "RECOMP: Improving Retrieval-Augmented LMs with Compression and Selective Augmentation", *ICLR 2024* | — | Compresses retrieved documents into summaries (extractive and abstractive) before the LM uses them. The closest NLP statement of "summarize the evidence before the model reads it". Motivation is retrieval noise and context length, not leakage — which helps us: compression before scoring is a recognized move made for ordinary reasons, and our contribution is asking what it does to the identity signal. **Recalled from memory 2026-09-20 (cutoff May 2026), not looked up; verify authors/venue/identifier.** | verify |
+| Jiang, Wu, Lin, Yang & Qiu 2023, "LLMLingua: Compressing Prompts for Accelerated Inference of Large Language Models", *EMNLP 2023* (+ LongLLMLingua follow-up) | — | Prompt compression before inference. Footnote-tier; include only if RECOMP needs company. Same caveat as RECOMP on motivation. **Recalled from memory 2026-09-20, not looked up; verify.** | verify |
+| The specific PS source(s) making the "summarize to prevent leakage" argument | — | Needed before submission. **Still not found as of 2026-09-20** — recommendation is to stop looking and not attribute it: state the leakage rationale as ours and let the summarized condition test it. | find (likely does not exist) |
 | Information bottleneck / feature-ablation (loose ML parents) | — | Only if we want an ML framing for compression-strips-nuisance-detail. | find |
 
 ## H. Persona prompting / silicon samples (why persona was the set-aside lever)
@@ -133,11 +162,39 @@ textbook.
 | Cross-entropy / proper scoring rules recover `p(y\|X)`; argmax = mode, `Σ y·p(y)` = mean | — | Textbook (e.g. Bishop, *PRML*). Cite a standard source for the one-prompt-many-labels → conditional-distribution fact. | find |
 | Loss determines the statistic (MSE→mean, L1→median, CE→distribution/mode) | — | Standard; may not need a cite, or fold into the above. | find |
 
-## J. Calibration — RLHF overconfidence, learning from disagreement / soft labels
+## J. Human disagreement as signal, and calibration to it
 
 Source: `notes/ft-calibration-overconfidence-finding.md` §4. **All memory-sourced, cutoff Jan
-2026 — every one needs verifying.** Heavier than the current arc may need; include only the
-subset the theory section actually leans on (criterion 2: "match the human error distribution").
+2026 — every one needs verifying, and no PDF for any of them is in `_literature/` as of
+2026-09-21.** Uma and Plank are the only two already in `references.bib`.
+
+**Promoted 2026-09-21.** This group was filed under "calibration" and treated as optional
+background. Under the two-estimands reframe (`notes/act1-reinterpretation-and-alternative-framing.md`)
+it becomes load-bearing: it is what licenses the claim that a synthetic coder should reproduce the
+*shape* of human disagreement rather than converge on a consensus label, and it carries the
+fine-tuning prediction. Pull and verify these before drafting the theory section.
+
+Three layers, and they do different jobs:
+
+- **J1. There is no single gold label** — the framing layer, and the one the list was missing.
+  These argue that annotator disagreement on a genuinely ambiguous item is a property of the item,
+  not annotator error, so collapsing to a majority label discards information. This is the general
+  form of the argument the V-Dem panel makes concrete.
+- **J2. Train on the spread** — the method layer. Training on disaggregated or soft labels
+  recovers the label distribution. Carries the fine-tuning prediction.
+- **J3. Instruction tuning destroys calibration** — the background layer, cited so the
+  fine-tuning result reads as restoring something known to be lost rather than as a discovery.
+
+### J1. There is no single gold label (framing) — all recalled 2026-09-21, none verified
+
+| Ref | Identifier | Note | Status |
+|---|---|---|---|
+| Aroyo & Welty 2015, "Truth Is a Lie: Crowd Truth and the Seven Myths of Human Annotation", *AI Magazine* 36(1) | — | The usual origin cite for "a single gold label misrepresents the task". Names the assumption — that each item has one correct annotation — as a myth rather than a simplification. **Recalled, not read. Confirm volume/pages/venue.** | verify |
+| Pavlick & Kwiatkowski 2019, "Inherent Disagreements in Human Textual Inferences", *TACL* 7 | — | The linguistics-side demonstration: annotator disagreement on inference items is *reproducible* — collect more annotators and the same split reappears — so it is a property of the item, not noise. Closest in spirit to the V-Dem panel's persistent spread. **Recalled, not read.** | verify |
+| Nie, Zhou & Bansal 2020, "What Can We Learn from Collective Human Opinions on Natural Language Inference Data?" (ChaosNLI), *EMNLP* | — | Collects ~100 labels per item and shows models matching the majority label still miss the label *distribution*. The direct analogue of "right MAE is not enough, the shape has to match". **Recalled, not read; label count especially needs checking.** | verify |
+| Cabitza, Campagner & Basile 2023, "Toward a Perspectivist Turn in Ground Truthing for Predictive Computing", *AAAI* | — | The programmatic statement of the position (the "perspectivist" data manifesto). Optional — include only if the paragraph wants a named research programme rather than individual findings. **Recalled, not read.** | verify |
+
+### J2–J3. Train on the spread, and what instruction tuning did to calibration
 
 | Ref | Identifier | Note | Status |
 |---|---|---|---|
@@ -163,13 +220,36 @@ on group B for the rest, and use Weidmann (group A) as the evidence that the cou
 real in this exact V-Dem setting. Mallen et al. is the useful bridge: parametric memory fails
 on the long tail / non-static facts, and that is exactly where supplied evidence should help.
 
+**The era problem, and the fix (2026-09-20).** EJT flagged that this group is dated: Lazaridou
+is Transformer-XL measured in perplexity, Luu and Dhingra are T5-scale, and our models are
+Llama 3.3, Qwen 2.5 and Gemma 3. The distinction that resolves it is between *concept* cites
+and *evidence* cites. Lazaridou states a structural fact (parametric knowledge is frozen at the
+cutoff) that does not depend on architecture, so cite it for the concept and never as evidence
+about our models. For the live claim, cite **Zhu et al. 2025** (below), which evaluates
+contemporary LLMs post-cutoff. Note also that the direction of change in the field cuts our
+way: instruction tuning, RAG and long contexts all predict that supplied evidence *should*
+dominate the prior in 2025 models, and our results say it does not. That makes the finding more
+surprising, not less, and it is a better framing than pretending the 2021 papers settle it.
+**Recommended set: Lazaridou (origin) + Zhu (current) + Mallen (bridge). Cut Luu and Dhingra,
+or footnote one.**
+
 | Ref | Identifier | Note | Status |
 |---|---|---|---|
-| Lazaridou et al. 2021, "Mind the Gap: Assessing Temporal Generalization in Neural Language Models", *NeurIPS 2021* | — | LMs degrade on text from after their training period. Core "knowledge is frozen at cutoff" cite. | verify |
-| Luu et al. 2022, "Time Waits for No One! Analysis and Challenges of Temporal Misalignment", *NAACL 2022* | — | Performance drops when eval data post-dates training data — "temporal misalignment". | verify |
-| Dhingra et al. 2022, "Time-Aware Language Models as Temporal Knowledge Bases", *TACL* | — | Facts change over time; a model trained on a snapshot gets time-sensitive facts wrong. | verify |
-| Kasai et al. 2023, "RealTime QA: What's the Answer Right Now?", *NeurIPS 2023* | — | LLMs falter on questions whose answers change over time. | verify |
-| Mallen et al. 2023, "When Not to Trust Language Models: Investigating the Effectiveness of Parametric and Non-Parametric Memories", *ACL 2023* | — | Parametric memory reliable for popular facts, poor for long-tail / less-static; retrieval helps most exactly there. Bridges movement **and** prominence, and motivates "evidence helps where the prior is weak or stale". | verify |
+| Lazaridou, Kuncoro, Gribovskaya, Agrawal, Liska, Terzi, Gimenez, de Masson d'Autume, Kocisky, Ruder, Yogatama, Cao, Young & Blunsom 2021, "Mind the Gap: Assessing Temporal Generalization in Neural Language Models", *Advances in Neural Information Processing Systems* 34 | arXiv:2102.01951 | **Concept cite.** LMs degrade on text from after their training period. Core "knowledge is frozen at cutoff" reference and the origin the rest of this group cites. Caveat: Transformer-XL, measured in perplexity on news and arXiv streams, so do **not** use it as evidence about Llama/Qwen/Gemma — pair with Zhu et al. for that. Fourteen authors, so `et al.` in text; "Mind the Gap" is a very common title, so carry the subtitle in the bib entry. NeurIPS proceedings are open access; the ACM DL record (10.5555/…) is metadata-only with no full text. | have-ref — PDF `_literature/Lazaridou et. al. 2021 - Mind the Gap.pdf`, verified 2026-09-20 against proceedings.neurips.cc |
+| **Zhu, Chen, Gao, Zhang, Tiwari & Wang 2025, "Is Your LLM Outdated? A Deep Look at Temporal Generalization", *NAACL 2025* (long, oral)** | aclanthology 2025.naacl-long.381 / arXiv:2405.08460 | **Evidence cite, and the answer to the era objection.** FreshBench evaluates on text published after each model's cutoff, so it is leakage-free by construction. Reports significant temporal bias and declining performance over time, plus two findings that bear on us directly: stronger models degrade *faster* in future generalization, and open-weight models show better long-term adaptability than closed ones (our three are all open-weight). Scope caveat: the task is next-token prediction and event forecasting on fresh text, not rating against a codebook, so it supports "the prior goes stale" and not "the prior goes stale in a measurement task". **Abstract and metadata verified 2026-09-20; body not yet read** — a search snippet attributed a GPT-4 post-cutoff drop of 18.54% vs 4.23% before, with GPT-3.5 / Qwen-2-7B / Llama-3-8B declining less, and that attribution is *unconfirmed*. Check the PDF before using any number. | have-ref — PDF `_literature/Zhu et. al. 2025 - Is Your LLM Outdated (NAACL).pdf` |
+| Mallen, Asai, Zhong, Das, Khashabi & Hajishirzi 2023, "When Not to Trust Language Models: Investigating the Effectiveness of Parametric and Non-Parametric Memories", *ACL 2023* | — | **The bridge.** Parametric memory reliable for popular facts, poor for long-tail / less-static; retrieval helps most exactly there. Bridges movement **and** prominence, and motivates "evidence helps where the prior is weak or stale". Keep. | have-ref — PDF `_literature/Mallen et. al. 2023 - When Not to Trust Language Models.pdf` (author list unverified) |
+| Kasai, Sakaguchi, Takahashi, Le Bras, Asai, Yu, Radev, Smith, Choi & Inui 2023, "RealTime QA: What's the Answer Right Now?", *Advances in Neural Information Processing Systems* 36, Datasets and Benchmarks Track | arXiv:2207.13332 | LLMs falter on questions whose answers change over time. A benchmark-and-platform paper (weekly-updated questions about current events), so cite for the phenomenon, not for a mechanism. Optional once Zhu is in. | have-ref — PDF `_literature/Kasai et. al. 2023 - RealTime QA (NeurIPS).pdf`, verified 2026-09-20 |
+| ~~Luu et al. 2022, "Time Waits for No One! Analysis and Challenges of Temporal Misalignment", *NAACL 2022*~~ | — | Performance drops when eval data post-dates training data ("temporal misalignment"). **Recommended cut 2026-09-20:** redundant with Lazaridou for our purposes and same era. Footnote-tier if kept. | have-ref — PDF in `_literature/` |
+| ~~Dhingra et al. 2022, "Time-Aware Language Models as Temporal Knowledge Bases", *TACL*~~ | — | Facts change over time; a model trained on a snapshot gets time-sensitive facts wrong. **Recommended cut 2026-09-20:** redundant with Lazaridou, T5-scale. | verify (no PDF) |
+
+**Checked and rejected 2026-09-20** (so nobody re-finds them): *Temporal Generalization: A
+Reality Check* (Madaan, Chopra & Cho, arXiv:2509.23487) is about interpolating and extrapolating
+model *parameters* under distribution shift, benchmarked on satellite imagery and yearbook
+photos — unrelated to knowledge cutoffs. *Factual Knowledge in Language Models: Robustness and
+Anomalies under Simple Temporal Context Variations* (Ammar Khodja et al., arXiv:2502.01220,
+TimeStress; best of 18 LMs perfectly distinguishes only 11% of facts) is relevant but is an ACL
+2025 **workshop** paper and is about associating facts with validity periods rather than stale
+priors.
 
 ## L. V-Dem measurement model, IRT, panel attrition (methods background)
 
@@ -258,3 +338,36 @@ not "instruction slots are privileged."
 *Untested alternative left on the table:* whether the framing effect survives moving the focal
 country out of the opening/closing slots and into the evidence body. One additional run; not
 currently planned.
+
+## P. Text (document) leakage — source evidence pre-encoded in the weights
+
+Added 2026-09-20. Group E turned out to be almost entirely *ground-truth* leakage (benchmark
+instances and their labels in pretraining), despite its header. The one exception is
+arXiv:2310.18018, whose taxonomy names **text contamination** as a separate category, which is
+row 2 of the summary table in `notes/data-leakage-contamination.md`: the State Department and
+Freedom House documents used as evidence packets are public and almost certainly in the
+pretraining corpora, so a model given one may be conditioning on its prior encoding of that
+document rather than reading it. Nothing else in either citation file covers this. Groups B, C
+and K are all row 3 (entity and fact priors), and group D supplies the *method* for testing it
+(hypothesis-only / input-ablation, which is what Codebook-only is) but not the phenomenon.
+
+**How much of this the paper needs.** Two cites, one sentence each. Carlini et al. establishes
+that documents in pretraining are memorized under exactly our conditions (heavy duplication
+across mirrors), so row 2 is a live concern rather than a hypothetical. Magar & Schwartz
+establishes that memorization and *exploitation* are separate questions, which is what licenses
+us to bound the effect and stop rather than run a probe. The Codebook-only vs. Evidence
+comparison bounds row 2 whatever its cause, and the Llama/2023 cells are structurally clean
+(cutoff December 2023, source documents published April 2024; see
+`notes/leakage-vs-prior-assessment.md` §3). Chang et al. and Shi et al. are the instruments if a
+reviewer insists on a direct document-level test; neither is currently planned.
+
+**All four are recalled, not verified.** Claude supplied them from memory (cutoff May 2026) on
+2026-09-20; no PDFs in `_literature/`. Confirm authors, venue, year and identifier against the
+published versions before any of them goes into `references.bib`.
+
+| Ref | Identifier | Note | Status |
+|---|---|---|---|
+| Magar & Schwartz 2022, "Data Contamination: From Memorization to Exploitation", *ACL 2022* (short) | — | **First choice.** Separates a model having memorized contaminated data from that memorization actually buying downstream performance, and finds the gap is large. This is the Gemma result stated as a general finding: Gemma's cutoff (August 2024) puts V-Dem v14 and the 2023 source documents inside its window, and it is still the *worst* base model on 2023 Codebook. Supplies the vocabulary for "exposure was available and bought nothing." | verify |
+| Carlini, Ippolito, Jagielski, Lee, Tramèr & Zhang 2023, "Quantifying Memorization Across Neural Language Models", *ICLR 2023* | arXiv:2202.07646 | **Second choice.** Memorization scales with model capacity, example duplication in the corpus, and context length. The duplication result is the one that matters here: State Dept country reports and Freedom in the World are mirrored across many sites, which is the condition under which verbatim memorization is strongest. Cite to make row 2 a real concern before bounding it. Carlini et al. 2021 (USENIX Security, "Extracting Training Data from Large Language Models") is the origin paper but 2023 is the better fit. | verify |
+| Chang, Cramer, Soni & Bamman 2023, "Speak, Memory: An Archaeology of Books Known to ChatGPT/GPT-4", *EMNLP 2023* | — | Name-cloze probe to test whether *specific documents* were in pretraining, with popularity driving memorization. Closest published analog to a document-level probe on a humanities-style corpus, and the popularity result rhymes with our prominence stratification. Instrument, not argument. | verify |
+| Shi, Ajith, Xia, Huang, Liu, Blevins, Chen & Zettlemoyer 2024, "Detecting Pretraining Data from Large Language Models", *ICLR 2024* (WikiMIA / Min-K% Prob) | arXiv:2310.16789 | The instrument if we ever want to test whether a given State Dept report was in a model's window. Transfers to our case better than Golchin & Surdeanu (§E), which assumes an instance is a text span with a remainder to compute ROUGE against and does not fit tabular coder ratings (see `notes/leakage-vs-prior-assessment.md` §6). Not planned. | verify |

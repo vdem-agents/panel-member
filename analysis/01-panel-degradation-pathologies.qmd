@@ -17,9 +17,11 @@ bias in published point estimates using volatility, TWFE levels, and first diffe
 respectively; they find small, regime-conditional effects but no systematic crisis in
 the raw scores. Analysis 4 is the primary result: using V-Dem's own published posterior
 standard deviations, it shows that panel size directly and robustly predicts IRT
-uncertainty, and that post-2013 attrition has raised average posterior SD by
-approximately 12% relative to the 2008–2010 peak. The case for augmentation rests on
-uncertainty, not bias.
+uncertainty, and that average posterior SD in the years V-Dem reports today runs about
+12% above its 2008–2010 low. Analysis 14 shows that gap is back-coding that has not
+arrived yet rather than a shrinking workforce, which makes it a standing feature of the
+leading edge rather than a decline. The case for augmentation rests on uncertainty, not
+bias.
 
 Indicator selection follows bridge-coder QMD 07: all 0–4 ordinal indicators in 2020 with
 at least 50 ratings, direction-coded from their correlation with v2x_polyarchy, with
@@ -158,6 +160,19 @@ cat("Flip (negative direction):", length(indicators_flip), "\n")
 cat("Working set:", length(working_indicators), "\n")
 
 rm(d2020, v2_cols, full_scale_cols, direction_df)
+
+# The 205 indicators the paper's results actually rest on, from helpers/
+# build_analysis_indicators.R. `working_indicators` above is a direction-coded SUBSET
+# (152) built for Analyses 1-3, which need a sign relative to polyarchy; its 0-4
+# full-range filter drops 64 indicators the paper does score. Descriptive panel-size
+# figures should describe the analytic sample, so they use `analysis_indicators`.
+analysis_indicators <- readRDS(here::here("data", "derived",
+                                          "analysis_indicators.rds"))$with_nr
+cat("Analytic set (scored by the paper):", length(analysis_indicators), "\n")
+cat("  also in the direction-coded working set:",
+    length(intersect(analysis_indicators, working_indicators)), "\n")
+cat("  scored but outside it:",
+    length(setdiff(analysis_indicators, working_indicators)), "\n")
 ```
 
 ```{r bridge-coders}
@@ -259,9 +274,16 @@ cat("Years:", range(panel_full$year), "\n")
 Before the regressions, two descriptive figures establish the structural problem.
 
 ```{r context-pyramid, fig.width = 9, fig.height = 4.5}
-# Okabe-Ito blue / vermillion, the repo's figure convention. Long form so the two
-# series carry a legend rather than being identified by colour in the subtitle.
-panel_full |>
+# Built from V-Dem's published _nr counts on the 205-indicator analytic set, so this
+# figure and the band chart below describe the same sample. (panel_full, used by
+# Analyses 1-3, stays on the 152 direction-coded indicators.)
+pyramid_dat <- vdemdata::vdem |>
+  select(country_text_id, year, any_of(paste0(analysis_indicators, "_nr"))) |>
+  filter(year >= 1990, year <= 2024) |>
+  pivot_longer(-c(country_text_id, year), names_to = "indicator", values_to = "n_coders") |>
+  filter(!is.na(n_coders))
+
+pyramid_dat |>
   group_by(year) |>
   summarise(Mean = mean(n_coders), Median = median(n_coders), .groups = "drop") |>
   pivot_longer(c(Mean, Median), names_to = "stat", values_to = "n") |>
@@ -269,21 +291,41 @@ panel_full |>
   geom_line(linewidth = 0.95) +
   geom_vline(xintercept = 2005, linetype = "dotted", colour = "grey40") +
   geom_vline(xintercept = 2013, linetype = "dotted", colour = "grey40") +
-  annotate("text", x = 2005, y = Inf, label = "2005\n(post-2013 recruit floor)",
+  annotate("text", x = 2005, y = Inf, label = "2005\n(recruit back-coding floor)",
            hjust = -0.1, vjust = 1.5, size = 3, colour = "grey40") +
-  annotate("text", x = 2013, y = Inf, label = "2013\n(attrition begins)",
+  annotate("text", x = 2013, y = Inf, label = "2013\n(original round ended 2012)",
            hjust = -0.1, vjust = 1.5, size = 3, colour = "grey40") +
   scale_colour_manual(values = c(Mean = "#0072B2", Median = "#D55E00"), name = NULL) +
   scale_linetype_manual(values = c(Mean = "solid", Median = "22"), name = NULL) +
   labs(
     title    = "Mean panel size by year, pooled across all country-indicator pairs (1990\u20132024)",
-    subtitle = "Pooled across all working indicators.",
+    subtitle = paste(length(analysis_indicators),
+                     "indicators \u2014 the set scored in the paper's runs."),
     x = "Year", y = "Coders per country-year"
   ) +
   theme_minimal(base_size = 12) +
   theme(legend.position = "bottom", panel.grid.minor = element_blank(),
         plot.title.position = "plot")
 ```
+
+Both vertical lines mark features of V-Dem's coding schedule rather than of its workforce.
+
+**2005** is where contemporary recruits stop back-coding. A newly recruited expert codes
+their country from 2005 to the present, so every later cohort adds to 2005 and after but
+not before it. That is the step in the line, not a change in how many people were working
+in 2005.
+
+**2013** is where V-Dem's original coding round ended. The codebook describes the
+contemporary period as "originally coded to 2012," with updates covering 2013-2024 added
+afterwards. 709 coders in v15 have 2012 as their last rating-year: they completed the
+original round and did not continue into the annual updates. They account for most of the
+step. Mean panel size falls 10.31 to 9.45 across that boundary; excluding those 709 coders
+it falls only 9.63 to 9.45.
+
+Analysis 14 takes this up directly: comparing successive releases at each one's own leading
+edge shows the active roster has been roughly flat since 2020, so the decline to the right
+of 2013 is years that have not yet accumulated their back-coders rather than a workforce
+that is shrinking.
 
 The figure above is a mean, which hides the shape of the distribution behind it: a mean of
 five is produced equally by every panel having five coders and by half having two and half
@@ -296,14 +338,14 @@ four coders, which is the zone V-Dem either warns against (1-3) or leaves below 
 recommended floor (4); blues are at or above the floor of five.
 
 ```{r context-bands, fig.width = 9.5, fig.height = 5.4}
-band_periods <- c(-Inf, 1899, 1944, 1989, 2004, 2015, Inf)
+band_periods <- c(-Inf, 1899, 1944, 1989, 2004, Inf)
 band_labels  <- c("19th century\n1789–1899", "Pre-war\n1900–44",
                   "Cold War\n1945–89", "Post-Cold War\n1990–2004",
-                  "Contemporary\n2005–15", "Recent\n2016–25")
+                  "Contemporary\n2005–2025")
 
 # Separate pull from unc_long, which is restricted to 1990-2024.
 band_dat <- vdemdata::vdem |>
-  select(country_text_id, year, any_of(paste0(working_indicators, "_nr"))) |>
+  select(country_text_id, year, any_of(paste0(analysis_indicators, "_nr"))) |>
   pivot_longer(-c(country_text_id, year), names_to = "indicator", values_to = "n_coders") |>
   filter(!is.na(n_coders)) |>
   mutate(
@@ -333,19 +375,19 @@ ggplot(band_summary, aes(period, prop, fill = band)) +
   geom_col(width = 0.72, colour = "white", linewidth = 0.4,
            position = position_fill(reverse = TRUE)) +
   geom_text(data = band_labels_lt5,
-            aes(period, y = 1.045, label = sprintf("%.1f%% < 5", pct_lt5)),
-            inherit.aes = FALSE, size = 3.2, colour = "grey25") +
+            aes(period, y = 1.04, label = sprintf("%.1f%%", pct_lt5)),
+            inherit.aes = FALSE, size = 3.2, colour = "grey25", fontface = "bold") +
   scale_fill_manual(values = band_pal, name = "Coders per\ncountry-indicator-year",
                     guide = guide_legend(reverse = FALSE, nrow = 1)) +
   scale_y_continuous(labels = scales::percent, breaks = seq(0, 1, 0.25),
-                     expand = expansion(mult = c(0.01, 0.07))) +
+                     expand = expansion(mult = c(0.01, 0.09))) +
   labs(
     title    = "Panel size is not one story: the distribution behind the mean",
-    subtitle = paste("Share of country-indicator-years at each panel size.",
-                     "Oranges fall below V-Dem's recommended floor of five coders."),
+    subtitle = paste("Share of country-indicator-years at each panel size; bold figures are",
+                     "the share below five.\nOranges fall below V-Dem's recommended floor."),
     x = NULL, y = "Share of country-indicator-years",
-    caption = paste0("152 working indicators; ",
-                     sum(band_dat$year < 1900 & !duplicated(band_dat$indicator)),
+    caption = paste0(length(analysis_indicators), " indicators scored in the paper's runs; ",
+                     n_distinct(band_dat$indicator[band_dat$year < 1900]),
                      " of them carry pre-1900 data, so the 19th-century column rests on a ",
                      "narrower indicator set.")
   ) +
@@ -369,6 +411,158 @@ band_summary |>
                  subtitle = "Rows sum to 100 across the six bands.")
 ```
 
+### Where the variation comes from
+
+The era figures above treat time as the source of thin panels. It is not the only one.
+Within the contemporary period, panel size varies across countries and across V-Dem's
+surveys as well, and these are separable: a country-indicator-year's panel size depends on
+who was recruited for that country, which survey the indicator belongs to, and how long the
+year has had to accumulate back-coders.
+
+V-Dem recruits at the **survey** level, not the indicator level. C-indicators are organised
+into 16 topical surveys grouped into five clusters, and the methodology notes that experts
+"code at least one cluster" and "most code one to two clusters" (methodology p. 16). So
+indicator-level variation is largely survey-level variation, and the survey is the unit that
+corresponds to an actual recruitment decision.
+
+```{r variation-country, fig.width = 10, fig.height = 5.8}
+library(ggrepel)
+
+var_dat <- vdemdata::vdem |>
+  select(country_text_id, year, any_of(paste0(analysis_indicators, "_nr"))) |>
+  filter(year >= 2005, year <= 2024) |>
+  pivot_longer(-c(country_text_id, year), names_to = "indicator", values_to = "n_coders") |>
+  filter(!is.na(n_coders)) |>
+  mutate(survey = substr(sub("_nr$", "", indicator), 1, 4))
+
+country_names_var <- read_csv(here::here("data", "processed", "ert.csv"),
+                              show_col_types = FALSE) |>
+  distinct(country_text_id, country_name)
+
+# Mean panel size and the share of cells under V-Dem's floor are related but not
+# redundant (r = -0.54), so the ranking carries the level and the colour carries the tail.
+country_var <- var_dat |>
+  group_by(country_text_id) |>
+  summarise(mean_n = mean(n_coders), pct_lt5 = mean(n_coders < 5) * 100, .groups = "drop") |>
+  left_join(country_names_var, by = "country_text_id") |>
+  mutate(country_name = coalesce(country_name, country_text_id)) |>
+  arrange(mean_n) |>
+  mutate(rank  = row_number(),
+         label = if_else(rank <= 6 | rank > n() - 6, country_name, NA_character_),
+         lt5_bin = cut(pct_lt5, c(-Inf, 1, 5, 10, 20, Inf),
+                       labels = c("<1%", "1–5%", "5–10%", "10–20%", ">20%")))
+
+lt5_pal <- c("<1%" = "#FDDBC7", "1–5%" = "#F4A582", "5–10%" = "#D55E00",
+             "10–20%" = "#A03F00", ">20%" = "#6B2900")
+
+ggplot(country_var, aes(rank, mean_n)) +
+  geom_hline(yintercept = 5, linetype = "22", colour = "grey55") +
+  annotate("text", x = nrow(country_var), y = 5,
+           label = "V-Dem's recommended floor of five", hjust = 1, vjust = -0.7,
+           size = 3, colour = "grey45") +
+  geom_point(aes(colour = lt5_bin), size = 1.9) +
+  geom_text_repel(aes(label = label), size = 3, colour = "grey20", na.rm = TRUE,
+                  nudge_x = ifelse(country_var$rank <= 6,  18, -18),
+                  nudge_y = ifelse(country_var$rank <= 6, 3.6, -3.6),
+                  direction = "y", hjust = ifelse(country_var$rank <= 6, 0, 1),
+                  segment.colour = "grey65", segment.size = 0.25,
+                  segment.alpha = 0.8, min.segment.length = 0, max.overlaps = Inf,
+                  box.padding = 0.5, point.padding = 0.3, seed = 1) +
+  scale_colour_manual(values = lt5_pal, name = "Share of that country's\ncells below five",
+                      guide = guide_legend(nrow = 1)) +
+  scale_y_continuous(breaks = seq(6, 16, 2)) +
+  # The label nudges expand the range downward; trim the empty band back off.
+  coord_cartesian(ylim = c(4.8, max(country_var$mean_n) + 0.4)) +
+  labs(title = "Mean panel size by country, 2005–2024",
+       subtitle = paste(nrow(country_var),
+                        "countries, ranked. Labels: the 6 thinnest and 6 thickest."),
+       x = "Country (ranked)", y = "Mean coders per country-indicator-year") +
+  theme_minimal(base_size = 12) +
+  theme(panel.grid.minor = element_blank(), panel.grid.major.x = element_blank(),
+        legend.position = "bottom", plot.title.position = "plot")
+```
+
+No country's *mean* falls below five — the United Arab Emirates sits lowest at 5.0, on the
+line. Sub-floor cells are therefore within-country variation rather than a set of
+permanently deficient countries, though the colouring shows the two are related: thin
+countries carry a much larger share of sub-floor cells.
+
+```{r variation-survey, fig.width = 11, fig.height = 5}
+library(patchwork)
+
+survey_labels <- c(
+  v2el = "Elections",       v2ps = "Political Parties", v2ex = "Executive",
+  v2lg = "Legislature",     v2dl = "Deliberation",      v2ju = "Judiciary",
+  v2cl = "Civil Liberty",   v2sv = "Sovereignty",       v2st = "The State",
+  v2cs = "Civil Society",   v2me = "Media",             v2pe = "Political Equality",
+  v2ca = "Civic & Academic Space", v2sm = "Digital Society"
+)
+
+# A survey's first year matters: one introduced in 2000 has had fewer recruitment rounds
+# to accumulate coders than one running from 1789, so youth and thinness are confounded.
+survey_start <- vdemdata::vdem |>
+  select(country_text_id, year, any_of(paste0(analysis_indicators, "_nr"))) |>
+  pivot_longer(-c(country_text_id, year), names_to = "indicator", values_to = "n_coders") |>
+  filter(!is.na(n_coders)) |>
+  mutate(survey = substr(sub("_nr$", "", indicator), 1, 4)) |>
+  group_by(survey) |>
+  summarise(first_year = min(year), .groups = "drop")
+
+survey_var <- var_dat |>
+  group_by(survey) |>
+  summarise(mean_n = mean(n_coders), n_ind = n_distinct(indicator), .groups = "drop") |>
+  left_join(survey_start, by = "survey") |>
+  mutate(name = paste0(survey_labels[survey], " (", n_ind, ")"),
+         later_start = first_year > 1789) |>
+  arrange(mean_n) |>
+  mutate(name = factor(name, levels = name))
+
+p_survey <- ggplot(survey_var, aes(mean_n, name)) +
+  geom_vline(xintercept = 5, linetype = "22", colour = "grey55") +
+  geom_segment(aes(x = 5, xend = mean_n, yend = name), colour = "grey75", linewidth = 0.5) +
+  geom_point(aes(colour = later_start), size = 3) +
+  geom_text(aes(label = sprintf("%.1f", mean_n)), hjust = -0.55, size = 2.9, colour = "grey25") +
+  scale_colour_manual(values = c(`FALSE` = "#0072B2", `TRUE` = "#D55E00"), name = NULL,
+                      labels = c(`FALSE` = "series starts 1789", `TRUE` = "series starts later")) +
+  scale_x_continuous(limits = c(5, 12.2), breaks = seq(5, 12, 1)) +
+  labs(title = "By survey", x = "Mean coders", y = NULL,
+       subtitle = "Mean panel size, 2005–2024 (indicators in parentheses)") +
+  theme_minimal(base_size = 11) +
+  theme(panel.grid.minor = element_blank(), panel.grid.major.y = element_blank(),
+        legend.position = "bottom", plot.title.position = "plot")
+
+var_r2 <- tibble(
+  source = c("Country", "Year", "Survey", "Indicator", "Country + indicator", "+ year"),
+  r2 = c(r2(feols(n_coders ~ 1 | country_text_id, var_dat), "r2"),
+         r2(feols(n_coders ~ 1 | year,            var_dat), "r2"),
+         r2(feols(n_coders ~ 1 | survey,          var_dat), "r2"),
+         r2(feols(n_coders ~ 1 | indicator,       var_dat), "r2"),
+         r2(feols(n_coders ~ 1 | country_text_id + indicator, var_dat), "r2"),
+         r2(feols(n_coders ~ 1 | country_text_id + indicator + year, var_dat), "r2")),
+  kind = c(rep("one predictor", 4), rep("cumulative", 2))
+) |> mutate(source = factor(source, levels = rev(source)))
+
+p_var <- ggplot(var_r2, aes(r2, source, fill = kind)) +
+  geom_col(width = 0.62) +
+  geom_text(aes(label = sprintf("%.3f", r2)), hjust = -0.2, size = 2.9, colour = "grey25") +
+  scale_fill_manual(values = c(`one predictor` = "#0072B2", cumulative = "grey70"), name = NULL) +
+  scale_x_continuous(limits = c(0, 0.78), expand = expansion(mult = c(0, 0.02))) +
+  labs(title = "What explains panel size?", x = "R²", y = NULL,
+       subtitle = "Share of variance in coders per cell, 2005–2024") +
+  theme_minimal(base_size = 11) +
+  theme(panel.grid.minor = element_blank(), panel.grid.major.y = element_blank(),
+        legend.position = "bottom", plot.title.position = "plot")
+
+(p_survey | p_var) + plot_layout(widths = c(1.25, 1))
+```
+
+The two thinnest surveys are also the two whose series begin after 1789 — Digital Society
+(from 2000) and Civic & Academic Space (from 1900), marked in vermillion. A survey
+introduced later has had fewer recruitment rounds to accumulate coders, so its youth and
+its thinness are not separable from this figure. Digital Society is also the largest survey
+by indicator count, at 32.
+
+
 
 ```{r context-regime, fig.width = 8, fig.height = 4.5}
 panel_full |>
@@ -386,7 +580,7 @@ panel_full |>
   scale_colour_brewer(palette = "Set1", name = NULL) +
   labs(
     title    = "Mean panel size by year and regime type (1990–2024)",
-    subtitle = "Autocracies have persistently thinner panels; all regime types show post-2013 attrition.",
+    subtitle = "Autocracies have persistently thinner panels; all regime types thin toward the leading edge.",
     x = "Year", y = "Mean coders per country-year"
   ) +
   theme_minimal(base_size = 12) +
@@ -408,7 +602,7 @@ baseline variance; region FEs absorb regional patterns in political volatility.
 M3 adds an interaction with the country's mean polyarchy (time-invariant, not absorbed
 by country FEs in a cross-sectional model) to test whether the volatility effect is
 concentrated in autocracies. M4 splits the panel-size predictor pre/post 2013 to ask
-whether the attrition era specifically drives the result.
+whether the post-2013 era specifically drives the result.
 
 ```{r vol-data}
 #| cache: true
@@ -520,7 +714,7 @@ size over time — primarily the post-2013 attrition.
 is absorbed by the country FE; only its interaction with `n_coders` is estimated. This
 interaction tests whether the within-country panel-size effect depends on a country's
 typical democracy level. The `n_coders:post2013` interaction tests whether the panel-size
-effect strengthened after attrition began, without dropping year FEs (the interaction
+effect strengthened after 2013, without dropping year FEs (the interaction
 varies cross-sectionally within years and is not collinear with year FEs).
 
 ```{r lev-regressions}
@@ -597,7 +791,7 @@ ggplot(
     title = "Thin panels push autocratic scores toward the floor",
     subtitle = paste0(
       "More coders raise raw means in autocracies and lower them in democracies, ",
-      "compressing scores toward the global center. Attrition has the opposite effect."
+      "compressing scores toward the global center. Thinning has the opposite effect."
     )
   ) +
   theme_minimal(base_size = 12)
@@ -787,8 +981,8 @@ data is needed here. The codebook notes explicitly: *"We strongly advise against
 observations based on three or fewer coders."*
 
 ```{r uncertainty-data}
-nr_cols <- paste0(working_indicators, "_nr")
-sd_cols <- paste0(working_indicators, "_sd")
+nr_cols <- paste0(analysis_indicators, "_nr")
+sd_cols <- paste0(analysis_indicators, "_sd")
 
 vdem_raw <- vdemdata::vdem |>
   select(country_text_id, year, any_of(c(nr_cols, sd_cols))) |>
@@ -802,7 +996,7 @@ unc_long <- vdem_raw |>
   ) |>
   rename(n_coders = nr, posterior_sd = sd) |>
   filter(!is.na(n_coders), !is.na(posterior_sd), n_coders >= 1,
-         indicator %in% working_indicators)
+         indicator %in% analysis_indicators)
 
 cat("Country-indicator-years:", nrow(unc_long), "\n")
 cat("Panel size range:", paste(range(unc_long$n_coders), collapse = "–"), "\n")
@@ -833,7 +1027,7 @@ ggplot(unc_binned, aes(x = n_bin, y = median_sd)) +
   geom_errorbar(aes(ymin = q25_sd, ymax = q75_sd), width = 0.25) +
   labs(
     title    = "Fewer coders → wider IRT posterior intervals",
-    subtitle = "Median posterior SD by panel size bin. Error bars = IQR. Pooled across ~150 working indicators, 1990–2024.",
+    subtitle = paste0("Median posterior SD by panel size bin. Error bars = IQR. Pooled across ", length(analysis_indicators), " scored indicators, 1990\u20132024."),
     x        = "Panel size (number of coders)",
     y        = "Posterior SD (V-Dem measurement model)"
   ) +
@@ -936,9 +1130,9 @@ ggplot(unc_year, aes(x = year, y = mean_sd)) +
   geom_smooth(method = "loess", span = 0.35, colour = "darkred", se = FALSE) +
   geom_vline(xintercept = 2013, linetype = "dashed", colour = "grey50") +
   annotate("text", x = 2014, y = max(unc_year$mean_sd) * 0.98,
-           label = "Post-2013 attrition", hjust = 0, size = 3.5, colour = "grey30") +
+           label = "Original coding round ends", hjust = 0, size = 3.5, colour = "grey30") +
   labs(
-    title    = "IRT uncertainty has risen with post-2013 panel attrition",
+    title    = "IRT uncertainty is highest in the years still accumulating coders",
     subtitle = "Mean posterior SD across all country-indicator-years, 1990–2024.",
     x        = NULL,
     y        = "Mean posterior SD"
@@ -1211,25 +1405,37 @@ mv_marg_adj |>
   )
 ```
 
-The second and third coders reduce posterior SD by 0.112 and 0.057. Every coder from the
-fourth onward falls between 0.003 and 0.028, and the sequence declines smoothly from there
-with no further step. The discontinuity in marginal value sits between three and four.
+Three features of the adjusted series, read off the table above.
 
-That step falls at the edge of V-Dem's warning zone: the two coders carrying outsized
-value are the second and third, so a panel of three or fewer is one still missing them.
-The marginal series and the ≤3 advice locate the same region.
+**The low end is not monotone.** The second coder's contribution is null
+(−0.011, CI −0.068 to +0.047), the third buys −0.042 (CI −0.077 to −0.007), and the
+fourth is null again and slightly positive (+0.005, CI −0.006 to +0.016).
 
-At the recommended floor the series is flat across it: the fifth coder buys 0.026 and the
-sixth buys 0.028, so the sixth is worth marginally more than the fifth. Posterior SD does
-not distinguish a panel that just reaches five from one that just misses. That is what the
-documentary record would predict for a staffing quota, which is set above the steep region
-by design rather than at it — the methodology notes they recruit seven expecting fall-off.
+**Every coder from the fifth through the fourteenth excludes zero**, beginning at −0.028
+(fifth) and −0.028 (sixth) and declining smoothly to −0.009 by the fourteenth. The
+fifteenth is exactly zero (CI −0.008 to +0.008). Cumulatively, going from four coders to
+nine buys 0.114; going from one to four buys 0.047.
 
-Two caveats on the left end. The n = 2 and n = 3 estimates rest on 1,282 and 2,988 cells
-against 65,158 at n = 6, and those cells concentrate in a small number of countries, so
-country-clustered intervals there are wide. And the step's location is a property of this
-outcome — posterior SD — not of point estimates, which Analyses 1-3 found panel size does
-not move.
+**The series does not step down at the recommended floor.** The fifth and sixth coders buy
+as much as any coder below them, and the decline toward zero runs from roughly the tenth
+onward rather than from the fifth.
+
+Two caveats before any of this is read as a dose-response. The n = 2 and n = 3 estimates
+rest on 616 and 3,038 cells against 85,581 at n = 6, and those cells concentrate in a small
+number of countries, so country-clustered intervals there are wide. More importantly the
+left end is *selected*, not merely noisy: contemporary cells with four or fewer coders are
+disproportionately leading-edge years and hard-to-recruit countries. The fixed effects
+absorb country, indicator and year main effects but not their interaction, and "this
+country in this year lost a coder" is exactly an interaction — so the 3–4–5 wobble, which
+sits where N jumps from 3,038 to 19,463, is better read as composition than as a property
+of panel size. Finally, the shape is a property of this outcome — posterior SD — not of
+point estimates, which Analyses 1-3 found panel size does not move.
+
+<!-- TODO (EJT): interpretation, and how it lands against the two published thresholds.
+Note that neither threshold was derived from this quantity: the ≤3 warning is a usage
+instruction whose stated empirical basis is unpublished, and five is a recruitment quota
+the methodology describes as a staffing target (p. 13, p. 16). Analysis 14 §7 has the
+provenance. -->
 
 
 ---
@@ -1262,16 +1468,124 @@ that could go the other way.
 
 The time series makes the practical consequence visible. Mean posterior SD fell
 continuously from 1990 to a minimum around 2008–2010 — the peak of the panel-size
-pyramid — then reversed sharply after 2013 as the initial coder cohort began to
-attrite. By 2024, average IRT uncertainty has risen by approximately 0.05 SD units,
-roughly 12% above the 2008–2010 minimum. The regression coefficient almost exactly
-predicts this observed rise: the ~4–5 coder reduction in mean panel size since 2013
-implies a +0.05–0.06 increase in posterior SD at the estimated −0.012 per coder.
+pyramid — then rose again through the years the current release reports most recently.
+By 2024, average IRT uncertainty sits approximately 0.05 SD units, or roughly 12%, above
+the 2008–2010 minimum, and the regression coefficient almost exactly accounts for it: the
+~4–5 coder difference in mean panel size implies a +0.05–0.06 increase at the estimated
+−0.012 per coder.
+
+What that rise is *not* is attrition. §3 and Analysis 14 establish that the active roster
+has been roughly flat since 2020 and that each year arrives about equally thin before
+filling in over subsequent releases. The recent years therefore carry wider posteriors
+because their panels have not finished accumulating, not because coders left — which makes
+the gap a permanent property of the leading edge rather than a trend, and one that the
+most recent data, the data users most want, will always sit inside.
 
 The argument for panel augmentation therefore rests on uncertainty, not bias. V-Dem
 expert panels were built to provide the IRT model with sufficient information to
-estimate latent democracy scores with reasonable precision. Post-2013 attrition has
-eroded that precision in a way that is measurable, monotone, and ongoing. The
-replacement experiment tests whether AI coders can rebuild effective panel size and
-reverse the uncertainty trend — using V-Dem's own posterior SD as the direct measure
-of whether the augmentation is working.
+estimate latent democracy scores with reasonable precision. At the leading edge that
+information has not yet arrived, in a way that is measurable and that recurs with every
+release. The replacement experiment tests whether AI coders can supply effective panel
+size where the human panel has not filled in — using V-Dem's own posterior SD as the
+direct measure of whether the augmentation is working.
+
+---
+
+## Appendix: combined context figure (experiment)
+
+An experiment in consolidation: the two context figures from §3 — panel size over time,
+and panel size across countries — as one two-panel figure. Both measure the same quantity,
+coders per country-indicator-year, so they share a y-axis; only the thing being varied
+differs. Panel A varies time, panel B varies country.
+
+The originals remain in §3. This is here to judge whether the combined version can replace
+them.
+
+```{r combined-context, fig.width = 13, fig.height = 5.6}
+ctx_ylim <- range(country_var$mean_n)
+
+# Regime comes from vdem directly rather than panel_full, so this panel uses the same
+# 205-indicator analytic set as panel B. Warm-to-cool ordering follows the regime scale
+# (closed autocracy -> liberal democracy); validated, worst normal-vision dE 15.6.
+regime_ctx <- vdemdata::vdem |>
+  select(country_text_id, year, v2x_regime,
+         any_of(paste0(analysis_indicators, "_nr"))) |>
+  filter(year >= 1990, year <= 2024, !is.na(v2x_regime)) |>
+  pivot_longer(-c(country_text_id, year, v2x_regime),
+               names_to = "indicator", values_to = "n_coders") |>
+  filter(!is.na(n_coders)) |>
+  mutate(regime = factor(v2x_regime, 0:3,
+                         labels = c("Closed autocracy", "Electoral autocracy",
+                                    "Electoral democracy", "Liberal democracy")))
+
+regime_pal <- c("Closed autocracy"    = "#D55E00", "Electoral autocracy" = "#E69F00",
+                "Electoral democracy" = "#56B4E9", "Liberal democracy"   = "#0072B2")
+
+p_ctx_time <- regime_ctx |>
+  group_by(year, regime) |>
+  summarise(mean_n = mean(n_coders), .groups = "drop") |>
+  ggplot(aes(year, mean_n, colour = regime)) +
+  geom_line(linewidth = 0.85) +
+  geom_vline(xintercept = c(2005, 2013), linetype = "dotted", colour = "grey45") +
+  annotate("text", x = 2005, y = Inf, label = "2005", hjust = -0.15, vjust = 1.6,
+           size = 2.9, colour = "grey40") +
+  annotate("text", x = 2013, y = Inf, label = "2013", hjust = -0.15, vjust = 1.6,
+           size = 2.9, colour = "grey40") +
+  scale_colour_manual(values = regime_pal, name = NULL,
+                      guide = guide_legend(nrow = 2)) +
+  coord_cartesian(ylim = ctx_ylim) +
+  labs(title = "A. Over time, by regime type",
+       subtitle = paste("Autocracies run persistently thinner. Dotted lines: the",
+                        "back-coding floor\nand the end of the original coding round."),
+       x = "Year being rated", y = "Coders per country-indicator-year") +
+  theme_minimal(base_size = 11) +
+  theme(legend.position = "bottom", panel.grid.minor = element_blank(),
+        plot.title.position = "plot")
+
+# Labels are placed at explicit coordinates rather than by repel-with-nudges. The curve
+# runs corner to corner, so the two clear regions are the wedge ABOVE it on the left and
+# the wedge BELOW it on the right. Thin-country labels go in the first, thick-country in
+# the second, each as an evenly spaced column with a drawn leader line. Longest labels sit
+# furthest from the curve, since text extends horizontally into it.
+ctx_lab <- country_var |>
+  filter(rank <= 6 | rank > n() - 6) |>
+  mutate(side = if_else(rank <= 6, "thin", "thick")) |>
+  group_by(side) |>
+  # within a side, longest text gets the position furthest from the curve
+  arrange(desc(nchar(country_name)), .by_group = TRUE) |>
+  mutate(
+    slot  = row_number(),
+    # Thick-country labels fan left as they RISE. The points sit together in the top-right
+    # corner, so a label placed low and far left needs a long leader line that would cross
+    # every label between it and its point. Anchoring the lowest label furthest right keeps
+    # each leader line to the right of the labels below it, so none are crossed.
+    lab_x = if_else(side == "thin", 20, 176 - (slot - 1) * 4.6),
+    lab_y = if_else(side == "thin", 13.2 - (slot - 1) * 0.72,
+                                     6.4 + (slot - 1) * 0.72),
+    hj    = if_else(side == "thin", 0, 1)
+  ) |>
+  ungroup()
+
+p_ctx_country <- ggplot(country_var, aes(rank, mean_n)) +
+  geom_hline(yintercept = 5, linetype = "22", colour = "grey55") +
+  annotate("text", x = 55, y = 5, label = "V-Dem's floor of five",
+           hjust = 0, vjust = -0.7, size = 2.9, colour = "grey45") +
+  geom_segment(data = ctx_lab,
+               aes(x = rank, y = mean_n, xend = lab_x, yend = lab_y),
+               colour = "grey70", linewidth = 0.22, inherit.aes = FALSE) +
+  geom_point(aes(colour = lt5_bin), size = 1.6) +
+  geom_text(data = ctx_lab, aes(x = lab_x, y = lab_y, label = country_name, hjust = hj),
+            size = 2.7, colour = "grey20", inherit.aes = FALSE) +
+  scale_colour_manual(values = lt5_pal, name = "Cells below five",
+                      guide = guide_legend(nrow = 1)) +
+  coord_cartesian(ylim = c(4.8, 15.8), xlim = c(-2, 184)) +
+  labs(title = "B. Across countries",
+       subtitle = paste(nrow(country_var),
+                        "countries, 2005–2024, ranked. Labels: 6 thinnest and 6 thickest."),
+       x = "Country (ranked)", y = NULL) +
+  theme_minimal(base_size = 11) +
+  theme(legend.position = "bottom", panel.grid.minor = element_blank(),
+        panel.grid.major.x = element_blank(), plot.title.position = "plot")
+
+(p_ctx_time | p_ctx_country) + plot_layout(widths = c(1, 1.1))
+```

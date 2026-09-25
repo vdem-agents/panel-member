@@ -1,5 +1,7 @@
-# build_priorreliance.R — Figure 4 (prior reliance): Panel A (Identity x Compression 2x2,
-# base models) + Panel B (name-swap tracking, base + fine-tuned). See
+# build_priorreliance.R — the prior-reliance bundles: Panel A (Identity x Compression 2x2,
+# base models) + Panel B (name-swap tracking, base + fine-tuned). Panel B is what the paper
+# still reads, rescaled, in the name-swap figure (chunk `fig-nameswap-rescaled`); Panel A's
+# 2x2 is no longer rendered. See
 # notes/mockups/prior-reliance-fig-concept.md for the full design rationale.
 #
 # Panel A — Identity x Compression 2x2, base models only, 2023, three families. Four cells per

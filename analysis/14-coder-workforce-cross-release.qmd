@@ -289,8 +289,9 @@ turnover |>
   theme(panel.grid.minor = element_blank(), plot.title.position = "plot")
 ```
 
-Exits run at roughly 120–220 a year against a standing pool of about 4,000 — near 4%
-annual turnover. Section 2's flat leading-edge series is what tells us these are being
+Exits run at roughly 120–220 a year through 2022 against a standing pool of 4,005 — 3 to
+5% annual turnover — with 358 in 2023, or 8.9%. (2013 shows 2 because the original coding
+round ended in 2012, so almost no one's last rating-year falls there.) Section 2's flat leading-edge series is what tells us these are being
 replaced; turnover alone cannot distinguish replacement from decline.
 
 ### Threshold shortfall
@@ -299,30 +300,124 @@ The same two readings as Section 5. The blue line is what V16 reports today for 
 year; the vermillion points are what each release reported at its own leading edge, before
 back-coding had filled anything in.
 
-```{r fig-shortfall, fig.width = 9, fig.height = 4.8, dev = "png", dpi = 200}
-sf_plot <- bind_rows(
-  sf_year |> transmute(year, pct = pct_lt_5, series = "As reported by V16 (2026)"),
-  sf_edge |> transmute(year = edge_year, pct = pct_lt_5,
-                       series = "Measured at the time (each release's edge)")
-)
+```{r fig-combined, fig.width = 12, fig.height = 5.4, dev = "png", dpi = 200}
+library(patchwork)
 
-ggplot(sf_plot, aes(year, pct, colour = series)) +
-  geom_line(data = ~filter(.x, series == "As reported by V16 (2026)"), linewidth = 1) +
-  geom_line(data = ~filter(.x, series != "As reported by V16 (2026)"),
-            linewidth = 1, linetype = "22") +
-  geom_point(data = ~filter(.x, series != "As reported by V16 (2026)"), size = 2.4) +
-  scale_colour_manual(values = c("As reported by V16 (2026)" = OKABE_BLUE,
-                                 "Measured at the time (each release's edge)" = OKABE_VERM),
-                      name = NULL) +
-  scale_y_continuous(labels = function(x) paste0(x, "%")) +
-  labs(title = "Share of country-indicator cells below V-Dem's recommended floor of five coders",
-       subtitle = sprintf("All %d indicators carrying an _nr column. Constant country set for the edge series.",
-                          attr_dat$meta$n_indicators),
-       x = "Year being rated", y = "Cells with fewer than 5 coders") +
-  theme_minimal(base_size = 12) +
-  theme(legend.position = "bottom", panel.grid.minor = element_blank(),
-        plot.title.position = "plot")
+band_pal <- c("1" = "#5A2800", "2" = "#C25600", "3" = "#F09A4A",
+              "4" = "#FBD9BE", "5–8" = "#8ECFEE", "9+" = OKABE_BLUE)
+
+# ---- Panel A: the distribution across eras ----------------------------------
+era_cuts <- c(-Inf, 1899, 1944, 1989, 2004, Inf)
+era_labs <- c("19th c.\n1789–1899", "Pre-war\n1900–44", "Cold War\n1945–89",
+              "Post-Cold War\n1990–2004", "Contemporary\n2005–2025")
+
+era_dat <- vdemdata::vdem |>
+  select(country_text_id, year, any_of(paste0(attr_dat$meta$indicators, "_nr"))) |>
+  pivot_longer(-c(country_text_id, year), names_to = "indicator", values_to = "n_coders") |>
+  filter(!is.na(n_coders)) |>
+  mutate(era  = cut(year, era_cuts, labels = era_labs),
+         band = cut(n_coders, c(0, 1, 2, 3, 4, 8, Inf),
+                    labels = c("1", "2", "3", "4", "5–8", "9+")))
+
+era_summary <- era_dat |> count(era, band) |> group_by(era) |>
+  mutate(prop = n / sum(n)) |> ungroup()
+era_tops <- era_dat |> group_by(era) |>
+  summarise(pct_lt5 = mean(n_coders < 5) * 100, .groups = "drop")
+
+p_era <- ggplot(era_summary, aes(era, prop, fill = band)) +
+  geom_col(width = 0.72, colour = "white", linewidth = 0.4,
+           position = position_fill(reverse = TRUE)) +
+  geom_text(data = era_tops, aes(era, y = 1.04, label = sprintf("%.0f%%", pct_lt5)),
+            inherit.aes = FALSE, size = 3, colour = "grey25", fontface = "bold") +
+  scale_fill_manual(values = band_pal, name = "Coders per cell",
+                    guide = guide_legend(nrow = 1)) +
+  scale_y_continuous(labels = scales::percent, breaks = seq(0, 1, 0.25),
+                     expand = expansion(mult = c(0.01, 0.09))) +
+  labs(title = "A. Across V-Dem's history",
+       subtitle = "Distribution of panel sizes; bold = share below five",
+       x = NULL, y = "Share of cells") +
+  theme_minimal(base_size = 11) +
+  theme(legend.position = "bottom", panel.grid.major.x = element_blank(),
+        panel.grid.minor = element_blank(), plot.title.position = "plot")
+
+# ---- Panel B: the same year, before and after back-coding --------------------
+# cycle 0 = as first published; the last cycle = as the current release reports it.
+# The most recent year has only cycle 0, so its two bars are equal -- a year that has
+# had no opportunity to fill.
+pair_bars <- attr_dat$trajectory |>
+  group_by(cohort_year) |>
+  summarise(`At first publication` = pct_lt_5[cycle == 0],
+            `As V16 reports it`    = pct_lt_5[cycle == max(cycle)],
+            cycles = max(cycle), .groups = "drop") |>
+  pivot_longer(c(`At first publication`, `As V16 reports it`),
+               names_to = "when", values_to = "pct") |>
+  mutate(when = factor(when, levels = c("At first publication", "As V16 reports it")))
+
+p_pairs <- ggplot(pair_bars, aes(factor(cohort_year), pct, fill = when)) +
+  geom_hline(yintercept = attr_dat$settled_ref, linetype = "22", colour = "grey50") +
+  geom_col(position = position_dodge(width = 0.74), width = 0.68) +
+  geom_text(aes(label = sprintf("%.0f", pct)), position = position_dodge(width = 0.74),
+            vjust = -0.45, size = 2.7, colour = "grey25") +
+  geom_text(data = distinct(pair_bars, cohort_year, cycles),
+            aes(x = factor(cohort_year), y = -3.4,
+                label = ifelse(cycles == 0, "none", as.character(cycles))),
+            inherit.aes = FALSE, size = 2.7, colour = "grey45") +
+  scale_fill_manual(values = c("At first publication" = OKABE_VERM,
+                               "As V16 reports it"    = OKABE_BLUE),
+                    name = NULL, guide = guide_legend(nrow = 1)) +
+  scale_y_continuous(labels = function(x) paste0(x, "%"), limits = c(-5, 49),
+                     breaks = seq(0, 40, 10)) +
+  labs(title = "B. Within the contemporary era",
+       subtitle = sprintf(paste("Share below five, before and after back-coding.",
+                                "Dashed line = settled level, %.1f%%.",
+                                "\nNumber below each pair = release cycles elapsed."),
+                          attr_dat$settled_ref),
+       x = "Year being rated", y = "Cells below five") +
+  theme_minimal(base_size = 11) +
+  theme(legend.position = "bottom", panel.grid.major.x = element_blank(),
+        panel.grid.minor = element_blank(), plot.title.position = "plot")
+
+(p_era | p_pairs) + plot_layout(widths = c(1, 1.15))
 ```
+
+Panel A places the contemporary era against V-Dem's whole history: 5% of contemporary
+cells fall below the floor, against 20% post-Cold War and 100% in the 19th century.
+
+Panel B shows that the 5% is an average over years at very different stages. The
+vermillion bars bounce between 23% and 41% with no trend — **every year arrives about
+equally thin.** The blue bars ramp 3, 4, 6, 8, 12, 18, 41, purely as a function of how
+many release cycles each has had. The most recent year has had none, so its bars are equal.
+
+So V-Dem reaches its own five-coder target by back-coding rather than by recruiting five
+at the time of coding. The codebook concedes the target is missed "for a few
+country-variable combinations"; at the leading edge it is missed for between a fifth and
+two-fifths of them.
+
+```{r trajectory-table}
+attr_dat$trajectory |>
+  select(cohort_year, cycle, pct_lt_5) |>
+  pivot_wider(names_from = cycle, values_from = pct_lt_5, names_prefix = "cycle ") |>
+  rename(`Year rated` = cohort_year) |>
+  kable(caption = sprintf(paste("Share of cells below five, by release cycles since the year",
+                                "was the leading edge. Settled reference (%s): %.2f%%."),
+                          paste(attr_dat$meta$settled_years, collapse = "–"),
+                          attr_dat$settled_ref))
+```
+
+Read down the columns rather than across: whatever a year starts at — the cohorts enter
+between 23.1% and 40.9% — one release cycle takes it to 14–18% and two to 9–12%. The
+convergence is nearly independent of starting depth, which makes the size of the gap
+forecastable rather than idiosyncratic.
+
+The one-cycle drop and the slow decline afterwards are different things. A coder already
+assigned to a country-survey who submits after the press date appears in the very next
+release; a coder recruited two years later and back-coding arrives gradually. So roughly
+half to two-thirds of the apparent edge shortfall is a press-date artefact rather than a
+staffing one — and the residual is what recruitment has not covered.
+
+Convergence is not quick either way. The 2019 cohort has had six release cycles and sits at
+3.05%, still 2.2 times the settled level of 1.41%. No cohort in the observed window has
+finished filling.
 
 ```{r shortfall-tables}
 sf_year |>
@@ -337,12 +432,13 @@ sf_edge |>
   kable(caption = "At each release's own leading edge: shortfall before any back-coding")
 ```
 
-Two readings sit side by side here. Within V16, the shortfall is near 7% for settled
-years and rises to 21% at 2024 — the back-coding gradient of Section 5, expressed as a
+Two readings sit side by side here. Within V16, the shortfall is near 1.4% for settled
+years and rises to 18.3% at 2024 — the back-coding gradient of Section 5, expressed as a
 share rather than a mean. At the leading edge, where no back-coding has occurred, the
-shortfall has run between 24% and 42% in every release since V10, with V16 the highest
-since V10.
+shortfall has run between 23% and 41% in every release since V10, and V16 is the highest
+of the seven.
 
-Note the indicator set: these figures use every indicator carrying an `_nr` column. An
-analysis restricted to a narrower working set will produce different levels, and
-`build_coder_attrition()` takes an `indicators` argument for that purpose.
+Note the indicator set: these figures use the 205 indicators the paper scores, which is
+`build_coder_attrition()`'s default. Running it across every indicator carrying an `_nr`
+column, or across a narrower working set, will produce different levels; the `indicators`
+argument takes either.

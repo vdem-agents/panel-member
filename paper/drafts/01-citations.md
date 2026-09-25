@@ -1,19 +1,5 @@
 # Introduction citations: the synthetic coding literature
 
-*Assembled 2026-09-07 for the Introduction's literature paragraphs. Organized as the narrative
-arc rather than by topic, so each entry sits where it is meant to be used. Sources inventoried
-from `satp/code-satp/literature/` and `papers/*/nlp-coding.bib`, `v-dem-coding/_literature/`,
-and the `2010 Measuring Labor Rights` manuscript folder.*
-
-*Companion file: `theory-citations.md` in this directory covers the theory section, organized as
-groups A through N. This one covers the Introduction.*
-
-*Mini-abstracts below are taken from the papers themselves (PDF text), not from memory, except
-where an entry is explicitly marked as unverified. Where a paper's own framing matters to how we
-should cite it, that is called out under **Use**.*
-
----
-
 ## The arc in one paragraph
 
 Machine coding of expert source documents is not new, and work in the human rights literature
@@ -23,8 +9,6 @@ expert labels enough that substitution has become a live option. That work has n
 several of the flagship expert-coded measures. Validation in this literature, however, remains
 largely correlational, and agreement with expert coders does not by itself distinguish a model
 that reads the documents from one that draws on what it already knows about the country.
-
----
 
 ## Move 1. Machine coding of expert sources predates LLMs
 
@@ -288,7 +272,7 @@ whether the model reads that evidence at all. Note their observation that coders
 required to explain upon which factual information they base their coding," which is the human
 mirror of our problem and pairs with the Greene/Park/Colaresi quote in Move 1.
 
-### Halterman & Keith. 2025. *Political Analysis*
+### Halterman & Keith. 2026. *Political Analysis* 34(2): 188–204
 
 doi:10.1017/pan.2025.10017. They curate three real-world political science codebooks (protest
 events, political violence, manifestos) with their unstructured texts and human-coded labels,
@@ -428,7 +412,7 @@ papers already cited.*
 
 Existing interventions on the model side, all aimed at raising agreement:
 
-- **@halterman2025b.** Supervised instruction-tuning substantially improves codebook-following
+- **@halterman2026.** Supervised instruction-tuning substantially improves codebook-following
   for open-weight models. This is an upstream intervention on the model itself, and the closest
   published precedent for our fine-tuning lever.
 - **Weidmann, Faulborn & García 2025.** Combining two LLM codings offsets the opposing

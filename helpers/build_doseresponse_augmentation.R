@@ -1,5 +1,5 @@
 # ─── RETIRED ──────────────────────────────────────────────────────────────
-# Superseded by helpers/build_fliprate.R when Figure 7 moved from mean shift to verdict
+# Superseded by helpers/build_fliprate.R when the deployment figure moved from mean shift to verdict
 # flips. The figure slot named on the next line is STALE: nothing in
 # paper/figures-and-tables.qmd renders this bundle any more (see its line 137). The live
 # deployment figure is fig_fliprate_quad. The bundle is still built and loaded because the
@@ -12,7 +12,7 @@
 # and MEASURES churn against those real held-out coders, in one parameterised script whose
 # --mechanic switch drives both the augmentation and degradation arms.
 # ─────────────────────────────────────────────────────────────────────────
-# build_doseresponse_augmentation.R — Figure 8, Panel B. How does the augmentation
+# build_doseresponse_augmentation.R — NOT CURRENTLY RENDERED (see above); Panel B. How does the augmentation
 # shift (build_augmentation.R's k=1 quantity) scale as k grows? Thin 2023 panels (2-8
 # coders), k=1..4 AI seats added (panel grows to n+k). Promoted from notes/mockups/
 # tipping-point-augmentation-mockup.R -- called "dose-response" throughout, not

@@ -1,5 +1,5 @@
 # ─── RETIRED ──────────────────────────────────────────────────────────────
-# Superseded by helpers/build_fliprate.R when Figure 7 moved from mean shift to verdict
+# Superseded by helpers/build_fliprate.R when the deployment figure moved from mean shift to verdict
 # flips. The figure slot named on the next line is STALE: nothing in
 # paper/figures-and-tables.qmd renders this bundle any more (see its line 137). The live
 # deployment figure is fig_fliprate_quad. The bundle is still built and loaded because the
@@ -12,7 +12,7 @@
 # and MEASURES churn against those real held-out coders, in one parameterised script whose
 # --mechanic switch drives both the augmentation and degradation arms.
 # ─────────────────────────────────────────────────────────────────────────
-# build_degradation.R — Figure 8, Panel B. Does replacing one human coder with the AI
+# build_degradation.R — NOT CURRENTLY RENDERED (see above); Panel B. Does replacing one human coder with the AI
 # on a healthy 2023 panel (n>=9, matching the panel-degradation pathologies analysis's
 # own pool split) shift the panel mean? Panel size held FIXED — models attrition: a
 # healthy panel loses a coder and an AI fills the seat, rather than a thin panel

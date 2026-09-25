@@ -1,5 +1,5 @@
 # ─── RETIRED ──────────────────────────────────────────────────────────────
-# Superseded by helpers/build_fliprate.R when Figure 7 moved from mean shift to verdict
+# Superseded by helpers/build_fliprate.R when the deployment figure moved from mean shift to verdict
 # flips. The figure slot named on the next line is STALE: nothing in
 # paper/figures-and-tables.qmd renders this bundle any more (see its line 137). The live
 # deployment figure is fig_fliprate_quad. The bundle is still built and loaded because the
@@ -12,7 +12,11 @@
 # and MEASURES churn against those real held-out coders, in one parameterised script whose
 # --mechanic switch drives both the augmentation and degradation arms.
 # ─────────────────────────────────────────────────────────────────────────
-# build_doseresponse_degradation.R — Appendix A9, Panel B. Companion to
+# build_doseresponse_degradation.R — feeds fig_degradation_combined(), Panel B. NOT CURRENTLY
+# RENDERED: the deployment figures moved from mean-shift to verdict changes (build_fliprate.R),
+# and this bundle is retained only because the mean-shift estimator is (signed deviation)/(n+1)
+# and its numbers are still quotable in prose. Referred to by function rather than by appendix
+# number, which has drifted twice. Companion to
 # build_doseresponse_augmentation.R for the degradation mechanic: healthy 2023 panels
 # (n>=9), k=1..6 human seats replaced with AI (panel size held fixed). Promoted from
 # notes/mockups/tipping-point-degradation-mockup.R. Same three regimes, same "human

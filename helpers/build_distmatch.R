@@ -3,8 +3,9 @@
 #
 # This lifts the Test-3 (difficulty-tracking slope) compute out of QMD 07 into a plain function
 # and generalizes it past QMD 07's Llama-only cell list to all three model families
-# (Llama 70B / Qwen 72B / Gemma 27B). It is the compute layer behind paper Figure 2 — the twin
-# of Figure 1 that disaggregates the greedy-readout cluster along the dimension MAE can't see:
+# (Llama 70B / Qwen 72B / Gemma 27B). It is the compute layer behind the difficulty-tracking
+# figure (chunk `fig-crossmodel-slope`) — the twin of the cross-model MAE figure (chunk
+# `fig-crossmodel`) that disaggregates the greedy-readout cluster along the dimension MAE can't see:
 # does the synthetic coder err on the same cases a human finds hard?
 #
 #   difficulty  h_c = within-cell human LOO MAE (how much real coders disagreed on that CYI)
@@ -17,9 +18,10 @@
 # here.
 #
 # Source of cells: data/output/runs/<runs-subdir>/. For 2019 that is `expectation` — the only
-# directory that carries every Fig-1 cell (Llama base+FT, Qwen/Gemma FT-raw) in one place; the
+# directory that carries every `fig-crossmodel` cell (Llama base+FT, Qwen/Gemma FT-raw) in one place; the
 # greedy `rating` lives in those files alongside `rating_dist`, which is ignored here. Qwen/Gemma
-# BASE cells are pending reruns, so Fig 2's base block shows Llama until they land (== Fig 1).
+# BASE cells are pending reruns, so the slope figure's base block shows Llama until they land
+# (matching `fig-crossmodel`).
 #
 # Faithfulness: the point estimates reproduce QMD 07's dm_slope exactly (a cell's slope uses only
 # that cell's rows on the all-ones apparent draw), and the CIs match when the country universe is
@@ -203,7 +205,7 @@ build_distmatch_bundle <- function(proj_root,
   if (write) {
     dir.create(out_dir, showWarnings = FALSE, recursive = TRUE)
     # NB: distinct from analysis/07's Llama-only distmatch_{year}.rds (rich: W1, strata, curves).
-    # This is the cross-model slope bundle the paper's Fig 2 reads; keep the names separate so a
+    # This is the cross-model slope bundle `fig-crossmodel-slope` reads; keep the names separate so a
     # rebuild here never clobbers QMD 07's frozen archive.
     path <- file.path(out_dir, glue("distmatch_slope_{year}.rds"))
     saveRDS(bundle, path)

@@ -15,7 +15,7 @@ library(patchwork)   # side-by-side composite for the two-panel Figure 2
 # Categorical palette (family_pal, readout_pal) is defined once in R/bootstrap_helpers.R,
 # which the paper gallery sources before this file.
 
-# Fig 1.1 — synthetic-coder MAE landscape, greedy (mode) vs expectation (mean).
+# The MAE landscape (single-model) — synthetic-coder MAE landscape, greedy (mode) vs expectation (mean).
 # Seven cells (base ladder Cb/Ev/An/Su + the FT diagonal) x two readouts, against
 # the rounding-floor / persistence / human-LOO rails, with an optional +/-SESOI
 # band around the human-LOO line.
@@ -97,7 +97,7 @@ fig_readout_landscape <- function(exp_bundle, greedy_bundle,
           panel.grid.major.y = element_blank(), plot.title.position = "plot")
 }
 
-# Fig 1 (cross-family) — synthetic-coder MAE across three model families, both readouts on one
+# The MAE landscape, cross-family (chunk `fig-crossmodel`) — synthetic-coder MAE across three model families, both readouts on one
 # axis. Rows = 8: the base few-shot ladder (Cb/Ev/An/Su) on top, the FT-raw ladder (raw-text
 # adapter under the same four conditions) on the bottom. Color = model family (model_pal);
 # shape = readout (filled ● greedy, open ○ mean; see readout_shape). Models are dodged within each condition row so
@@ -272,7 +272,7 @@ fig_crossmodel_landscape <- function(exp_bundle, greedy_bundle,
   c(steep, flat)
 }
 
-# Fig 3 Panel A features three cells that illustrate the distinct patterns the average-signed-
+# The signed-deviation figure's Panel A features three cells that illustrate the distinct patterns the average-signed-
 # deviation panel (Panel B) collapses into one number:
 #   calibrated = min RMS deviation from 0 across the gradient  (from cut_tbl: dm_q / dm_r)
 #   steepest   = max exaggeration gap Q5-Q1 / lib.dem - closed aut.  (from gap_tbl: dm_eg_q / dm_eg_r)
@@ -297,10 +297,10 @@ fig_crossmodel_landscape <- function(exp_bundle, greedy_bundle,
   unique(c(calibrated, steepest, harshest))
 }
 
-# Fig 2 — the difficulty-tracking twin of Fig 1. Same rows (base block over FT-raw block, each
+# The difficulty-slope figure (chunk `fig-crossmodel-slope`) — the twin of the MAE landscape. Same rows (base block over FT-raw block, each
 # on the four inputs) and the same color = MODEL encoding, but the x-axis is the Test-3 slope of
 # AI error on case difficulty h_c instead of MAE, and the reference is the human self-reference
-# slope = 1 instead of the human MAE line. Fig 1's crowded column of CIs hugging the human MAE
+# slope = 1 instead of the human MAE line. The MAE landscape's crowded column of CIs hugging the human MAE
 # line says "on average error they're all about equally close"; this figure cracks that column
 # open on the dimension MAE can't see — does the synthetic coder err on the same cases a human
 # finds hard (slope → 1) or lean on a prior (slope flat)? Greedy readout only, by design: the
@@ -318,7 +318,7 @@ fig_crossmodel_slope <- function(dm_bundle,
   cond_disp   <- c(codebook = "Codebook", evidence = "Raw Text",
                    anonymized = "Anonymized", summarized = "Summarized")
 
-  # bottom-to-top: FT block below, base block on top — identical row order to Fig 1.
+  # bottom-to-top: FT block below, base block on top — identical row order to the MAE landscape.
   row_lv <- c("FT · Summarized", "FT · Anonymized", "FT · Raw Text", "FT · Codebook",
               "Summarized", "Anonymized", "Raw Text", "Codebook")
 
@@ -374,7 +374,7 @@ fig_crossmodel_slope <- function(dm_bundle,
           strip.text.y.left = element_text(angle = 0, face = "bold", hjust = 1))
 }
 
-# Fig 2 (left panel) — the difficulty slope drawn as a shape. Mean error vs case difficulty for a
+# Difficulty-slope figure (left panel) — the difficulty slope drawn as a shape. Mean error vs case difficulty for a
 # steep exemplar and a flat exemplar, against the human reference curve — which lies on y = x
 # because difficulty h_c is *defined* as the human error on the case (so the human's error equals
 # the case's difficulty). x is a property of the case (how hard humans found it); y is whichever
@@ -429,7 +429,7 @@ fig_slope_curve <- function(dm_bundle,
           axis.title.y = element_text(margin = margin(r = 7)))
 }
 
-# Fig 2 (composite) — the two panels side by side: the curve (what the slope measures) and the
+# Difficulty-slope figure (composite) — the two panels side by side: the curve (what the slope measures) and the
 # coefficient plot (every model ranked by that slope). Requires the curve fields in the bundle.
 fig_crossmodel_slope_2panel <- function(dm_bundle,
                                         feature = NULL,
@@ -440,7 +440,7 @@ fig_crossmodel_slope_2panel <- function(dm_bundle,
     patchwork::plot_layout(widths = c(1, 1.05))
 }
 
-# Fig 3 (left panel) — signed deviation across the democracy gradient. y = AI rating minus the
+# Signed-deviation figure (left panel) — signed deviation across the democracy gradient. y = AI rating minus the
 # human panel mean; the dotted zero line is the panel-member target (a real coder sums to 0 per
 # bin by construction), the dashed grey line is the V-Dem IRT target expressed on the same axis
 # (mean(ord - panel_mean) per bin), so featured cells can be read against BOTH references. An
@@ -501,8 +501,8 @@ fig_signeddev_curve <- function(sd_bundle,
           axis.title.y = element_text(margin = margin(r = 7)))
 }
 
-# Fig 3 (right panel) — AVERAGE signed deviation across the gradient (dm_ov, "pooled shift" from
-# build_signeddev.R) per cell, the twin of Fig 2's coefficient panel. Reference at 0 = the human
+# Signed-deviation figure (right panel) — AVERAGE signed deviation across the gradient (dm_ov, "pooled shift" from
+# build_signeddev.R) per cell, the twin of the difficulty-slope figure's coefficient panel. Reference at 0 = the human
 # panel member (their signed deviations average to 0). Negative = the model rates below the panel
 # on average (harsh); positive = above (generous). dm_ov is binning-independent, so the regime
 # variant plots the same numbers — only Panel A differs between the two cuts. Same Base/Fine-tuned
@@ -562,7 +562,7 @@ fig_signeddev_gap <- function(sd_bundle,
           strip.text.y.left = element_text(angle = 0, face = "bold", hjust = 1))
 }
 
-# Fig 3 (composite) — the gradient curve (what the exaggeration gap measures) beside the gap
+# Signed-deviation figure (composite) — the gradient curve (what the exaggeration gap measures) beside the gap
 # coefficient plot (every model ranked). Requires signeddev_xmodel_{year}.rds.
 fig_crossmodel_signeddev_2panel <- function(sd_bundle,
                                             feature = NULL,
@@ -573,7 +573,7 @@ fig_crossmodel_signeddev_2panel <- function(sd_bundle,
     patchwork::plot_layout(widths = c(1, 1.05))
 }
 
-# Fig 3 (regime variant, left panel) — signed deviation across V-Dem's Regimes of the World
+# Signed-deviation figure (regime variant, left panel; chunk `fig-crossmodel-signeddev-regime`) — signed deviation across V-Dem's Regimes of the World
 # (v2x_regime: 0 closed autocracy .. 3 liberal democracy, stored as ri = v2x_regime + 1 so bins run
 # 1..4). Same construction as fig_signeddev_curve but reads dm_r / irt_ref_r — the regime-type cut
 # build_signeddev.R computes alongside the democracy-quintile cut.
@@ -629,7 +629,7 @@ fig_signeddev_curve_regime <- function(sd_bundle,
           axis.title.y = element_text(margin = margin(r = 7)))
 }
 
-# Fig 3 (regime variant, right panel) — identical to fig_signeddev_gap: average signed deviation
+# Signed-deviation figure (regime variant, right panel) — identical to fig_signeddev_gap: average signed deviation
 # is binning-independent, so the regime-cut Panel B is the same plot as the quintile-cut one.
 # Kept as its own function so the regime composite reads symmetrically; only Panel A differs.
 fig_signeddev_gap_regime <- function(sd_bundle,
@@ -687,7 +687,7 @@ fig_signeddev_gap_regime <- function(sd_bundle,
           strip.text.y.left = element_text(angle = 0, face = "bold", hjust = 1))
 }
 
-# Fig 3 (regime variant, composite) — the gradient curve beside the gap coefficient plot, using
+# Signed-deviation figure (regime variant, composite) — the gradient curve beside the gap coefficient plot, using
 # V-Dem Regimes of the World instead of democracy quintiles. Requires signeddev_xmodel_{year}.rds.
 fig_crossmodel_signeddev_2panel_regime <- function(sd_bundle,
                                                    feature = NULL,
@@ -699,8 +699,8 @@ fig_crossmodel_signeddev_2panel_regime <- function(sd_bundle,
 }
 
 
-# Fig A2 — full 4×4 readout grid: every model on every input, the off-diagonal
-# expansion of Figure 1. Same greedy-vs-expectation grammar, faceted by model, with
+# Full 4x4 readout grid (chunk `fig-grid`): every model on every input, the off-diagonal
+# expansion of the cross-model MAE figure (chunk `fig-crossmodel`). Same greedy-vs-expectation grammar, faceted by model, with
 # each fine-tuned model's own training input (the diagonal cell) ringed. Exploratory:
 # the off-diagonal cross-generalization cells are not preregistered.
 #
@@ -722,7 +722,7 @@ fig_readout_grid <- function(exp_bundle, greedy_bundle,
   prep <- function(ci, readout) {
     ci |>
       # Llama-only grid (Base + its three FT variants); the cross-family models (qwen/gemma
-      # ft-raw) live in Fig 1, and without this filter they'd map to an NA facet here.
+      # ft-raw) live in the cross-family MAE landscape, and without this filter they'd map to an NA facet here.
       filter(model_key %in% names(model_disp)) |>
       filter(!(model_key == "llama-70b" & grepl("zeroshot$", condition))) |>
       mutate(
@@ -753,9 +753,9 @@ fig_readout_grid <- function(exp_bundle, greedy_bundle,
     hj    = c(-0.07, 1.05)
   )
 
-  # readout = shape (solid ● greedy, open ○ mean), matching the cross-model Fig 1 convention
+  # readout = shape (solid ● greedy, open ○ mean), matching the cross-model MAE landscape's convention
   # (readout_shape). This grid is entirely Llama (Base + its three FT variants), so its marks
-  # carry the Llama blue from model_pal — keeping "Llama = blue" consistent with Fig 1 and the
+  # carry the Llama blue from model_pal — keeping "Llama = blue" consistent with the MAE landscape and the
   # 2023 replication rather than rendering a lone monochrome figure.
   ink <- unname(model_pal["Llama 70B"])
   p <- ggplot(cells, aes(ai_mae, cond, shape = readout))
@@ -1033,7 +1033,7 @@ fig_movement <- function(movement_bundle, country_names, n_label = 5) {
           panel.grid.major.x = element_blank(), panel.grid.minor = element_blank())
 }
 
-# Figure 6: does movement's / prominence's effect on the difficulty-tracking slope hold up
+# Chunk `fig-slope-by-condition`: does movement's / prominence's effect on the difficulty-tracking slope hold up
 # across the de-identification ladder? Two side-by-side panels (Movement, Prominence), each from
 # helpers/build_slope_by_condition.R's separate, interaction-free models:
 #   a ~ h + movement + h:movement   (Panel A)
@@ -1075,7 +1075,7 @@ fig_slope_by_condition_2panel <- function(movement_bundle, reid_bundle) {
     theme(legend.position = "top")
 }
 
-# Figure 7: does movement's / prominence's effect on signed deviation (AI rating - panel mean)
+# Chunk `fig-signeddev-by-condition`: does movement's / prominence's effect on signed deviation (AI rating - panel mean)
 # hold up across the de-identification ladder? Same shape as fig_slope_by_condition_2panel(), but
 # from helpers/build_signeddev_by_condition.R's two SEPARATE, simpler models (no h term at all,
 # unlike the difficulty-slope version -- signed deviation isn't itself regressed against
@@ -1083,7 +1083,7 @@ fig_slope_by_condition_2panel <- function(movement_bundle, reid_bundle) {
 #   signed_dev ~ movement_signed   (Panel A)
 #   signed_dev ~ reid              (Panel B)
 # Movement uses the SIGNED, rank-tamed version (direction is the point -- a lag/anchoring test:
-# does a backslid country still get an overly generous rating). UNLIKE Figure 6, this DOES carry
+# does a backslid country still get an overly generous rating). UNLIKE `fig-slope-by-condition`, this DOES carry
 # a SESOI band (2026-09-06 correction) -- signed deviation is a plain rating-point-scale level
 # effect (same footing as evidence_gain/tracking), not a slope-modifier, so the paper's usual
 # rounding-floor logic applies here the same way it does everywhere else.
@@ -1130,13 +1130,16 @@ fig_signeddev_by_condition_2panel <- function(movement_bundle, reid_bundle, seso
 doseresponse_pal <- c("Same AI (Qwen FT)" = "#e08214", "Mixed FT (6 cells)" = "#D55E00",
                       "Mixed pool (18 cells)" = "#CC79A7")
 
-# Figure 8: the paper's actual deployment scenario -- augmentation. Does adding one AI
+# RETIRED (not rendered; superseded by fig_fliprate_quad) -- the mean-shift augmentation
+# scenario. Does adding one AI
 # rating to a thin 2023 panel (2-8 coders, panel GROWS n -> n+1) move the mean, and does
 # that hold up as more seats are added? Panel A = build_augmentation.R's single-seat
 # result by condition/model; Panel B = build_doseresponse_augmentation.R's k=1..4
 # dose-response for three curated regimes. Degradation (replacing a healthy panel's
-# coders) is not a real deployment path -- demoted to Appendix A9
-# (fig_degradation_combined()) as a robustness companion rather than co-headlined here.
+# coders) is not a real deployment path -- carried by fig_degradation_combined() as a
+# robustness companion rather than co-headlined here. NOTE: neither this function nor
+# fig_degradation_combined() is currently rendered; the deployment figures now report verdict
+# changes via fig_fliprate_quad(). Both are kept because their numbers are quotable in prose.
 # Both outcomes are a signed shift in the panel mean, rating points, zero-referenced. No
 # SESOI band: the shift is a difference of two integers over a panel-size denominator,
 # with no forced-rounding floor the way a single rating vs. a fractional mean has (see
@@ -1185,7 +1188,7 @@ fig_augmentation_combined <- function(augmentation_bundle, doseresponse_bundle) 
   pA | pB
 }
 
-# Appendix A9: the degradation companion to Figure 8 -- does replacing a HEALTHY panel's
+# The degradation companion to fig_augmentation_combined() -- does replacing a HEALTHY panel's
 # coders with AI move it the same way? Not a real deployment scenario on its own (no one
 # is proposing to swap out functioning human panels), kept as a robustness check that the
 # augmentation story isn't an artifact of starting from a thin panel. Same shape as
@@ -1337,11 +1340,12 @@ fig_identity_effect <- function(bundle, sesoi = NULL, drop_diff = FALSE,
           axis.title.x = element_text(margin = margin(t = 7)))
 }
 
-# Appendix A8 (combined) — the identity-removal contrast on all three outcomes in one figure. Three
+# RETIRED (nothing calls this now; superseded by fig_identity_and_compression) — the identity-removal
+# contrast on all three outcomes in one figure. Three
 # side-by-side panels, each its own ggplot with its OWN x-scale (the outcomes are in different
 # units and are not comparable across panels). The measure name rides in each panel's bold
 # subtitle ("A. Mean Absolute Error" / "B. Signed Deviation" / "C. Case Difficulty Slope"), the
-# Fig 6/7 idiom; one shared meta x-title "Effect of Removing Country Identity" beneath all three
+# `fig-slope-by-condition` / `fig-signeddev-by-condition` idiom; one shared meta x-title "Effect of Removing Country Identity" beneath all three
 # (patchwork caption). Shared y-axis is the two paired
 # contrasts (Full Text, Compressed) -- the "Full Text - Compressed" row is dropped (its point
 # estimate is mechanically row1 - row2; keep those numbers in prose). The ±SESOI band is drawn only
@@ -1393,7 +1397,153 @@ fig_identity_effect_combined <- function(mae_bundle, signeddev_bundle, slope_bun
     theme(legend.position = "top", legend.justification = "left")
 }
 
-# Figure 5 — name-swap tracking on the metric's achievable range. The rating-point version
+# Chunk `fig-nameswap-channels` (Figure 7) — the name-swap read two ways, split by salience.
+# Built from build_nameswap_channels.R.
+#
+#   A. mean |cue| — how far the rating moves when ONLY the name changes, rating points. The same
+#      evidence rated twice (true name / injected name) and differenced, so no panel means enter.
+#      This IS a rating-point scale, so the ±SESOI band applies and is drawn as a shaded region
+#      from zero to the threshold: anything inside it would be too small to matter.
+#   B. text's share of the pull, b_source/(b_source + b_named) from the two-channel regression.
+#      0.50 = the two channels pull equally. Percent-formatted so the two panels do not read as
+#      the same units despite both spanning 0-1.
+#
+# Solid = that country-indicator's de-identified evidence was re-identified (high salience), open
+# = it was not; fixed base-model partition, so Base and Fine-Tuned rows split identical items.
+#
+# Layout notes, all deliberate: panel.border + zero facet spacing frames each plot's DATA region
+# as one box with a Base/Fine-Tuned divider (row labels and titles stay outside); panel B drops
+# its row labels and strips because the two share one set; plot_spacer() keeps the two frames from
+# abutting; the collected legend rides on the patchwork theme via plot_annotation, since applying
+# it to the subplots draws it inside their frames. The shaded band must be the FIRST layer --
+# adding data layers over it afterwards gives the panels different guide specs and patchwork then
+# refuses to collect the legend.
+#
+#   fig_nameswap_channels(readRDS("data/derived/nameswapchannels_2023.rds"),
+#                         sesoi = boot_bundle_2023$sesoi)
+fig_nameswap_channels <- function(bundle, sesoi = NULL) {
+  reid_shape <- c("Re-identified" = 16, "Not re-identified" = 1)
+  dodge <- position_dodge(width = 0.6)
+
+  # "All swaps" is the pooled row the prose quotes; the figure plots only the salience split.
+  prep <- function(m) bundle$effects |>
+    dplyr::filter(metric == m, stratum != "All swaps") |>
+    dplyr::mutate(model = factor(model, levels = names(model_pal)),
+                  block = factor(block, levels = c("Base", "Fine-Tuned")),
+                  stratum = factor(stratum, levels = c("Re-identified", "Not re-identified")))
+
+  panel <- function(d, xlab, subtitle, rows = TRUE, band = NULL) {
+    p <- ggplot(d, aes(est, model, color = model, shape = stratum, group = stratum))
+    if (!is.null(band)) {
+      p <- p + annotate("rect", xmin = band[1], xmax = band[2], ymin = -Inf, ymax = Inf,
+                        fill = "grey85", alpha = 0.55)
+    }
+    p <- p +
+      geom_linerange(aes(xmin = lo, xmax = hi), linewidth = 0.5, alpha = 0.7, position = dodge) +
+      geom_point(size = 2.4, stroke = 1, position = dodge) +
+      facet_grid(rows = vars(block), scales = "free_y", space = "free", switch = "y") +
+      scale_color_manual(values = model_pal, guide = "none") +
+      scale_shape_manual(values = reid_shape, name = NULL) +
+      coord_cartesian(xlim = c(0, 1), clip = "off") +
+      labs(x = xlab, y = NULL, subtitle = subtitle) +
+      theme_minimal(base_size = 11) +
+      theme(legend.position = "top", legend.justification = "center",
+            panel.grid.major.y = element_blank(),
+            panel.spacing.y = unit(0, "lines"),
+            panel.border = element_rect(color = "grey75", fill = NA, linewidth = 0.4),
+            strip.placement = "outside", strip.background = element_blank(),
+            plot.subtitle = element_text(face = "bold", size = 10.5),
+            axis.title.x = element_text(margin = margin(t = 7)))
+    if (rows) {
+      p + theme(strip.text.y.left = element_text(angle = 0, face = "bold", hjust = 1))
+    } else {
+      p + theme(strip.text.y.left = element_blank(), axis.text.y = element_blank())
+    }
+  }
+
+  # Reference labels once, pinned to the Base facet, not once per facet.
+  lab_one <- function(x, txt, hj) tibble::tibble(
+    block = factor("Base", levels = c("Base", "Fine-Tuned")),
+    x = x, y = "Llama 70B", label = txt, hj = hj)
+  draw_lab <- function(d) geom_text(data = d, aes(x = x, y = y, label = label, hjust = hj),
+                                    inherit.aes = FALSE, vjust = 0.5, color = "grey20",
+                                    fontface = "bold", size = 2.9)
+
+  pA <- panel(prep("Mean |shift|"), "Mean Shift in Rating Points",
+              "A. How far the rating moves when only the name changes",
+              band = if (is.null(sesoi)) NULL else c(0, sesoi))
+  if (!is.null(sesoi)) {
+    pA <- pA + geom_vline(xintercept = sesoi, linetype = "dashed", color = "grey40") +
+      draw_lab(lab_one(sesoi + 0.02, "SESOI", 0))
+  }
+
+  pB <- panel(prep("Text's share"), "Share of Rating Driven by the Text (vs. the Country Name)",
+              "B. Text vs. name: which one the rating follows", rows = FALSE) +
+    scale_x_continuous(labels = scales::percent_format(accuracy = 1)) +
+    geom_vline(xintercept = 0.5, linetype = "dashed", color = "grey40") +
+    draw_lab(lab_one(0.485, "equal", 1))
+
+  (pA | patchwork::plot_spacer() | pB) +
+    patchwork::plot_layout(widths = c(1, 0.02, 1), guides = "collect") +
+    patchwork::plot_annotation(theme = theme(legend.position = "top",
+                                             legend.justification = "center",
+                                             legend.margin = margin(b = 4)))
+}
+
+# Chunk `fig-nameswap-salience-tests` (Appendix A11) — the paired salience differences behind
+# Figure 7's solid/open split, re-identified minus not, computed within each bootstrap draw.
+# Built from build_nameswap_channels.R's `tests`.
+#
+# SIGN. The text's share moves opposite to the other two by construction (more weight on the name
+# is less on the text), so plotting it raw would put "the name did more" on different sides of
+# zero in different panels. It is negated here and relabelled "Name's share", so across all three
+# panels right-of-zero means the same thing: the injected name did more work where the evidence
+# was identifiable.
+#
+# NO SESOI band. The prereg fixes the band for primary effects, not for every subgroup difference;
+# applying it to these contrasts would be a new use of the number, and a stricter one. Flip rate
+# is in the bundle (Section 7 quotes its levels) but is not plotted here, since the main text does
+# not show it.
+#
+#   fig_nameswap_salience_tests(readRDS("data/derived/nameswapchannels_2023.rds"))
+fig_nameswap_salience_tests <- function(bundle) {
+  lv <- c("Mean shift (rating points)", "Name's share")
+  d <- bundle$tests |>
+    dplyr::filter(metric != "Flip rate") |>
+    dplyr::mutate(
+      flip_sign = metric == "Text's share",
+      est = ifelse(flip_sign, -est, est),
+      newlo = ifelse(flip_sign, -hi, lo),
+      newhi = ifelse(flip_sign, -lo, hi),
+      lo = newlo, hi = newhi,
+      metric = dplyr::recode(metric, "Mean |shift|" = "Mean shift (rating points)",
+                             "Text's share" = "Name's share"),
+      metric = factor(metric, levels = lv),
+      model = factor(model, levels = names(model_pal)),
+      block = factor(block, levels = c("Base", "Fine-Tuned")))
+
+  ggplot(d, aes(est, model, color = model)) +
+    geom_vline(xintercept = 0, linetype = "dashed", color = "grey40") +
+    geom_linerange(aes(xmin = lo, xmax = hi), linewidth = 0.5, alpha = 0.7) +
+    geom_point(size = 2.4) +
+    facet_grid(rows = vars(block), cols = vars(metric),
+               scales = "free", space = "free_y", switch = "y") +
+    scale_color_manual(values = model_pal, guide = "none") +
+    labs(x = "Difference: re-identified − not re-identified", y = NULL) +
+    theme_minimal(base_size = 11) +
+    theme(panel.grid.major.y = element_blank(),
+          panel.spacing.x = unit(1.1, "lines"),
+          panel.spacing.y = unit(0, "lines"),
+          panel.border = element_rect(color = "grey75", fill = NA, linewidth = 0.4),
+          strip.placement = "outside", strip.background = element_blank(),
+          strip.text.y.left = element_text(angle = 0, face = "bold", hjust = 1),
+          strip.text.x = element_text(face = "bold", size = 10),
+          axis.title.x = element_text(margin = margin(t = 7)),
+          plot.margin = margin(t = 10, r = 10, b = 6, l = 6))
+}
+
+# RETIRED (nothing calls this now; Figure 7 is fig_nameswap_channels as of 2026-09-24). Name-swap
+# tracking on the metric's achievable range. The rating-point version
 # (fig_nameswap_tracking, built from build_priorreliance.R --panel B) reports base effects of
 # +0.06-0.07, which read as negligible. They are not: the metric is bounded by the gap between
 # the two countries' panel means, so the same estimate is ~10% of the available range. Panel A is
@@ -1439,7 +1589,8 @@ fig_nameswap_rescaled <- function(bundle) {
   pA | pB
 }
 
-# Figure 6 — the two successive steps along the summarized family, in A8's layout.
+# Chunk `fig-identity-and-compression` — the two successive steps along the summarized family,
+# in the three-panel one-x-scale-each layout shared with `fig-summarization-arms`.
 #
 #   Row 1  Compression        summarized-identified - raw text     names present on BOTH sides,
 #                                                                  so only the compression moves
@@ -1456,14 +1607,14 @@ fig_nameswap_rescaled <- function(bundle) {
 # anonymized) reverses which looks larger for Gemma -- so no percentage of any kind is reported
 # here. See notes/identity-mechanism-arc-2026-09-16.md.
 #
-# NO ±SESOI band (2026-09-18 decision, following Figure 7's precedent). SESOI defends against
+# NO ±SESOI band (2026-09-18 decision, following the deployment figure `fig-fliprate`'s precedent). SESOI defends against
 # small RANDOM error -- a change below half a rounding step vanishes in any single published
 # score. These are consistent directional pushes, and the question is whether a step moves the
 # model and in which direction, i.e. sign + interval. The band also discriminates nothing here:
 # at 0.113 it swallows every cell except Llama's de-identification MAE. Settled in
 # notes/paper-figures-pipeline-review-2026-09-06.md Addendum 9.
 #
-# Reads the same bundles Appendix A8 used to render from; the Compression row was added to them
+# Reads the same bundles the retired fig_identity_effect_combined() rendered from; the Compression row was added to them
 # by helpers/build_identity_effect*.R on 2026-09-18.
 #
 #   fig_identity_and_compression(ie, sl, sd)
@@ -1510,8 +1661,8 @@ fig_identity_and_compression <- function(mae_bundle, slope_bundle, signeddev_bun
     theme(legend.position = "top", legend.justification = "left")
 }
 
-# Appendix A8, first figure — the three summarized arms as distances from ONE origin (raw
-# evidence), in Figure 6's layout.
+# Chunk `fig-summarization-arms` — the three summarized arms as distances from ONE origin (raw
+# evidence), in `fig-identity-and-compression`'s layout.
 #
 #   Summ-Identified        ~400w rewrite, names in the TEXT and the FRAMING
 #   Summ + named framing   ~400w rewrite, names stripped from the text, country named in framing
@@ -1572,7 +1723,7 @@ fig_summarization_arms <- function(bundle) {
     theme(legend.position = "top", legend.justification = "left")
 }
 
-# Appendix A8, second figure — is the task-framing leg concentrated where the model CANNOT
+# Chunk `fig-reid-split` — is the task-framing leg concentrated where the model CANNOT
 # re-identify the country? Partial leak predicts the effect is LARGER among CYIs the model could
 # NOT name (identity truly gone there); framing-only attention predicts it is FLAT.
 #
@@ -1614,14 +1765,16 @@ fig_reid_split <- function(bundle) {
           axis.title.x = element_text(margin = margin(t = 7)))
 }
 
-# Figure 7 / Appendix A12 — the two deployment mechanics side by side, on verdict flips
-# (main) and directional push (appendix). Both read the build_fliprate.R bundles.
+# The two deployment mechanics side by side, on verdict changes (Panel A) and directional push
+# (Panel B). Called twice: mechanic = "add" for the main deployment figure (augmentation) and
+# mechanic = "rep" for its appendix companion (replacement). Both read the build_fliprate.R
+# bundles. Section numbers are deliberately not named here -- the appendix has renumbered twice.
 #
 # Shared y-scale across the two panels in each figure is deliberate: replacement disturbs
 # roughly 1.5-2x as many verdicts as addition, and that level difference is a finding, not a
 # nuisance to be auto-scaled away.
 #
-# Human churn is PLOTTED, not zero-referenced, in the flip figure -- a verdict flip from
+# Human churn is PLOTTED, not zero-referenced, in the change-rate figure -- a verdict change from
 # ordinary turnover is 16-42%, not zero in expectation the way a mean shift is. In the
 # directional figure it becomes the zero line, because that panel is already differenced
 # against it, paired at the panel level.
@@ -1660,13 +1813,30 @@ fliprate_xoff <- stats::setNames(seq(-0.07, 0.07, length.out = length(fliprate_l
           axis.title = element_text(size = 10.5))
 }
 
-fig_fliprate_quad <- function(aug_bundle, deg_bundle) {
+# `mechanic` selects which deployment mechanic to draw: "both" gives the original 2x2,
+# "add" the augmentation row alone, "rep" the replacement row alone. The paper uses "add"
+# in the main text and "rep" in the appendix, because under the leading-edge framing of
+# `fig-panelsize-history` the seats were never filled rather than vacated -- so adding is the deployment
+# mechanic and replacing is the counterfactual.
+#
+# BOTH bundles are required whichever row is drawn. `shared_scale` decides whether the y-limits
+# span both mechanics or only the row being drawn; it defaults to FALSE, so each solo figure
+# fits its own data. Replacement disturbs roughly twice as much as augmentation at every k
+# (churn alone reaches 41.5% against 22.4%), and sharing the limits would squeeze the
+# augmentation row into the lower ~40% of the change-rate axis to make that gap visible by shape. The
+# level difference reads off the axis instead. `mechanic = "both"` always shares, since there
+# the two rows sit in one figure and a reader compares them directly.
+fig_fliprate_quad <- function(aug_bundle, deg_bundle, mechanic = c("both", "add", "rep"),
+                              shared_scale = FALSE) {
+  mechanic <- match.arg(mechanic)
   d   <- .fliprate_prep(aug_bundle, deg_bundle)
   pal <- c(doseresponse_pal, "Human churn" = "grey35")
-  yf  <- range(c(100 * d$flip_lo, 100 * d$flip_hi), na.rm = TRUE) + c(-2, 2)
-  yd  <- range(c(100 * d$netd_lo, 100 * d$netd_hi), na.rm = TRUE) + c(-1, 1)
+  ds  <- if (shared_scale || mechanic == "both") d
+         else dplyr::filter(d, mech == mechanic)
+  yf  <- range(c(100 * ds$flip_lo, 100 * ds$flip_hi), na.rm = TRUE) + c(-2, 2)
+  yd  <- range(c(100 * ds$netd_lo, 100 * ds$netd_hi), na.rm = TRUE) + c(-1, 1)
 
-  # Flip panels carry the only legend: they have the linetype scale (Human churn is a plotted
+  # The change-rate panels carry the only legend: they have the linetype scale (Human churn is a plotted
   # arm there, and the zero line in the direction panels), so letting the direction panels emit
   # their own colour guide makes patchwork collect TWO legends instead of merging them.
   flip_panel <- function(m, sub, xlab) {
@@ -1677,7 +1847,7 @@ fig_fliprate_quad <- function(aug_bundle, deg_bundle) {
       scale_color_manual(values = pal, name = NULL) +
       scale_linetype_manual(values = c("solid", "solid", "solid", "22"), name = NULL) +
       scale_x_continuous(breaks = 1:4) + coord_cartesian(ylim = yf) +
-      labs(subtitle = sub, x = xlab, y = "% of Panels Whose\nVerdict Flips") +
+      labs(subtitle = sub, x = xlab, y = "% of Panels Whose\nVerdict Changes") +
       .fliprate_thm()
   }
   dir_panel <- function(m, sub, xlab) {
@@ -1693,15 +1863,374 @@ fig_fliprate_quad <- function(aug_bundle, deg_bundle) {
       .fliprate_thm()
   }
 
-  # Rows are the MECHANIC, columns the OUTCOME. Row 1 is therefore the whole augmentation story
-  # -- the deployment path the paper argues for -- and row 2 the degradation robustness check,
-  # each readable as a unit. Outcome in columns also matches Figures 5, 6 and A8. Costs four
-  # axis titles rather than two: adjacent columns are in different units, and x means something
-  # different in each row, so neither can be shared away without risking a mislabel.
-  (flip_panel("add", "A. Verdicts Flipped \u2014 Seats Added",    "k Seats Added") |
-   dir_panel("add",  "B. Direction \u2014 Seats Added",           "k Seats Added")) /
-  (flip_panel("rep", "C. Verdicts Flipped \u2014 Seats Replaced", "k Seats Replaced") |
-   dir_panel("rep",  "D. Direction \u2014 Seats Replaced",        "k Seats Replaced")) +
-    patchwork::plot_layout(guides = "collect") &
+  # Rows are the MECHANIC, columns the OUTCOME, so each row reads as a unit and can be drawn
+  # on its own. Outcome in columns also matches fig_identity_and_compression() and
+# fig_summarization_arms(). Costs four axis titles
+  # rather than two: adjacent columns are in different units, and x means something different
+  # in each row, so neither can be shared away without risking a mislabel. Panel letters
+  # restart at A when a row is drawn alone, since it is then its own figure.
+  solo <- mechanic != "both"
+  # The mechanic qualifier is redundant with the x-axis title when a row is drawn alone, but
+  # load-bearing in the 2x2 where both rows sit in one figure.
+  add_row <- (flip_panel("add", if (solo) "A. Verdicts Changed"
+                                else      "A. Verdicts Changed — Seats Added",
+                         "k Seats Added") |
+              dir_panel("add",  if (solo) "B. Direction"
+                                else      "B. Direction — Seats Added",
+                        "k Seats Added"))
+  rep_row <- (flip_panel("rep", if (solo) "A. Verdicts Changed"
+                                else      "C. Verdicts Changed — Seats Replaced",
+                         "k Seats Replaced") |
+              dir_panel("rep",  if (solo) "B. Direction"
+                                else      "D. Direction — Seats Replaced",
+                        "k Seats Replaced"))
+
+  out <- switch(mechanic,
+                both = add_row / rep_row,
+                add  = add_row,
+                rep  = rep_row)
+
+  # Solo rows: both panels carry one x variable on identical breaks, so the duplicate x title
+  # collapses to one. The y titles are in different units and are never collected. The 2x2
+  # keeps all four, since x means something different in each row there.
+  out <- out + patchwork::plot_layout(guides = "collect",
+                                      axis_titles = if (solo) "collect_x" else "keep") &
     theme(legend.position = "top", legend.justification = "left")
+
+  # A collected x title labels both panels rather than one, so it is sized up from the
+  # per-panel default to match the weight it now carries. The 2x2 keeps its four titles at
+  # the base size, where each still labels a single panel.
+  if (solo) out <- out & theme(axis.title.x = element_text(size = 12.5,
+                                                           margin = margin(t = 6)))
+  out
+}
+
+# -----------------------------------------------------------------------------
+# Motivating figures (Figures 1-2). Both read data/derived/panelsize.rds, built by
+# helpers/build_panelsize.R -- see that file for the estimation and for why the
+# leading-edge reading in Figure 1B is not an attrition series.
+# -----------------------------------------------------------------------------
+
+# Panel size is ORDERED, so a categorical palette would throw the ordering away. These
+# are ramps anchored on the repo's two Okabe-Ito hues: vermillion stepped dark-to-light
+# below V-Dem's floor of five, blue at or above it. Adjacent-pair separation validated:
+# worst normal-vision dE 15.6, worst CVD dE 10.2.
+.panelsize_band_pal <- c("1"   = "#5A2800", "2"   = "#C25600", "3"  = "#F09A4A",
+                         "4"   = "#FBD9BE", "5–8" = "#8ECFEE", "9+" = "#0072B2")
+.panelsize_blue <- "#0072B2"   # as the current release reports it
+.panelsize_verm <- "#D55E00"   # as measured at the time
+
+# Fig 1 -- how thin V-Dem's panels are, and when.
+#
+#   bundle <- readRDS("data/derived/panelsize.rds")
+#
+# (A) The panel-size distribution across V-Dem's five eras, so the contemporary era is
+#     read against the project's own history rather than in isolation.
+# (B) The same years seen twice: as first published, before any back-coding was possible,
+#     and as the current release reports them. The vermillion bars are flat -- every year
+#     arrives about equally thin -- and the blue bars ramp purely with how many release
+#     cycles a year has had. The most recent year has had none, so its two bars are equal.
+fig_panelsize_history <- function(bundle) {
+  era_tops <- distinct(bundle$era, era, pct_lt5)
+
+  p_era <- ggplot(bundle$era, aes(era, prop, fill = band)) +
+    geom_col(width = 0.72, colour = "white", linewidth = 0.4,
+             position = position_fill(reverse = TRUE)) +
+    geom_text(data = era_tops, aes(era, y = 1.04, label = sprintf("%.0f%%", pct_lt5)),
+              inherit.aes = FALSE, size = 3, colour = "grey25", fontface = "bold") +
+    scale_fill_manual(values = .panelsize_band_pal, name = "Coders per cell",
+                      guide = guide_legend(nrow = 1)) +
+    scale_y_continuous(labels = scales::percent, breaks = seq(0, 1, 0.25),
+                       expand = expansion(mult = c(0.01, 0.09))) +
+    labs(title = "A. Across V-Dem's history",
+         subtitle = "Distribution of panel sizes; bold = share below five",
+         x = NULL, y = "Share of cells") +
+    theme_minimal(base_size = 11) +
+    theme(legend.position = "bottom", panel.grid.major.x = element_blank(),
+          panel.grid.minor = element_blank(), plot.title.position = "plot")
+
+  p_pairs <- ggplot(bundle$pairs, aes(factor(cohort_year), pct, fill = when)) +
+    geom_hline(yintercept = bundle$settled_ref, linetype = "22", colour = "grey50") +
+    geom_col(position = position_dodge(width = 0.74), width = 0.68) +
+    geom_text(aes(label = sprintf("%.0f", pct)), position = position_dodge(width = 0.74),
+              vjust = -0.45, size = 2.7, colour = "grey25") +
+    geom_text(data = distinct(bundle$pairs, cohort_year, cycles),
+              aes(x = factor(cohort_year), y = -3.4,
+                  label = ifelse(cycles == 0, "none", as.character(cycles))),
+              inherit.aes = FALSE, size = 2.7, colour = "grey45") +
+    scale_fill_manual(values = c("At first publication" = .panelsize_verm,
+                                 "As V16 reports it"    = .panelsize_blue),
+                      name = NULL, guide = guide_legend(nrow = 1)) +
+    scale_y_continuous(labels = function(x) paste0(x, "%"), limits = c(-5, 49),
+                       breaks = seq(0, 40, 10)) +
+    labs(title = "B. Within the contemporary era",
+         subtitle = sprintf(paste("Share below five, before and after back-coding.",
+                                  "Dashed line = settled level, %.1f%%.",
+                                  "\nNumber below each pair = release cycles elapsed."),
+                            bundle$settled_ref),
+         x = "Year being rated", y = "Cells below five") +
+    theme_minimal(base_size = 11) +
+    theme(legend.position = "bottom", panel.grid.major.x = element_blank(),
+          panel.grid.minor = element_blank(), plot.title.position = "plot")
+
+  (p_era | p_pairs) + patchwork::plot_layout(widths = c(1, 1.15))
+}
+
+# Fig 2 -- what an added coder buys, in V-Dem's own uncertainty units.
+#
+#   bundle <- readRDS("data/derived/panelsize.rds")
+#   series "adjusted" (default) = panel-size dummies within indicator, country and year
+#          fixed effects, so the comparison holds the case constant. "raw" = conditional
+#          means, i.e. what a data user encounters before any adjustment.
+#
+# Both panels come from ONE fit and one country-clustered vcov, so the marginal panel's
+# point estimates are exactly the level panel's first differences. Its INTERVALS are not
+# readable off the level ribbons: the variance of a difference carries a covariance term,
+# and adjacent coefficients here correlate ~0.76. See build_panelsize.R.
+#
+# Axis limits span both series so the raw and adjusted versions stay comparable when both
+# are drawn (main text shows adjusted; raw is the appendix companion). Title and subtitle
+# default to NULL because the chunk caption carries them in the manuscript; pass them to
+# reproduce the standalone notebook version.
+fig_coder_value <- function(bundle, series = c("adjusted", "raw"),
+                            title = NULL, subtitle = NULL) {
+  series <- match.arg(series)
+  colour <- if (series == "adjusted") .panelsize_verm else .panelsize_blue
+
+  lvl  <- filter(bundle$mv_levels,   series == !!series)
+  marg <- filter(bundle$mv_marginal, series == !!series)
+  nmax <- bundle$meta$mv_max
+
+  # Shared across both series, so switching `series` does not silently rescale the axis.
+  ylim_lvl  <- range(bundle$mv_levels$est   + outer(bundle$mv_levels$se,   c(-1.96, 1.96)))
+  ylim_marg <- range(bundle$mv_marginal$d   + outer(bundle$mv_marginal$se, c(-1.96, 1.96)))
+
+  # V-Dem's two published lines, drawn on both panels: the shaded zone is "three or fewer"
+  # (advised against) and the dashed rule is the recommended floor of five.
+  bands <- list(
+    annotate("rect", xmin = 0.5, xmax = 3.5, ymin = -Inf, ymax = Inf,
+             fill = "grey70", alpha = 0.16),
+    annotate("segment", x = 5, xend = 5, y = -Inf, yend = Inf,
+             linetype = "22", colour = "grey45", linewidth = 0.4)
+  )
+
+  p_lvl <- ggplot(lvl, aes(n_coders, est)) + bands +
+    annotate("text", x = 5, y = ylim_lvl[2], hjust = -0.08, vjust = 1.1, size = 2.9,
+             colour = "grey35", label = "V-Dem's floor of five") +
+    geom_ribbon(aes(ymin = est - 1.96 * se, ymax = est + 1.96 * se),
+                fill = colour, alpha = 0.30) +
+    geom_line(colour = colour, linewidth = 0.5) +
+    geom_point(colour = colour, size = 1.5) +
+    scale_x_continuous(breaks = seq(1, nmax, 2)) +
+    coord_cartesian(ylim = ylim_lvl) +
+    labs(title = "Level — how uncertain is a panel of this size?",
+         subtitle = "Lower is less uncertainty",
+         x = "Panel size (coders)", y = "Posterior SD") +
+    theme_minimal(base_size = 11) +
+    theme(panel.grid.minor = element_blank(), plot.title.position = "plot")
+
+  # Sign convention kept as-is: this is a change in SD, the same quantity and sign a
+  # regression coefficient reports. Plotting "reduction" instead would make the axis
+  # positive-is-better but would no longer be the number in the table. Labelled instead.
+  p_marg <- ggplot(marg, aes(n_coders, d)) + bands +
+    geom_hline(yintercept = 0, colour = "grey40", linewidth = 0.5) +
+    annotate("text", x = nmax, y = 0, hjust = 1, vjust = -0.8, size = 2.9,
+             colour = "grey35", label = "zero = the added coder changed nothing") +
+    geom_linerange(aes(ymin = d - 1.96 * se, ymax = d + 1.96 * se),
+                   colour = colour, alpha = 0.55, linewidth = 0.9) +
+    geom_point(colour = colour, size = 2.1) +
+    scale_x_continuous(breaks = seq(2, nmax, 2)) +
+    coord_cartesian(ylim = ylim_marg) +
+    labs(title = "Marginal — what did the next coder buy?",
+         subtitle = "Change in SD from adding one coder. More negative = bought more.",
+         x = "Panel size after adding (coders)", y = "Δ Posterior SD") +
+    theme_minimal(base_size = 11) +
+    theme(panel.grid.minor = element_blank(), plot.title.position = "plot")
+
+  out <- (p_lvl | p_marg)
+  if (!is.null(title) || !is.null(subtitle)) {
+    out <- out + patchwork::plot_annotation(
+      title = title, subtitle = subtitle,
+      theme = theme(plot.title = element_text(size = 13, face = "bold")))
+  }
+  out
+}
+
+.panelsize_lt5_pal <- c("<1%" = "#FDDBC7", "1–5%" = "#F4A582", "5–10%" = "#D55E00",
+                        "10–20%" = "#A03F00", ">20%" = "#6B2900")
+.panelsize_regime_pal <- c("Closed autocracy"    = "#D55E00", "Electoral autocracy" = "#E69F00",
+                           "Electoral democracy" = "#56B4E9", "Liberal democracy"   = "#0072B2")
+
+# Appendix A1 -- the cross-sectional and temporal cuts behind Figure 1.
+#
+# Both panels measure the same quantity, coders per country-indicator-year, so they share
+# a y-axis; only the thing being varied differs. (A) varies time and regime type, (B)
+# varies country.
+#
+# Panel A is NOT an attrition series -- see build_panelsize.R and Figure 1B. The decline
+# after 2013 is back-coding that has not arrived yet; the leading-edge workforce is flat.
+# The dotted rules mark coding-schedule features, not workforce events: 2005 is where
+# contemporary recruits stop back-coding, 2013 where the original coding round ended.
+fig_panelsize_cuts <- function(bundle, n_label = 6) {
+  country <- bundle$country
+  ylim_shared <- range(country$mean_n)
+
+  p_time <- ggplot(bundle$regime, aes(year, mean_n, colour = regime)) +
+    geom_line(linewidth = 0.85) +
+    geom_vline(xintercept = c(2005, 2013), linetype = "dotted", colour = "grey45") +
+    annotate("text", x = 2005, y = Inf, label = "2005", hjust = -0.15, vjust = 1.6,
+             size = 2.9, colour = "grey40") +
+    annotate("text", x = 2013, y = Inf, label = "2013", hjust = -0.15, vjust = 1.6,
+             size = 2.9, colour = "grey40") +
+    scale_colour_manual(values = .panelsize_regime_pal, name = NULL,
+                        guide = guide_legend(nrow = 2)) +
+    coord_cartesian(ylim = ylim_shared) +
+    labs(title = "A. Over time, by regime type",
+         subtitle = paste("Autocracies run persistently thinner. Dotted lines: the",
+                          "back-coding floor\nand the end of the original coding round."),
+         x = "Year being rated", y = "Coders per country-indicator-year") +
+    theme_minimal(base_size = 11) +
+    theme(legend.position = "bottom", panel.grid.minor = element_blank(),
+          plot.title.position = "plot")
+
+  # Labels are placed at explicit coordinates rather than by repel-with-nudges. The curve
+  # runs corner to corner, so the two clear regions are the wedge ABOVE it on the left and
+  # the wedge BELOW it on the right. Thin-country labels go in the first, thick-country in
+  # the second, each as an evenly spaced column with a drawn leader line. Longest labels
+  # sit furthest from the curve, since text extends horizontally into it.
+  n_ctry <- nrow(country)
+  lab <- country |>
+    filter(rank <= n_label | rank > n_ctry - n_label) |>
+    mutate(side = if_else(rank <= n_label, "thin", "thick")) |>
+    group_by(side) |>
+    arrange(desc(nchar(country_name)), .by_group = TRUE) |>
+    mutate(
+      slot  = row_number(),
+      # Thick-country labels fan left as they RISE. The points sit together in the
+      # top-right corner, so a label placed low and far left would need a leader line
+      # crossing every label between it and its point. Anchoring the lowest label
+      # furthest right keeps each leader to the right of the labels below it.
+      lab_x = if_else(side == "thin", 20, (n_ctry - 3) - (slot - 1) * 4.6),
+      lab_y = if_else(side == "thin", 13.2 - (slot - 1) * 0.72,
+                                       6.4 + (slot - 1) * 0.72),
+      hj    = if_else(side == "thin", 0, 1)
+    ) |>
+    ungroup()
+
+  p_country <- ggplot(country, aes(rank, mean_n)) +
+    geom_hline(yintercept = 5, linetype = "22", colour = "grey55") +
+    annotate("text", x = 55, y = 5, label = "V-Dem's floor of five",
+             hjust = 0, vjust = -0.7, size = 2.9, colour = "grey45") +
+    geom_segment(data = lab, aes(x = rank, y = mean_n, xend = lab_x, yend = lab_y),
+                 colour = "grey70", linewidth = 0.22, inherit.aes = FALSE) +
+    geom_point(aes(colour = lt5_bin), size = 1.6) +
+    geom_text(data = lab, aes(x = lab_x, y = lab_y, label = country_name, hjust = hj),
+              size = 2.7, colour = "grey20", inherit.aes = FALSE) +
+    scale_colour_manual(values = .panelsize_lt5_pal, name = "Cells below five",
+                        guide = guide_legend(nrow = 1)) +
+    coord_cartesian(ylim = c(4.8, max(country$mean_n) + 0.6),
+                    xlim = c(-2, n_ctry + 5)) +
+    labs(title = "B. Across countries",
+         subtitle = sprintf("%d countries, %d–%d, ranked. Labels: %d thinnest and %d thickest.",
+                            n_ctry, bundle$meta$var_window[1], bundle$meta$var_window[2],
+                            n_label, n_label),
+         x = "Country (ranked)", y = NULL) +
+    theme_minimal(base_size = 11) +
+    theme(legend.position = "bottom", panel.grid.minor = element_blank(),
+          panel.grid.major.x = element_blank(), plot.title.position = "plot")
+
+  (p_time | p_country) + patchwork::plot_layout(widths = c(1, 1.1))
+}
+
+# Appendix A2 -- panel size by survey, and what accounts for the variation.
+#
+# (A) V-Dem recruits at the survey level, so this is the unit that corresponds to an
+#     actual recruitment decision. Vermillion marks surveys whose series begin after 1789:
+#     a younger survey has had fewer recruitment rounds, so youth and thinness are
+#     confounded and the two thinnest surveys are exactly the two young ones.
+# (B) One-way R-squared per grouping plus two nested fits. Two things the caption has to
+#     say: the single-predictor bars are NOT orthogonal shares (they sum past the
+#     cumulative fit, because country and year overlap), and R-squared rises mechanically
+#     with the number of levels, so country's lead is partly a degrees-of-freedom artifact.
+fig_panelsize_sources <- function(bundle) {
+  survey <- bundle$survey |> mutate(name = factor(name, levels = name))
+  var_r2 <- bundle$var_r2 |> mutate(source = factor(source, levels = rev(source)))
+
+  p_survey <- ggplot(survey, aes(mean_n, name)) +
+    geom_vline(xintercept = 5, linetype = "22", colour = "grey55") +
+    geom_segment(aes(x = 5, xend = mean_n, yend = name), colour = "grey75", linewidth = 0.5) +
+    geom_point(aes(colour = later_start), size = 3) +
+    geom_text(aes(label = sprintf("%.1f", mean_n)), hjust = -0.55, size = 2.9,
+              colour = "grey25") +
+    scale_colour_manual(values = c(`FALSE` = "#0072B2", `TRUE` = "#D55E00"), name = NULL,
+                        labels = c(`FALSE` = "series starts 1789",
+                                   `TRUE`  = "series starts later")) +
+    scale_x_continuous(limits = c(5, max(survey$mean_n) + 1.2),
+                       breaks = seq(5, 12, 1)) +
+    labs(title = "By survey", x = "Mean coders", y = NULL,
+         subtitle = sprintf("Mean panel size, %d–%d (indicators in parentheses)",
+                            bundle$meta$var_window[1], bundle$meta$var_window[2])) +
+    theme_minimal(base_size = 11) +
+    theme(panel.grid.minor = element_blank(), panel.grid.major.y = element_blank(),
+          legend.position = "bottom", plot.title.position = "plot")
+
+  p_var <- ggplot(var_r2, aes(r2, source, fill = kind)) +
+    geom_col(width = 0.62) +
+    geom_text(aes(label = sprintf("%.3f", r2)), hjust = -0.2, size = 2.9, colour = "grey25") +
+    scale_fill_manual(values = c(`one predictor` = "#0072B2", cumulative = "grey70"),
+                      name = NULL) +
+    scale_x_continuous(limits = c(0, 0.78), expand = expansion(mult = c(0, 0.02))) +
+    labs(title = "What explains panel size?", x = "R²", y = NULL,
+         subtitle = sprintf("Share of variance in coders per cell, %d–%d",
+                            bundle$meta$var_window[1], bundle$meta$var_window[2])) +
+    theme_minimal(base_size = 11) +
+    theme(panel.grid.minor = element_blank(), panel.grid.major.y = element_blank(),
+          legend.position = "bottom", plot.title.position = "plot")
+
+  (p_survey | p_var) + patchwork::plot_layout(widths = c(1.25, 1))
+}
+
+# ── fig_temperature_ladder — Appendix A9 ────────────────────────────────────
+# What decoding temperature would do to all three outcomes. Every rating in the paper is the
+# greedy mode (T = 0); T > 0 here is the EXPECTED behaviour of a sampled rating, computed in
+# closed form from the stored rating distribution (q_T(y) ∝ p(y)^(1/T)), so no new inference is
+# involved. The slope is exact rather than approximate because OLS is linear in the outcome.
+#
+# Lines rather than a forest plot: temperature is continuous and ordered, the story is a monotone
+# trend against a fixed reference, and the bundle carries 198 estimates. Dashed rule in each panel
+# is the human reference (MAE 0.725, slope 1.00, signed deviation 0.00); the solid dot marks T = 0,
+# the setting actually used. Data: build_temperature_ladder.R.
+fig_temperature_ladder <- function(bundle) {
+  lab <- c("llama-70b-ft-raw" = "Llama 70B", "qwen-72b-ft-raw" = "Qwen 72B",
+           "gemma-27b-ft-raw" = "Gemma 27B")
+
+  d <- bundle$ladder |>
+    dplyr::mutate(
+      model     = factor(lab[model_key], levels = names(model_pal)),
+      condition = dplyr::recode(condition, codebook = "Codebook only",
+                                `evidence-zeroshot` = "Raw evidence"),
+      outcome   = factor(outcome,
+                         levels = c("MAE", "Difficulty slope", "Signed deviation")))
+
+  refs <- tibble::tibble(outcome = factor(names(bundle$refs), levels = levels(d$outcome)),
+                         y = unname(bundle$refs))
+
+  ggplot2::ggplot(d, ggplot2::aes(temp, est, colour = model, fill = model)) +
+    ggplot2::geom_hline(data = refs, ggplot2::aes(yintercept = y), linetype = "longdash",
+                        colour = "grey35", linewidth = 0.4, inherit.aes = FALSE) +
+    ggplot2::geom_ribbon(ggplot2::aes(ymin = lo, ymax = hi), alpha = 0.16, colour = NA) +
+    ggplot2::geom_line(linewidth = 0.7) +
+    ggplot2::geom_point(data = ~ dplyr::filter(.x, temp == 0), size = 2.1) +
+    ggplot2::facet_grid(condition ~ outcome, scales = "free_y", switch = "y") +
+    ggplot2::scale_colour_manual(values = model_pal, name = NULL) +
+    ggplot2::scale_fill_manual(values = model_pal, guide = "none") +
+    ggplot2::scale_x_continuous(breaks = seq(0, 1, 0.25)) +
+    ggplot2::labs(x = "Decoding temperature  (0 = greedy mode, used throughout the paper)",
+                  y = NULL) +
+    ggplot2::theme_minimal(base_size = 11) +
+    ggplot2::theme(legend.position = "top",
+                   panel.border = ggplot2::element_rect(colour = "grey80", fill = NA),
+                   panel.grid.minor = ggplot2::element_blank(),
+                   strip.placement = "outside",
+                   strip.text = ggplot2::element_text(face = "bold"))
 }

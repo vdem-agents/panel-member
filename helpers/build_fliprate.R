@@ -1,5 +1,10 @@
-# build_fliprate.R — Figure 7 (main) and Appendix A12: does a synthetic seat change a panel's
-# VERDICT, and does it do so more than ordinary human coder turnover?
+# build_fliprate.R — the deployment figures: does a synthetic seat change a panel's VERDICT,
+# and does it do so more than ordinary human coder turnover?
+#
+# Both outcomes below appear as the two panels of ONE figure, drawn by fig_fliprate_quad():
+# mechanic = "add" is the main-text deployment figure (augmentation, the scenario the paper
+# motivates) and mechanic = "rep" its appendix companion (replacement). Section numbers are
+# not named here because the appendix has renumbered twice.
 #
 # A verdict is round(panel mean) = floor(mean + 0.5) — the panel's own rounded judgement, the
 # same rounding the SESOI derives from in build_bundles.R. It is NOT V-Dem's published `_ord`,
@@ -7,8 +12,8 @@
 # published scores would change.
 #
 # Outcomes, both against a REAL held-out-coder churn benchmark:
-#   flip      share of panels whose verdict changes            -> Figure 7
-#   netd      (down-flips - up-flips), minus churn's own       -> Appendix A12
+#   flip      share of panels whose verdict changes            -> Panel A
+#   netd      (down-flips - up-flips), minus churn's own       -> Panel B
 #
 # Why churn has to be plotted rather than assumed: build_augmentation.R can zero-reference
 # because a mean SHIFT from refilling a seat is zero in expectation. A verdict FLIP from churn

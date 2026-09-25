@@ -44,6 +44,7 @@ model_families <- tribble(
   "gemma",  "Gemma 27B",  "gemma-27b",  "gemma-27b-ft-raw",
 )
 reid_base_prefix <- c(llama = "reid_base", qwen = "reid_qwen-base", gemma = "reid_gemma-base")
+reid_ft_prefix   <- c(llama = "reid_ft-raw", qwen = "reid_qwen-ft-raw", gemma = "reid_gemma-ft-raw")
 
 wls_coefs <- function(y, X, w) {
   XtW <- t(X * w)
@@ -108,6 +109,11 @@ build_nameswap_by_moderator <- function(proj_root,
       d <- d |> inner_join(select(movement, country_text_id, movement_value), by = "country_text_id")
       mod_col <- "movement_value"
     } else {
+      # FIXED salience partition: the BASE model's reid for BOTH blocks, so Base and Fine-Tuned
+      # cells are split on the same items and stay comparable. This matches the convention
+      # documented in build_prominence.R (2026-09-06) and used for R5/A8. Briefly changed to
+      # per-model reid on 2026-09-23 before that convention was found; reverted 2026-09-24
+      # (it moved the FT slopes by <0.03 either way).
       reid <- read_reid(reid_base_prefix[[family]]) |>
         transmute(country_text_id = iso, indicator, reid = as.numeric(correct_top1))
       d <- d |> inner_join(reid, by = c("country_text_id", "indicator"))

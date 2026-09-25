@@ -1,5 +1,5 @@
 # ─── RETIRED ──────────────────────────────────────────────────────────────
-# Superseded by helpers/build_fliprate.R when Figure 7 moved from mean shift to verdict
+# Superseded by helpers/build_fliprate.R when the deployment figure moved from mean shift to verdict
 # flips. The figure slot named on the next line is STALE: nothing in
 # paper/figures-and-tables.qmd renders this bundle any more (see its line 137). The live
 # deployment figure is fig_fliprate_quad. The bundle is still built and loaded because the
@@ -12,7 +12,7 @@
 # and MEASURES churn against those real held-out coders, in one parameterised script whose
 # --mechanic switch drives both the augmentation and degradation arms.
 # ─────────────────────────────────────────────────────────────────────────
-# build_augmentation.R — Figure 8, Panel A. Does adding one AI rating to a thin 2023
+# build_augmentation.R — NOT CURRENTLY RENDERED (see above); Panel A. Does adding one AI rating to a thin 2023
 # panel (2-8 coders) shift the panel mean, and in which direction? Panel size GROWS
 # (n -> n+1) -- the true augmentation mechanic, matching D2's registered language
 # ("adding one AI rating to a thin panel"). Companion to build_degradation.R (Panel B:
