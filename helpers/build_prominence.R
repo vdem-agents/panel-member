@@ -31,7 +31,7 @@
 #                       movement are keyed on the SOURCE country (is the true content country
 #                       identifiable/has it moved), not the fake named one.
 #   difficulty_slope  — a genuinely different shape from the other two: this is a per-CYI
-#                       regression of AI error `a` on case difficulty `h` (Figure 2's own
+#                       regression of AI error `a` on case difficulty `h` (`fig-crossmodel-slope`'s own
 #                       variables — human LOO error as the difficulty proxy, min_coders=2, same
 #                       as the main text), not a single scalar outcome. Prominence/movement enter
 #                       as slope-modifiers, not level-shifters:
@@ -40,7 +40,7 @@
 #                       ("Re-identified": does prominence change how well AI error tracks
 #                       difficulty), h:movement ("Movement"), h:reid:movement ("Interaction") —
 #                       not the level terms, which aren't the question this figure asks.
-#   signed_deviation  — rating - raw_mean per CYI, Evidence condition (Figure 3's own measure;
+#   signed_deviation  — rating - raw_mean per CYI, Evidence condition (the directional-bias measure;
 #                       positive = AI rates the case more generously than the panel, negative =
 #                       harsher). Paired with SIGNED movement (`movement_source =
 #                       "polyarchy_signed"`, dpoly_signed — NOT the absolute version the other
@@ -168,7 +168,7 @@ build_prominence_bundle <- function(proj_root,
     }
   } else {
     # difficulty_slope: same h_c (case difficulty) as analysis/09/build_distmatch.R's own
-    # min_coders=2 pool, on the Evidence condition only (Figure 2's featured input).
+    # min_coders=2 pool, on the Evidence condition only (`fig-crossmodel-slope`'s featured input).
     min_coders <- 2L
     human_ratings <- read_csv(file.path(data_dir, "human_ratings.csv"), show_col_types = FALSE)
     human_h <- human_ratings |>

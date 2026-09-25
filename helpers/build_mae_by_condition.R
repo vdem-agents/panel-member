@@ -9,7 +9,7 @@
 #   err ~ reid       (reid-only; drops movement)
 #
 # where err = |rating - raw_mean|. UNLIKE the signed-deviation version, movement here uses the
-# plain UNSIGNED rank transform (matching Fig 6's difficulty-slope convention, not Fig 7's signed
+# plain UNSIGNED rank transform (matching `fig-slope-by-condition`'s convention, not `fig-signeddev-by-condition`'s signed
 # one) -- this is a magnitude question ("does moving a lot hurt accuracy, regardless of
 # direction"), not a directional lag/anchoring question.
 #

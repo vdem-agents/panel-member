@@ -33,6 +33,13 @@
 #   turnover        coders whose last active year is Y, and the rate on the pool
 #   shortfall_year  share of cells under each threshold, by year, in one release
 #   shortfall_edge  the same share at each release's own leading edge, V10-V16
+#   pairs           for selected years, the full panel-size distribution as first
+#                   published and as the latest release reports it -- the same year seen
+#                   twice, for a before/after comparison
+#   trajectory      each edge year followed forward through later releases: how a year
+#                   fills in once it stops being the leading edge. Separates the fast
+#                   one-cycle catch-up (coding outstanding at press time) from the slow
+#                   grind that follows (later recruits back-coding).
 #   meta            thresholds, indicator set, release map, build time
 #
 # Usage:
@@ -57,12 +64,25 @@ MIN_FILL   <- 0.50   # a year counts as covered if >=50% of its cells are popula
 
 build_coder_attrition <- function(proj_root,
                                   shortfall_release = "V16",
-                                  indicators   = NULL,      # NULL = every _nr column
+                                  indicators   = NULL,      # NULL = the paper's scored set
                                   first_year   = 2005L,     # contemporary era only
                                   last_year    = 2024L,
                                   shared_dir   = file.path(dirname(proj_root), "shared", "vdem-data"),
                                   out_dir      = file.path(proj_root, "data", "derived"),
                                   write        = TRUE) {
+
+  # Default to the indicator set the paper's results rest on, so these figures describe
+  # the analytic sample rather than every _nr column V-Dem ships. Falls back to all _nr
+  # columns if build_analysis_indicators.R has not been run.
+  if (is.null(indicators)) {
+    ai_path <- file.path(out_dir, "analysis_indicators.rds")
+    if (file.exists(ai_path)) {
+      indicators <- readRDS(ai_path)$with_nr
+      message("Using the paper's scored set: ", length(indicators), " indicators")
+    } else {
+      message("analysis_indicators.rds not found; using every _nr column")
+    }
+  }
 
   archive   <- file.path(shared_dir, "vdem-release-archive")
   coder_rds <- file.path(shared_dir, "V-Dem-Coder-Level-v15_rds", "Coder-Level-Dataset-v15.rds")
@@ -170,10 +190,69 @@ build_coder_attrition <- function(proj_root,
       )
   }) |> arrange(pub_year)
 
+  # ── 4. Fill-in trajectory ───────────────────────────────────────────────────
+  # A release's edge year, read again in every later release. A coder already assigned
+  # who submits after the press date shows up one cycle later; a coder recruited two
+  # years afterwards and back-coding arrives gradually. So the shape of this curve --
+  # a large one-cycle drop, then a slow decline -- separates outstanding submissions
+  # from genuine under-recruitment.
+  message("Computing fill-in trajectories...")
+  edge_cells <- function(z, yr) {
+    z |>
+      filter(country_text_id %in% ctys, year == yr) |>
+      select(all_of(inds)) |>
+      unlist(use.names = FALSE) |>
+      (\(v) v[!is.na(v)])()
+  }
+  tags <- names(RELEASES)
+  trajectory <- imap_dfr(set_names(seq_along(tags), tags), function(i, tag) {
+    e <- edge_of(rels[[tag]])
+    map_dfr(0:(length(tags) - i), function(k) {
+      v <- edge_cells(rels[[tags[i + k]]], e)
+      tibble(cohort_year = e, edge_release = tag, cycle = k,
+             read_in = tags[i + k], cells = length(v),
+             mean_n = round(mean(v), 3),
+             pct_lt_5 = round(mean(v < THRESHOLDS[["recommended_floor"]]) * 100, 3))
+    })
+  })
+
+  # Reference: how a fully settled stretch of years looks in the current release.
+  settled_years <- 2005:2015
+  settled_ref <- map_dfr(settled_years, ~{
+    v <- edge_cells(rels[[tail(tags, 1)]], .x)
+    tibble(year = .x, pct_lt_5 = mean(v < THRESHOLDS[["recommended_floor"]]) * 100)
+  })
+
+  # ── 5. Before/after pairs ───────────────────────────────────────────────────
+  # One year, shown as it was first published and as the latest release reports it.
+  # Same quantity as `trajectory`, but as a full distribution rather than a single
+  # share, and on the same stacked-band grammar the era figures use.
+  BANDS <- c(0, 1, 2, 3, 4, 8, Inf)
+  BAND_LABELS <- c("1", "2", "3", "4", "5-8", "9+")
+  latest <- tail(tags, 1)
+
+  band_dist <- function(tag, yr, when) {
+    v <- edge_cells(rels[[tag]], yr)
+    tibble(band = cut(v, BANDS, labels = BAND_LABELS)) |>
+      count(band, .drop = FALSE) |>
+      mutate(year = yr, release = tag, when = when,
+             prop = n / sum(n), cells = sum(n),
+             pct_lt_5 = mean(v < THRESHOLDS[["recommended_floor"]]) * 100)
+  }
+
+  pair_years <- vapply(tags[seq_len(length(tags) - 1)], function(t) edge_of(rels[[t]]), numeric(1))
+  pairs <- imap_dfr(pair_years, function(yr, tag) {
+    bind_rows(band_dist(tag, yr, "as first published"),
+              band_dist(latest, yr, paste("as", latest, "reports it")))
+  })
+
   out <- list(
     turnover       = turnover,
     shortfall_year = shortfall_year,
     shortfall_edge = shortfall_edge,
+    trajectory     = trajectory,
+    pairs          = pairs,
+    settled_ref    = round(mean(settled_ref$pct_lt_5), 3),
     meta = list(
       thresholds        = THRESHOLDS,
       releases          = RELEASES,
@@ -182,6 +261,7 @@ build_coder_attrition <- function(proj_root,
       indicators        = sub("_nr$", "", nrc),
       contemporary_pool = pool_size,
       year_range        = c(first_year, last_year),
+      settled_years     = c(2005, 2015),
       built_at          = Sys.time()
     )
   )
@@ -207,4 +287,11 @@ if (sys.nframe() == 0) {
         row.names = FALSE)
   cat("\n=== Shortfall at each release's own leading edge ===\n")
   print(as.data.frame(res$shortfall_edge), row.names = FALSE)
+  cat("\n=== Fill-in trajectory (share below five, by cycles since the edge) ===\n")
+  print(as.data.frame(res$trajectory |>
+    select(cohort_year, cycle, pct_lt_5) |>
+    tidyr::pivot_wider(names_from = cycle, values_from = pct_lt_5,
+                       names_prefix = "cyc")), row.names = FALSE)
+  cat("settled reference (", paste(res$meta$settled_years, collapse = "-"), "): ",
+      res$settled_ref, "%\n", sep = "")
 }

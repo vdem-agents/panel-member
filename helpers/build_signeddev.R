@@ -1,4 +1,5 @@
-# build_signeddev.R — cross-model SIGNED-DEVIATION bundle for paper Figure 3, without rendering
+# build_signeddev.R — cross-model SIGNED-DEVIATION bundle for the directional-bias figure
+# (chunk `fig-crossmodel-signeddev-regime`), without rendering
 # analysis/08-signed-deviation-2019.qmd.
 #
 # Lifts the signed-deviation compute out of QMD 08 and generalizes it past its Llama-only cell list

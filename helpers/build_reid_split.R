@@ -17,10 +17,10 @@
 # text on both sides, with only {FOCAL_COUNTRY}/{FOCAL_YEAR} moving. Split by the base model's
 # correct_top1 on the summarized re-identification probe, deduped by iso x indicator.
 #
-# This is NOT a compression/identity decomposition -- that is Figure 6, built off
+# This is NOT a compression/identity decomposition -- that is `fig-identity-and-compression`, built off
 # helpers/build_identity_effect*.R. This script adds only the re-identification split.
 #
-# Convention: identified - de-identified (house convention, matching Figure 6 and the
+# Convention: identified - de-identified (house convention, matching `fig-identity-and-compression` and the
 # summarization-arms bundle). Shared country-clustered draws, 2000, seed 42, so the subgroup
 # contrasts and their difference are computed within draw.
 # See notes/mockups/reid-split-framing-leg-concept.md.
