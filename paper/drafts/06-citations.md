@@ -1,4 +1,23 @@
 
+## Reidentification
+
+*Note:* Yang et. al. cited in section 04 as well. 
+
+**Yang, Zhu & Gurevych 2025.** "Robust Utility-Preserving Text Anonymization Based on Large
+Language Models." *Proceedings of the 63rd Annual Meeting of the Association for Computational
+Linguistics (Volume 1: Long Papers)*, 28922–28941. doi:10.18653/v1/2025.acl-long.1404.
+Key `yang2025`.
+PDF: `_literature/Yang et. al. 2025 - Robust Utility-Preserving Text Anonymization Based on Large Language Models (ACL).pdf`
+
+> Rewrites text so that the person described cannot be identified from it while keeping it usable for a classification task, treating those two goals as competing objectives to be balanced rather than one as a side effect of the other. Two components do the judging: a language model asked to name the person the passage describes, scored by how often it succeeds and how confident it is, and a check on whether a classifier can still recover the passage's label. A third rewrites the text in response to both, repeatedly. The numbers show what is at stake. A classifier reads the original passages correctly 99.58% of the time. The previous best method cuts the identification rate from 100% to 52.91%, but the classifier falls to 92.02%. Theirs holds identification at the same level while the classifier stays at 96.02%. Two results carry over to any study that strips identifying detail before scoring. How much accuracy is lost depends on how the stripping is done, so a drop after de-identification is not by itself evidence that the name was doing the work. And roughly half of passages remain identifiable after careful rewriting, which is where these methods bottom out against a capable reader.
+
+**Jiang, Wu, Lin, Yang & Qiu 2023.** "LLMLingua: Compressing Prompts for Accelerated Inference of
+Large Language Models." *Proceedings of the 2023 Conference on Empirical Methods in Natural
+Language Processing*, 13358–13376. doi:10.18653/v1/2023.emnlp-main.825. Key `jiang2023`.
+PDF: `_literature/Jiang et. al. 2023 - LLMLingua - Compressing Prompts for Accelerated Inference of Large Language Models (EMNLP).pdf`
+
+> Shortens a prompt by deleting the words a small model finds easiest to predict and keeping the ones that carry information, cutting length by as much as twenty times with little loss on math problems, reasoning tasks, conversation logs and papers. The result reads badly — whole words are clipped to fragments, and the text is, in the authors' words, challenging for humans — but the model scores on it about as well as on the original. The finding worth carrying over comes from a check they run afterward. They hand the shortened text to a stronger model and ask it to restore what was removed, and it largely can: at seventeen times compression one example comes back as the full nine-step chain of reasoning it started as, with how much returns depending on the compression rate and on which small model did the cutting. Text that looks destroyed can still be legible to the model reading it, which is the possibility raised whenever identifying detail is stripped from a document and the model is then asked whether it can still tell what the document describes.
+
 ## Name-swap analysis
 
 **Kaushik, Hovy & Lipton 2020.** "Learning the Difference that Makes a Difference with

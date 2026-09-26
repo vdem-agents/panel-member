@@ -1,4 +1,4 @@
-# §3 V-Dem coder panels — citations
+# The V-Dem Project
 
 
 ### The V-Dem project
@@ -24,7 +24,6 @@ PDF: `_literature/Miller 2024 - How Little and Meng's Objective Approach Fails i
 Expert-Coded Data." *V-Dem Working Paper Series* 2025:21. Key `pemstein2025`.
 
 > An ordinal item response theory model that estimates the latent country-year score jointly with two coder-level parameters: reliability `β_r`, which weights how much a coder contributes, and thresholds `γ_{r,k}`, which capture where that coder places the cut points between ordinal categories. This is what V-Dem publishes from — the raw panel mean is not what the project reports.
-
 
 ### Coder reliability
 
