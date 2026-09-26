@@ -530,6 +530,97 @@ research need. Rewrite the footnote around cadence rather than around discontinu
   that CIRI is also one of the two datasets in the Greene/Park/Colaresi 2019 debate, so the
   Introduction can reuse it rather than introducing an unconnected example.
 
+### Expert-coded projects named in the Introduction
+
+#### The contrast class — single authoritative coding
+
+**Marshall & Gurr 2020.** "Polity5: Political Regime Characteristics and Transitions,
+1800–2018. Dataset Users' Manual." Center for Systemic Peace. Key `marshall2020`.
+
+> Regime characteristics coded by a small central team rather than a panel, with an
+> adjudicated single score per country-year.
+
+**Freedom House 2026.** *Freedom in the World 2026: The Growing Shadow of Autocracy.*
+Washington, DC: Freedom House. Key `freedomhouse2026`.
+
+> 195 countries and 13 territories scored on 25 indicators by an analyst per country,
+> reviewed by advisers, producing one authoritative rating.
+
+**Raleigh, Linke, Hegre & Karlsen 2010.** "Introducing ACLED: An Armed Conflict Location and
+Event Dataset." *Journal of Peace Research* 47(5):651–660. doi:10.1177/0022343310378914.
+Key `raleigh2010`.
+
+> Trained coders record conflict events from news and report sources, with quality control at
+> the event level rather than multiple independent raters per unit.
+
+#### Expert panels
+
+**Jolly, Bakker, Hooghe, Marks, Polk, Rovny, Steenbergen & Vachudova 2022.** "Chapel Hill
+Expert Survey trend file, 1999–2019." *Electoral Studies* 75:102420.
+doi:10.1016/j.electstud.2021.102420. Key `jolly2022`.
+
+> Many country specialists place each party on each dimension; the published position is the
+> simple average of their ratings.
+
+**Norris, Frank & Martínez i Coma 2014.** "Measuring Electoral Integrity around the World: A
+New Dataset." *PS: Political Science & Politics* 47(4):789–798.
+doi:10.1017/S1049096514001061. Key `norris2014`.
+
+> Election experts rate each contest on a battery of integrity items, averaged into an index;
+> the unit is the election rather than the country-year.
+
+**World Justice Project 2025.** *WJP Rule of Law Index 2025.* Washington, DC: World Justice
+Project. Key `worldjusticeproject2025`.
+
+> Combines expert questionnaires with a general population poll across 143 countries, so the
+> index rests on two separate respondent panels.
+
+#### The discontinued-projects footnote
+
+**Cingranelli & Richards 2010.** "The Cingranelli and Richards (CIRI) Human Rights Data
+Project." *Human Rights Quarterly* 32(2):401–424. doi:10.1353/hrq.0.0141.
+Key `cingranelli2010`.
+
+> Standards-based human rights indicators coded from State Department and Amnesty reports by
+> two coders working to a reconciliation rule; the project stopped issuing updates in the
+> mid-2010s.
+
+**LaFree & Dugan 2007.** "Introducing the Global Terrorism Database." *Terrorism and Political
+Violence* 19(2):181–204. doi:10.1080/09546550701246817. Key `lafree2007`.
+
+> Event-level terrorism data compiled by trained coders from open sources; the project
+> experienced a funding disruption but continued.
+
+**Kucera 2007.** "Measuring Trade Union Rights by Violations of These Rights." In *Qualitative
+Indicators of Labour Standards: Comparative Methods and Applications*, ed. David Kucera,
+145–181. Dordrecht: Springer Netherlands. doi:10.1007/978-1-4020-5310-8_6. Key `kucera2007`.
+
+> Codes 170 countries against 37 categories of freedom-of-association and collective-bargaining
+> violations, drawn from the State Department reports, the ICFTU annual survey and ILO
+> Committee on Freedom of Association reports. Four years of coverage, 1994–97.
+
+**Mosley & Uno 2007.** "Racing to the Bottom or Climbing to the Top? Economic Globalization and
+Collective Labor Rights." *Comparative Political Studies* 40(8):923–948.
+doi:10.1177/0010414006293442. Key `mosley2007`.
+
+> Applies a similar violation-coding method to build annual measures for 90 developing
+> countries, 1986–2002, after which the series stops.
+
+**Kucera & Sari 2019.** "New Labour Rights Indicators: Method and Trends for 2000–15."
+*International Labour Review* 158(3):419–446. doi:10.1111/ilr.12084. Key `kucera2019`.
+
+> The rebuild a decade later under new sponsorship: 108 violation types across nine textual
+> sources for 185 ILO member states, now the basis for SDG indicator 8.8.2. Five years coded
+> out of sixteen.
+
+**Teitelbaum 2010.** "Measuring Trade Union Rights through Violations Recorded in Textual
+Sources: An Assessment." *Political Research Quarterly* 63(2):461–474.
+doi:10.1177/1065912909355712. Key `teitelbaum2010`.
+
+> Assesses whether the dichotomous violation items load on a single latent dimension and shows
+> that a measurement model gives a more principled basis for combining them than ad hoc
+> weighting — a precedent for applying a measurement model to coded textual sources.
+
 ---
 
 ## What still needs doing
