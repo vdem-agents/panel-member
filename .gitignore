@@ -30,6 +30,5 @@ logs/
 # pattern matches the symlink itself), plus the rendered manuscript.
 /paper/drafts
 /paper/writing-notes
-/paper/reserved-deployment
 /paper/panel-member.pdf
 /paper/panel-member.tex
