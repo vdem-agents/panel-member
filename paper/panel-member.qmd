@@ -4,7 +4,7 @@ title: |
 subtitle: |
   How Language Models Use Entity Knowledge in Rating Tasks
 short-title: "A Country by Any Other Name"
-published: "Draft manuscript. Prepared for the AIM4D conference."
+published: "Prepared for the AIM4D Conference, University of Notre Dame, October 15–17, 2026."
 date: September 29, 2026
 code-repo: "Access the code, data, and analysis at <https://github.com/vdem-agents/panel-member.git>"
 author:
