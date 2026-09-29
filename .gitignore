@@ -25,3 +25,11 @@ logs/
 # Working notes: symlink to the private project-notes repo. Ignored here (no trailing
 # slash so it also matches the symlink itself), tracked/backed up privately instead.
 /notes
+
+# Private paper material: symlinks into the private project-notes repo (no trailing slash so the
+# pattern matches the symlink itself), plus the rendered manuscript.
+/paper/drafts
+/paper/writing-notes
+/paper/reserved-deployment
+/paper/panel-member.pdf
+/paper/panel-member.tex

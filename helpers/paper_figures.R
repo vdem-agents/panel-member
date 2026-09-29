@@ -361,7 +361,7 @@ fig_crossmodel_slope <- function(dm_bundle,
     scale_color_manual(values = model_pal, name = NULL) +
     scale_x_continuous(expand = expansion(mult = c(0.04, 0.02))) +
     coord_cartesian(clip = "off") +
-    labs(title = "B. Average Difficulty Tracking Error",
+    labs(title = "B. Difficulty Slope",
          x = "AI Case Difficulty Slope", y = NULL) +
     theme_minimal(base_size = 12) +
     theme(legend.position = "top", legend.justification = "left",
@@ -1470,15 +1470,15 @@ fig_nameswap_channels <- function(bundle, sesoi = NULL) {
                                     fontface = "bold", size = 2.9)
 
   pA <- panel(prep("Mean |shift|"), "Mean Shift in Rating Points",
-              "A. How far the rating moves when only the name changes",
+              "A. Rating Shift from the Name",
               band = if (is.null(sesoi)) NULL else c(0, sesoi))
   if (!is.null(sesoi)) {
     pA <- pA + geom_vline(xintercept = sesoi, linetype = "dashed", color = "grey40") +
       draw_lab(lab_one(sesoi + 0.02, "SESOI", 0))
   }
 
-  pB <- panel(prep("Text's share"), "Share of Rating Driven by the Text (vs. the Country Name)",
-              "B. Text vs. name: which one the rating follows", rows = FALSE) +
+  pB <- panel(prep("Text's share"), "Share of Rating Driven by the Evidence",
+              "B. Evidence's Share of the Rating", rows = FALSE) +
     scale_x_continuous(labels = scales::percent_format(accuracy = 1)) +
     geom_vline(xintercept = 0.5, linetype = "dashed", color = "grey40") +
     draw_lab(lab_one(0.485, "equal", 1))
@@ -2233,4 +2233,157 @@ fig_temperature_ladder <- function(bundle) {
                    panel.grid.minor = ggplot2::element_blank(),
                    strip.placement = "outside",
                    strip.text = ggplot2::element_text(face = "bold"))
+}
+
+# Few-shot ablation (paper appendix) — base Llama with and without the five calibration examples,
+# 2019, on the three evidence conditions and all three outcomes, in `fig_identity_and_compression`'s
+# layout. The zero-shot cells exist for base Llama in 2019 only. Levels, not paired contrasts:
+# each point is the cell's own estimate with its country-clustered 95% CI from the source bundle.
+# Dashed rule = the human reference on each outcome (human LOO MAE, slope 1, signed deviation 0).
+#
+#   fig_fewshot_ablation(readRDS("data/derived/bootstrap_2019.rds"),
+#                        readRDS("data/derived/distmatch_slope_2019.rds"),
+#                        readRDS("data/derived/signeddev_xmodel_2019.rds"))
+fig_fewshot_ablation <- function(boot_bundle, slope_bundle, signeddev_bundle) {
+  cond_disp <- c(evidence = "Raw Text", anonymized = "Anonymized", summarized = "Summarized")
+  cond_lv   <- c("Summarized", "Anonymized", "Raw Text")   # first level plots at bottom
+  prompt_pal <- c("With calibration examples" = "#0072B2", "Without" = "#D55E00")
+
+  tidy_cells <- function(d) {
+    d |>
+      dplyr::filter(model_key == "llama-70b",
+                    sub("-zeroshot$", "", condition) %in% names(cond_disp)) |>
+      dplyr::mutate(
+        prompt = factor(dplyr::if_else(grepl("-zeroshot$", condition),
+                                       "Without", "With calibration examples"),
+                        levels = names(prompt_pal)),
+        cond   = factor(cond_disp[sub("-zeroshot$", "", condition)], levels = cond_lv))
+  }
+  split_cell <- function(d) {
+    d |> tibble::as_tibble() |>
+      tidyr::separate(cell, c("model_key", "condition"), sep = "\\|", remove = FALSE)
+  }
+
+  mae <- boot_bundle$boot_ci |> tibble::as_tibble() |>
+    dplyr::transmute(model_key, condition, est = ai_mae, lo = ai_lo, hi = ai_hi) |> tidy_cells()
+  slope <- slope_bundle$dm_slope |> tibble::as_tibble() |>
+    dplyr::select(model_key, condition, est, lo, hi) |> tidy_cells()
+  sdev <- signeddev_bundle$dm_ov |> split_cell() |>
+    dplyr::select(model_key, condition, est, lo, hi) |> tidy_cells()
+
+  one_panel <- function(d, ref, subtitle, show_y) {
+    p <- ggplot(d, aes(est, cond, color = prompt, group = prompt)) +
+      geom_vline(xintercept = ref, linetype = "dashed", color = "grey40") +
+      geom_pointrange(aes(xmin = lo, xmax = hi), size = 0.5, linewidth = 0.6,
+                      position = position_dodge(width = 0.5)) +
+      scale_color_manual(values = prompt_pal, name = NULL) +
+      labs(subtitle = subtitle, x = NULL, y = NULL) +
+      theme_minimal(base_size = 12) +
+      theme(panel.grid.major.y = element_blank(),
+            panel.border = element_rect(color = "grey75", fill = NA, linewidth = 0.4),
+            plot.margin = margin(l = 6, r = 6, t = 3, b = 3),
+            axis.text.y = element_text(size = 10.5),
+            plot.subtitle = element_text(face = "bold", size = 10.5))
+    if (!show_y) p <- p + theme(axis.text.y = element_blank())
+    p
+  }
+
+  pA <- one_panel(mae,   boot_bundle$human_ref$human_mae, "A. Mean Absolute Error",   TRUE)
+  pB <- one_panel(slope, 1,                               "B. Case Difficulty Slope", FALSE)
+  pC <- one_panel(sdev,  0,                               "C. Signed Deviation",      FALSE)
+
+  (pA | pB | pC) +
+    patchwork::plot_layout(guides = "collect") &
+    theme(legend.position = "top", legend.justification = "left")
+}
+
+# Alternative metrics (paper appendix) — base and fine-tuned (raw-text adapter) Llama, 2019, scored
+# under the secondary metrics of analysis/12. Two kableExtra tables for the PDF manuscript:
+#   tbl_alt_metrics_levels()    one row per model-condition pair plus the human LOO reference
+#   tbl_alt_metrics_contrasts() the base-model contrasts and FT vs base on Raw Text, as paired
+#                               deltas with country-clustered 95% CIs under MAE, RMSE and nMAE
+#
+#   boot_bundle <- readRDS("data/derived/bootstrap_2019.rds")
+#   secondary   <- readRDS("data/derived/secondary_2019.rds")
+.alt_rows <- tibble::tribble(
+  ~cell,                                 ~Weights,     ~Condition,
+  "llama-70b|codebook",                  "Base",       "Codebook",
+  "llama-70b|evidence",                  "Base",       "Raw Text",
+  "llama-70b|anonymized",                "Base",       "Anonymized",
+  "llama-70b|summarized",                "Base",       "Summarized",
+  "llama-70b-ft-raw|codebook",           "Fine-tuned", "Codebook",
+  "llama-70b-ft-raw|evidence-zeroshot",  "Fine-tuned", "Raw Text"
+)
+
+.fmt_ci <- function(est, lo, hi, digits = 3) {
+  sprintf(paste0("%.", digits, "f [%.", digits, "f, %.", digits, "f]"), est, lo, hi)
+}
+
+tbl_alt_metrics_levels <- function(boot_bundle, secondary) {
+  mae <- boot_bundle$boot_ci |> tibble::as_tibble() |>
+    dplyr::transmute(cell = paste(model_key, condition, sep = "|"), MAE = ai_mae)
+  lvl <- function(d, nm) d |> tibble::as_tibble() |> dplyr::select(cell, est) |>
+    dplyr::rename(!!nm := est)
+  alpha <- secondary$alpha_tbl |> tibble::as_tibble() |>
+    dplyr::mutate(cell = names(secondary$cell_lab_of)[match(Cell, secondary$cell_lab_of)]) |>
+    dplyr::select(cell, `Δα` = `Δα`)
+
+  ai <- .alt_rows |>
+    dplyr::left_join(mae, by = "cell") |>
+    dplyr::left_join(lvl(secondary$nmae_lvl, "Normalized MAE"), by = "cell") |>
+    dplyr::left_join(lvl(secondary$ex_lvl,   "Exact"),          by = "cell") |>
+    dplyr::left_join(lvl(secondary$adj_lvl,  "Adjacent"),       by = "cell") |>
+    dplyr::left_join(lvl(secondary$qwk_cells, "QWK"),           by = "cell") |>
+    dplyr::left_join(alpha, by = "cell")
+  human <- tibble::tibble(
+    Weights = "Human coder", Condition = "",
+    MAE = boot_bundle$human_ref$human_mae,
+    `Normalized MAE` = secondary$human_nmae_ref$est,
+    Exact = secondary$human_ref_row$ex_est, Adjacent = secondary$human_ref_row$adj_est,
+    QWK = secondary$qwk_human$est, `Δα` = NA_real_)
+
+  dplyr::bind_rows(ai |> dplyr::select(-cell), human) |>
+    dplyr::mutate(dplyr::across(c(MAE, `Normalized MAE`, QWK), ~ sprintf("%.3f", .x)),
+                  dplyr::across(c(Exact, Adjacent), ~ sprintf("%.1f%%", 100 * .x)),
+                  `Δα` = dplyr::if_else(is.na(`Δα`), "", sprintf("%+.3f", `Δα`))) |>
+    kableExtra::kbl(booktabs = TRUE, align = "llrrrrrr", linesep = "") |>
+    kableExtra::kable_styling(latex_options = "HOLD_position", font_size = 9) |>
+    kableExtra::row_spec(6, extra_latex_after = "\\midrule")
+}
+
+tbl_alt_metrics_contrasts <- function(boot_bundle, secondary) {
+  mae_delta <- function(a, b) {
+    d <- boot_bundle$boot_results |> tibble::as_tibble() |>
+      dplyr::mutate(cell = paste(model_key, condition, sep = "|")) |>
+      dplyr::filter(cell %in% c(a, b)) |>
+      dplyr::select(id, cell, ai_mae) |>
+      tidyr::pivot_wider(names_from = cell, values_from = ai_mae) |>
+      dplyr::mutate(delta = .data[[a]] - .data[[b]])
+    boot <- d$delta[d$id != "Apparent"]
+    .fmt_ci(d$delta[d$id == "Apparent"], quantile(boot, 0.025), quantile(boot, 0.975))
+  }
+  ci_col <- function(tbl) tbl |> tibble::as_tibble() |>
+    dplyr::transmute(label, v = .fmt_ci(est, lo, hi))
+
+  B <- "llama-70b|codebook"; EV <- "llama-70b|evidence"
+  AN <- "llama-70b|anonymized"; SU <- "llama-70b|summarized"
+  FT <- "llama-70b-ft-raw|evidence-zeroshot"
+  rows <- tibble::tribble(
+    ~label,           ~Contrast,                             ~a, ~b,
+    "B1 · Ev−Cb",     "Raw Text − Codebook (base)",          EV, B,
+    "B2 · An−Cb",     "Anonymized − Codebook (base)",        AN, B,
+    "Su−Cb (descr.)", "Summarized − Codebook (base)",        SU, B,
+    "B3 · An−Ev",     "Anonymized − Raw Text (base)",        AN, EV,
+    "Su−Ev (descr.)", "Summarized − Raw Text (base)",        SU, EV,
+    "F1 · Raw Text",  "Fine-tuned − base (Raw Text)",        FT, EV
+  )
+  rows |>
+    dplyr::mutate(MAE = purrr::map2_chr(a, b, mae_delta)) |>
+    dplyr::left_join(ci_col(secondary$rmse_contrasts) |> dplyr::rename(RMSE = v), by = "label") |>
+    dplyr::left_join(ci_col(secondary$nmae_contrasts) |> dplyr::rename(`Normalized MAE` = v),
+                     by = "label") |>
+    dplyr::mutate(`Normalized MAE` = dplyr::coalesce(`Normalized MAE`, "")) |>
+    dplyr::select(Contrast, MAE, RMSE, `Normalized MAE`) |>
+    kableExtra::kbl(booktabs = TRUE, align = "lrrr", linesep = "") |>
+    kableExtra::kable_styling(latex_options = "HOLD_position", font_size = 9)
 }
