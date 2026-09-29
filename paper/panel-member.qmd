@@ -1,9 +1,9 @@
 ---
 title: |
-  Reading the Country into the Evidence
+  A Country by Any Other Name
 subtitle: |
-  Language Models as V-Dem Expert Coders
-short-title: "Reading the Country into the Evidence"
+  How Language Models Use Entity Knowledge in Rating Tasks
+short-title: "A Country by Any Other Name"
 published: "Draft manuscript. Prepared for the AIM4D conference."
 date: September 29, 2026
 code-repo: "Access the code, data, and analysis at <https://github.com/vdem-agents/panel-member.git>"
@@ -30,20 +30,49 @@ keywords:
 #
 #funding-info: |
 #
+ai-disclosure: |
+  Large language models are the object of study in this paper, and the models evaluated and their use are described in Section 3. In preparing the manuscript, the author also used recent versions of Claude (Anthropic) to assist with analysis code, figures and editing. All research design decisions and interpretations are the author's own. The author reviewed all AI-assisted output and takes full responsibility for the content.
 #conflicts: |
 #  I have no known conflict of interest to disclose.
 anonymized: false
 word-count: "9,850"
 bibliography: references.bib
+number-sections: true
+number-depth: 1
 format:
   working-paper-pdf:
     keep-tex: true
-  docx: default
+    fig-pos: "tbp"
 execute:
   echo: false
   warning: false
   message: false
 ---
+
+```{r setup}
+#| include: false
+library(tidyverse)
+proj_root <- rprojroot::find_root(rprojroot::is_git_root)
+source(file.path(proj_root, "helpers", "bootstrap_helpers.R"))
+source(file.path(proj_root, "helpers", "paper_figures.R"))
+derived <- file.path(proj_root, "data", "derived")
+rd <- function(f) readRDS(file.path(derived, f))
+
+# The heavy computation lives in helpers/build_*.R, which write these bundles; this document
+# only reads them and draws. 2023 is the main-text year; 2019 and 2024 are appendix replications.
+boot_bundle_2023 <- rd("bootstrap_2023.rds");   exp_bundle_2023 <- rd("expectation_2023.rds")
+boot_bundle_2019 <- rd("bootstrap_2019.rds");   exp_bundle_2019 <- rd("expectation_2019.rds")
+boot_bundle_2024 <- rd("bootstrap_2024.rds");   exp_bundle_2024 <- rd("expectation_2024.rds")
+dm_slope_2023  <- rd("distmatch_slope_2023.rds");   dm_slope_2019  <- rd("distmatch_slope_2019.rds")
+sd_signed_2023 <- rd("signeddev_xmodel_2023.rds");  sd_signed_2019 <- rd("signeddev_xmodel_2019.rds")
+reidrates_bundle_2023  <- rd("reidrates_2023.rds")
+nameswap_channels_2023 <- rd("nameswapchannels_2023.rds")
+identityeffect_bundle       <- rd("identityeffect_2023.rds")
+identityeffect_sd_bundle    <- rd("identityeffect_signeddev_2023.rds")
+identityeffect_slope_bundle <- rd("identityeffect_slope_2023.rds")
+temperature_ladder_2023 <- rd("temperature_ladder_2023.rds")
+secondary_2019          <- rd("secondary_2019.rds")
+```
 
 {{< include drafts/01-introduction.md >}}
 
@@ -61,9 +90,124 @@ execute:
 
 # References {.unnumbered}
 
+::: {#refs}
+:::
+
+\newpage
+
 ```{=tex}
-\setlength{\parindent}{-0.2in}
-\setlength{\leftskip}{0.2in}
-\setlength{\parskip}{8pt}
-\noindent
+\setcounter{figure}{0}
+\setcounter{table}{0}
+\renewcommand{\thefigure}{A\arabic{figure}}
+\renewcommand{\thetable}{A\arabic{table}}
+```
+
+# Appendix {.unnumbered}
+
+## A1. Replication on 2019 and 2024 {#sec-app-holdout .unnumbered}
+
+Figures A1–A3 repeat Figures 1–3 for 2019, the year immediately after the fine-tuning window. @fig-app-2024-mae repeats @fig-mae for 2024, where the evidence consists of Freedom House reports only and the figure reports the codebook-only and evidence conditions.
+
+```{r}
+#| label: fig-app-2019-mae
+#| fig-pos: "H"
+#| fig-cap: "**Models' Distance from the Panel Mean.** 2019 data with bootstrapped country-clustered 95% confidence intervals."
+#| fig-width: 8
+#| fig-height: 5.2
+fig_crossmodel_landscape(exp_bundle_2019, boot_bundle_2019, band = "human_loo",
+                         base_readout = "greedy", ft_conds = c("codebook", "evidence-zeroshot"))
+```
+
+```{r}
+#| label: fig-app-2019-slope
+#| fig-pos: "H"
+#| fig-cap: "**Difficulty Tracking.** 2019 data with bootstrapped country-clustered 95% confidence intervals."
+#| fig-width: 9.5
+#| fig-height: 4.6
+fig_crossmodel_slope_2panel(dm_slope_2019, ft_conds = c("codebook", "evidence-zeroshot"))
+```
+
+```{r}
+#| label: fig-app-2019-signed
+#| fig-pos: "H"
+#| fig-cap: "**Directional Bias.** 2019 data with bootstrapped country-clustered 95% confidence intervals."
+#| fig-width: 9.5
+#| fig-height: 4.6
+fig_crossmodel_signeddev_2panel_regime(sd_signed_2019, ft_conds = c("codebook", "evidence-zeroshot"))
+```
+
+```{r}
+#| label: fig-app-2024-mae
+#| fig-pos: "H"
+#| fig-cap: "**Models' Distance from the Panel Mean.** 2024 data with bootstrapped country-clustered 95% confidence intervals."
+#| fig-width: 8
+#| fig-height: 4
+fig_crossmodel_landscape(exp_bundle_2024, boot_bundle_2024, band = "human_loo",
+                         base_readout = "greedy", ft_conds = c("codebook", "evidence-zeroshot"),
+                         base_conds = c("codebook", "evidence"))
+```
+
+\newpage
+
+## A2. Few-Shot Ablation {#sec-app-fewshot .unnumbered}
+
+In the evidence, anonymized and summarized conditions the base models also see five calibration examples. @fig-app-fewshot compares base Llama's 2019 ratings in those conditions with and without the examples on all three outcomes.
+
+```{r}
+#| label: fig-app-fewshot
+#| fig-pos: "H"
+#| fig-cap: "**Few-Shot Ablation.** Base Llama, 2019 data with bootstrapped country-clustered 95% confidence intervals. Dashed lines mark the human reference."
+#| fig-width: 10
+#| fig-height: 3.6
+fig_fewshot_ablation(boot_bundle_2019, dm_slope_2019, sd_signed_2019)
+```
+
+\newpage
+
+## A3. Decoding Temperature {#sec-app-temperature .unnumbered}
+
+Every rating in the main text is the model's most likely rating (temperature 0). @fig-app-temperature shows the expected distance, difficulty slope and signed deviation of a rating sampled at higher temperatures, computed from each fine-tuned model's stored probability distribution over ratings, so no new inference is involved.
+
+```{r}
+#| label: fig-app-temperature
+#| fig-pos: "H"
+#| fig-cap: "**Decoding Temperature.** Fine-tuned models, 2023 data with bootstrapped country-clustered 95% confidence bands. Dashed lines mark the human reference."
+#| fig-width: 9
+#| fig-height: 5.4
+fig_temperature_ladder(temperature_ladder_2023)
+```
+
+\newpage
+
+## A4. Alternative Metrics {#sec-app-metrics .unnumbered}
+
+@tbl-app-metrics-levels scores base and fine-tuned Llama's 2019 ratings against the panel mean with scale-normalized MAE (each error divided by the indicator's range), exact and adjacent agreement, and quadratic weighted kappa (QWK), and reports the change in the panel's ordinal Krippendorff's α when the model is added as one more coder (Δα). @tbl-app-metrics-contrasts reports the main contrasts under MAE, root mean squared error (RMSE) and normalized MAE.
+
+```{r}
+#| label: tbl-app-metrics-levels
+#| tbl-pos: "H"
+#| tbl-cap: "**Alternative Metrics.** Llama, 2019 data. The human coder row is the leave-one-out reference."
+tbl_alt_metrics_levels(boot_bundle_2019, secondary_2019)
+```
+
+```{r}
+#| label: tbl-app-metrics-contrasts
+#| tbl-pos: "H"
+#| tbl-cap: "**Contrasts under Alternative Error Metrics.** Llama, 2019 data with bootstrapped country-clustered 95% confidence intervals."
+tbl_alt_metrics_contrasts(boot_bundle_2019, secondary_2019)
+```
+
+\newpage
+
+## A5. Name-Swap by Recognition {#sec-app-nameswap .unnumbered}
+
+@fig-app-nameswap-tests tests the split shown in @fig-nameswap. Each difference is computed within the same bootstrap draw, so the two groups share country weights. The evidence's share is reversed and shown as the name's share, so that a positive value means the name did more work where the evidence was recognizable in both panels.
+
+```{r}
+#| label: fig-app-nameswap-tests
+#| fig-pos: "H"
+#| fig-cap: "**Name-Swap Test by Recognition.** 2023 data with bootstrapped country-clustered 95% confidence intervals."
+#| fig-width: 9
+#| fig-height: 4.4
+fig_nameswap_salience_tests(nameswap_channels_2023)
 ```
