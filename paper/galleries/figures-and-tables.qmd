@@ -518,14 +518,22 @@ repo, for the staging/run plan). Within-2024 comparisons are valid (base vs. FT,
 ordering, AI vs. human reference); cross-year levels are confounded (FH-only vs. full-source
 drops one source), so this is not placed on a shared axis with 2019/2023.
 
+**Base Anonymized/Summarized rows withheld (2026-09-28).** The 2024 anonymized and summarized
+evidence texts are corrupt: the models' ratings on them correlate with the panel at r = 0.34–0.42
+at the country level (0.93 on 2024 raw text; 0.92 on 2023 anonymized), and justifications describe
+the wrong kind of country (e.g. Uruguay's 2024 elections "marred by numerous reports of voter
+intimidation, vote buying"). The figure shows Codebook and Raw Text only until the texts are
+re-staged and those six runs redone — see `notes/todo-2024-anon-summ-rerun.md`.
+
 ```{r}
 #| label: fig-crossmodel-2024
-#| fig-cap: "Synthetic coder performance across model families on the 2024 FH-only holdout (Llama 70B / Qwen 72B / Gemma 27B). Layout, readout convention (solid = greedy, open = mean; base rows greedy only), and reference lines match Figure 1. FT-raw block: Codebook and Raw Text only (Appendix A5 has the untrimmed grid on 2019). Country-clustered 95% CIs."
+#| fig-cap: "Synthetic coder performance across model families on the 2024 FH-only holdout (Llama 70B / Qwen 72B / Gemma 27B). Layout, readout convention (solid = greedy, open = mean; base rows greedy only), and reference lines match Figure 1. Both blocks show Codebook and Raw Text only; the base Anonymized and Summarized rows are withheld pending re-staged 2024 texts. Country-clustered 95% CIs."
 #| fig-width: 8
 #| fig-height: 5.2
 #| eval: !expr have_2024
 fig_crossmodel_landscape(exp_bundle_2024, boot_bundle_2024, band = "human_loo", base_readout = "greedy",
-                         ft_conds = c("codebook", "evidence-zeroshot"))
+                         ft_conds = c("codebook", "evidence-zeroshot"),
+                         base_conds = c("codebook", "evidence"))
 ```
 
 ## A5. Untrimmed FT-raw evidence-format grid (2019, cross-model)

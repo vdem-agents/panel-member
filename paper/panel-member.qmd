@@ -1,0 +1,69 @@
+---
+title: |
+  Reading the Country into the Evidence
+subtitle: |
+  Language Models as V-Dem Expert Coders
+short-title: "Reading the Country into the Evidence"
+published: "Draft manuscript. Prepared for the AIM4D conference."
+date: September 29, 2026
+code-repo: "Access the code, data, and analysis at <https://github.com/vdem-agents/panel-member.git>"
+author:
+  - name: Emmanuel Teitelbaum
+    email: ejt@gwu.edu
+    orcid: 0000-0001-7089-0588
+    title: Associate Professor
+    affiliations:
+      - id: gwu
+        name: George Washington University
+        department: Department of Political Science
+    attributes:
+      corresponding: true
+abstract: |
+  Political scientists increasingly use large language models to reproduce the judgments of expert coders, but it is unclear how much models evaluate based on supplied textual evidence versus what they already know about the case. I argue that a language model's country prior represents entity knowledge that provides valuable context for performing rating tasks, but that models draw on their priors more heavily and more uniformly than human experts do. Using three open-weight models to rate 205 V-Dem indicators for 176 countries, I vary the supplied evidence and fine-tune the models on individual coders' ratings. Base models sit about as far from the panel as a human coder, but their errors barely track case difficulty and country reports make them harsher raters. Removing the country's identity from the supplied evidence widens most of these gaps while fine-tuning brings the models' errors close to those of a human coder. A series of probes then demonstrates that the models use the country's identity to interpret the evidence and that fine-tuning shifts their reliance from the evidence to the name.
+keywords:
+  - large language models
+  - expert coding
+  - measurement
+  - democracy
+  - V-Dem
+#thanks: |
+#
+#funding-info: |
+#
+#conflicts: |
+#  I have no known conflict of interest to disclose.
+anonymized: false
+word-count: "9,850"
+bibliography: references.bib
+format:
+  working-paper-pdf:
+    keep-tex: true
+  docx: default
+execute:
+  echo: false
+  warning: false
+  message: false
+---
+
+{{< include drafts/01-introduction.md >}}
+
+{{< include drafts/02-theory.md >}}
+
+{{< include drafts/03-models-and-evaluation.md >}}
+
+{{< include drafts/04-synthetic-coder-performance.md >}}
+
+{{< include drafts/05-mechanisms.md >}}
+
+{{< include drafts/07-conclusion.md >}}
+
+\newpage
+
+# References {.unnumbered}
+
+```{=tex}
+\setlength{\parindent}{-0.2in}
+\setlength{\leftskip}{0.2in}
+\setlength{\parskip}{8pt}
+\noindent
+```

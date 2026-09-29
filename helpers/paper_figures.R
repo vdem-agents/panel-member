@@ -118,7 +118,8 @@ fig_crossmodel_landscape <- function(exp_bundle, greedy_bundle,
                                      band = c("human_loo", "none"),
                                      base_readout = c("greedy", "both", "mean"),
                                      ft_conds = c("codebook", "evidence-zeroshot",
-                                                  "anonymized-zeroshot", "summarized-zeroshot")) {
+                                                  "anonymized-zeroshot", "summarized-zeroshot"),
+                                     base_conds = c("codebook", "evidence", "anonymized", "summarized")) {
   band         <- match.arg(band)
   base_readout <- match.arg(base_readout)
   sesoi       <- exp_bundle$sesoi
@@ -127,7 +128,6 @@ fig_crossmodel_landscape <- function(exp_bundle, greedy_bundle,
 
   base_models <- c("llama-70b", "qwen-72b", "gemma-27b")
   ft_models   <- c("llama-70b-ft-raw", "qwen-72b-ft-raw", "gemma-27b-ft-raw")
-  base_conds  <- c("codebook", "evidence", "anonymized", "summarized")
   cond_disp   <- c(codebook = "Codebook", evidence = "Raw Text",
                    anonymized = "Anonymized", summarized = "Summarized")
 
