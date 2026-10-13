@@ -1,0 +1,12 @@
+#!/bin/sh
+# Normalize commit trailers for manuscript and presentation files.
+
+msg_file="$1"
+
+if git diff --cached --name-only | grep -qE '^(paper|presentation)/'; then
+  perl -0pi -e '
+    s/^[ \t]*Co-authored-by:[^\n]*(anthropic\.com|cursor\.com|cursoragent)[^\n]*\n?//gmi;
+    s/^[ \t]*Claude-Session:[^\n]*\n?//gmi;
+    s/\s+\z/\n/;
+  ' "$msg_file"
+fi
